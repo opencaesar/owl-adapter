@@ -16,7 +16,7 @@ Requirements: java 8, node 8.x,
 ```
     cd owl-adapter
     cd io.opencaesar.owl.adapter/
-	./gradlew clean build
+    ./gradlew clean build
 ```
 
 ## Run
