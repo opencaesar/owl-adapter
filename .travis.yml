@@ -1,0 +1,21 @@
+language: java
+install: true
+
+jdk:
+- oraclejdk8
+
+before_script:
+- cd io.opencaesar.owl.adapter
+
+script:
+  - ./gradlew build
+
+deploy:
+  - provider: script
+    script: ./gradlew bintrayUpload
+    skip_cleanup: true
+    dry-run: false
+    on:
+      tags: true
+      repo: opencaesar/owl-adapter
+      branch: master
