@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.org/opencaesar/owl-adapter.svg?branch=master)](https://travis-ci.org/opencaesar/owl-adapter)
 [ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/io.opencaesar.oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/io.opencaesar.oml2owl/_latestVersion)
 
-An [OML](https://github.com/opencaesar/oml-language-server) adapter for [OWL2-DL](https://www.w3.org/TR/owl2-syntax/) + [SWRL Rules](https://www.w3.org/Submission/SWRL/)
+An [OML](https://github.com/opencaesar/oml) adapter for [OWL2-DL](https://www.w3.org/TR/owl2-syntax/) + [SWRL Rules](https://www.w3.org/Submission/SWRL/)
 
 ## Clone
 ```
