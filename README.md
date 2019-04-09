@@ -2,7 +2,7 @@
 
 [![Gitpod - Code Now](https://img.shields.io/badge/Gitpod-code%20now-blue.svg?longCache=true)](https://gitpod.io#https://github.com/opencaesar/owl-adapter)
 [![Build Status](https://travis-ci.org/opencaesar/owl-adapter.svg?branch=master)](https://travis-ci.org/opencaesar/owl-adapter)
-[ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/io.opencaesar.owl2oml/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/io.opencaesar.owl2oml/_latestVersion)
+[ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/io.opencaesar.oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/io.opencaesar.oml2owl/_latestVersion)
 
 An [OML](https://github.com/opencaesar/oml-language-server) adapter for [OWL2-DL](https://www.w3.org/TR/owl2-syntax/) + [SWRL Rules](https://www.w3.org/Submission/SWRL/)
 
