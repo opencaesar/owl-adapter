@@ -115,8 +115,8 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 	reified relationship ReifiedRelationship specializes Entity, Relationship {
 		source Entity
 		target Entity
-		forward forwardRelationship
-		inverse inverseRelationship
+		forward reifiedRelationshipForward
+		inverse reifiedRelationshipInverse
 	}
 
 	concept Structure specializes CharacterizableTerm
@@ -165,10 +165,11 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 		functional
 	}
 
-	reified relationship UnreifiedRelationship specializes Relationship, UnidirectionalRelationship {
+	reified relationship UnreifiedRelationship specializes Relationship {
 		source Entity
 		target Entity
-		forward unreifiedRelationship
+		forward unreifiedRelationshipForward
+		inverse unreifiedRelationshipInverse
 	}
 
 	aspect ScalarRange specializes Term
@@ -332,14 +333,12 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 
 	reified relationship ConsequentOfRule {
 		source Rule
-		target UnidirectionalRelationshipPredicate
+		target DirectionalRelationshipPredicate
 		forward consequentOfRule
 		functional
 	}
 
-	aspect UnidirectionalRelationship specializes TerminologyMember
-
-	aspect ReifiedUnidirectionalRelationship specializes UnidirectionalRelationship
+	aspect RelationshipDirection specializes TerminologyMember
 
 	aspect DescriptionMember specializes GraphMember, DescriptionStatement
 
@@ -349,7 +348,7 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 
 	reified relationship TypesOfConceptInstance {
 		source ConceptInstance
-		target ConceptInstanceTypeAxiom
+		target Assertion
 		forward typesOfConceptInstance
 	}
 
@@ -357,7 +356,7 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 
 	reified relationship TypesOfReifiedRelationshipInstance {
 		source ReifiedRelationshipInstance
-		target ReifiedRelationshipInstanceTypeAxiom
+		target ReifiedRelationshipInstanceTypeAssertion
 		forward typesOfReifiedRelationshipInstance
 	}
 
@@ -424,7 +423,7 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 		functional
 	}
 
-	concept UnreifiedRelationshipReference specializes TermReference, UnidirectionalRelationshipReference
+	concept UnreifiedRelationshipReference specializes TermReference
 
 	reified relationship RelationshipOfUnreifiedRelationshipReference {
 		source UnreifiedRelationshipReference
@@ -469,14 +468,12 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 		functional
 	}
 
-	aspect UnidirectionalRelationshipReference specializes TerminologyMemberReference
+	concept RelationshipDirectionReference specializes TerminologyMemberReference
 
-	concept ReifiedUnidirectionalRelationshipReference specializes UnidirectionalRelationshipReference
-
-	reified relationship RelationshipOfReifiedUnidirectionalRelationshipReference {
-		source ReifiedUnidirectionalRelationshipReference
-		target ReifiedUnidirectionalRelationship
-		forward relationshipOfReifiedUnidirectionalRelationshipReference
+	reified relationship DirectionOfRelationshipDirectionReference {
+		source RelationshipDirectionReference
+		target RelationshipDirection
+		forward directionOfRelationshipDirectionReference
 		functional
 	}
 
@@ -510,7 +507,7 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 
 	reified relationship TypesOfConceptInstanceReference {
 		source ConceptInstanceReference
-		target ConceptInstanceTypeAxiom
+		target ConceptInstanceTypeAssertion
 		forward typesOfConceptInstanceReference
 	}
 
@@ -525,15 +522,15 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 
 	reified relationship TypesOfReifiedRelationshipInstanceReference {
 		source ReifiedRelationshipInstanceReference
-		target ReifiedRelationshipInstanceTypeAxiom
+		target ReifiedRelationshipInstanceTypeAssertion
 		forward typesOfReifiedRelationshipInstanceReference
 	}
 
-	aspect Statement specializes AnnotatedElement
+	aspect GraphStatement specializes AnnotatedElement
 
-	aspect TerminologyStatement specializes Statement
+	aspect TerminologyStatement specializes GraphStatement
 
-	aspect DescriptionStatement specializes Statement
+	aspect DescriptionStatement specializes GraphStatement
 
 	aspect Axiom specializes AnnotatedElement
 
@@ -550,10 +547,10 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 
 	aspect RelationshipRestrictionAxiom specializes EntityRestrictionAxiom
 
-	reified relationship RelationshipOfRelationshipRestrictionAxiom {
+	reified relationship RelationshipDirectionOfRelationshipRestrictionAxiom {
 		source RelationshipRestrictionAxiom
-		target UnidirectionalRelationship
-		forward relationshipOfRelationshipRestrictionAxiom
+		target RelationshipDirection
+		forward relationshipDirectionOfRelationshipRestrictionAxiom
 		functional
 	}
 
@@ -615,25 +612,25 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 		functional
 	}
 
-	concept ConceptInstanceTypeAxiom specializes Axiom
-
-	reified relationship ConceptOfConceptInstanceTypeAxiom {
-		source ConceptInstanceTypeAxiom
-		target Concept
-		forward conceptOfConceptInstanceTypeAxiom
-		functional
-	}
-
-	concept ReifiedRelationshipInstanceTypeAxiom specializes Axiom
-
-	reified relationship RelationshipOfReifiedRelationshipInstanceTypeAxiom {
-		source ReifiedRelationshipInstanceTypeAxiom
-		target ReifiedRelationship
-		forward relationshipOfReifiedRelationshipInstanceTypeAxiom
-		functional
-	}
-
 	aspect Assertion specializes AnnotatedElement
+
+	concept ConceptInstanceTypeAssertion specializes Assertion
+
+	reified relationship ConceptOfConceptInstanceTypeAssertion {
+		source ConceptInstanceTypeAssertion
+		target Concept
+		forward conceptOfConceptInstanceTypeAssertion
+		functional
+	}
+
+	concept ReifiedRelationshipInstanceTypeAssertion specializes Assertion
+
+	reified relationship RelationshipOfReifiedRelationshipInstanceTypeAssertion {
+		source ReifiedRelationshipInstanceTypeAssertion
+		target ReifiedRelationship
+		forward relationshipOfReifiedRelationshipInstanceTypeAssertion
+		functional
+	}
 
 	aspect InstancePropertyValueAssertion specializes Assertion
 
@@ -824,12 +821,12 @@ open terminology <http://opencaesar.io/Oml#> as oml {
 		functional
 	}
 
-	concept UnidirectionalRelationshipPredicate specializes RelationshipPredicate
+	concept DirectionalRelationshipPredicate specializes RelationshipPredicate
 
-	reified relationship RelationshipOfUnidirectionalRelationshipPredicate {
-		source UnidirectionalRelationshipPredicate
-		target UnidirectionalRelationship
-		forward relationshipOfUnidirectionalRelationshipPredicate
+	reified relationship RelationshipDirectionOfDirectionalRelationshipPredicate {
+		source DirectionalRelationshipPredicate
+		target RelationshipDirection
+		forward relationshipDirectionOfDirectionalRelationshipPredicate
 		functional
 	}
 

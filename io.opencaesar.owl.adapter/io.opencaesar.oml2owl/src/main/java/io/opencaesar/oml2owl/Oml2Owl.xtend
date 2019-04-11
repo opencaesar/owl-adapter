@@ -12,16 +12,17 @@ import io.opencaesar.oml.ConceptInstanceTypeAssertion
 import io.opencaesar.oml.Description
 import io.opencaesar.oml.DescriptionRefinement
 import io.opencaesar.oml.DescriptionUsage
+import io.opencaesar.oml.DirectionalRelationshipPredicate
 import io.opencaesar.oml.EntityPredicate
 import io.opencaesar.oml.EnumerationScalar
 import io.opencaesar.oml.ExistentialRelationshipRestrictionAxiom
 import io.opencaesar.oml.ExistentialScalarPropertyRestrictionAxiom
-import io.opencaesar.oml.ForwardRelationship
+import io.opencaesar.oml.ForwardDirection
 import io.opencaesar.oml.Graph
 import io.opencaesar.oml.GraphMember
 import io.opencaesar.oml.GraphMemberReference
 import io.opencaesar.oml.IRIScalar
-import io.opencaesar.oml.InverseRelationship
+import io.opencaesar.oml.InverseDirection
 import io.opencaesar.oml.LiteralBoolean
 import io.opencaesar.oml.LiteralDateTime
 import io.opencaesar.oml.LiteralDecimal
@@ -54,7 +55,6 @@ import io.opencaesar.oml.TermSpecializationAxiom
 import io.opencaesar.oml.Terminology
 import io.opencaesar.oml.TerminologyExtension
 import io.opencaesar.oml.TimeScalar
-import io.opencaesar.oml.UnidirectionalRelationshipPredicate
 import io.opencaesar.oml.UniversalRelationshipRestrictionAxiom
 import io.opencaesar.oml.UniversalScalarPropertyRestrictionAxiom
 import io.opencaesar.oml.UnreifiedRelationship
@@ -121,35 +121,6 @@ class Oml2Owl extends OmlVisitor {
 	protected def dispatch void visit(Structure structure) {
 		owl.addClass(ontology, structure.iri)
 		owl.addSubClassOfAxiom(ontology, structure.iri, OML+'Structure')
-	}
-
-	protected def dispatch void visit(UnreifiedRelationship relationship) {
-		val relationshipIri = relationship.iri
-		owl.addObjectProperty(ontology, relationshipIri)
-		owl.addSubObjectPropertyOfAxiom(ontology, relationshipIri, OML+'unreifiedRelationship')
-		owl.addObjectPropertyDomainAxiom(ontology, relationshipIri, relationship.source.iri)
-		owl.addObjectPropertyRangeAxiom(ontology, relationshipIri, relationship.target.iri)
-		if (relationship.functional) {
-			owl.addFunctionalObjectProperty(ontology, relationshipIri)
-		}
-		if (relationship.inverseFunctional) {
-			owl.addInverseFunctionalObjectProperty(ontology, relationshipIri)
-		}
-		if (relationship.symmetric) {
-			owl.addSymmetricObjectProperty(ontology, relationshipIri)
-		}
-		if (relationship.asymmetric) {
-			owl.addAsymmetricObjectProperty(ontology, relationshipIri)
-		}
-		if (relationship.reflexive) {
-			owl.addReflexiveObjectProperty(ontology, relationshipIri)
-		}
-		if (relationship.irreflexive) {
-			owl.addIrreflexiveObjectProperty(ontology, relationshipIri)
-		}
-		if (relationship.transitive) {
-			owl.addTransitiveObjectProperty(ontology, relationshipIri)
-		}
 	}
 
 	protected def dispatch void visit(Scalar scalar) {
@@ -263,72 +234,84 @@ class Oml2Owl extends OmlVisitor {
 		owl.addAnnotationProperty(ontology, property.iri)
 	}
 
-	protected def dispatch void visit(ForwardRelationship relationship) {
-		val reifiedRelationship = relationship.reifiedRelationship
-		// main relationship
-		val relationshipIri = relationship.iri
-		owl.addObjectProperty(ontology, relationshipIri)
-		owl.addSubObjectPropertyOfAxiom(ontology, relationshipIri, OML+'forwardRelationship')
-		owl.addObjectPropertyDomainAxiom(ontology, relationshipIri, relationship.source.iri)
-		owl.addObjectPropertyRangeAxiom(ontology, relationshipIri, relationship.target.iri)
-		if (reifiedRelationship.functional) {
-			owl.addFunctionalObjectProperty(ontology, relationshipIri)
+	protected def dispatch void visit(ForwardDirection forward) {
+		val relationship = forward.relationship
+		val omlForwardIri = if (relationship instanceof ReifiedRelationship) {
+			OML+'reifiedRelationshipForward'
+		} else {
+			OML+'unreifiedRelationshipForward'
 		}
-		if (reifiedRelationship.inverseFunctional) {
-			owl.addInverseFunctionalObjectProperty(ontology, relationshipIri)
+		// forward relationship
+		val forwardIri = forward.iri
+		owl.addObjectProperty(ontology, forwardIri)
+		owl.addSubObjectPropertyOfAxiom(ontology, forwardIri, omlForwardIri)
+		owl.addObjectPropertyDomainAxiom(ontology, forwardIri, forward.source.iri)
+		owl.addObjectPropertyRangeAxiom(ontology, forwardIri, forward.target.iri)
+		if (relationship.functional) {
+			owl.addFunctionalObjectProperty(ontology, forwardIri)
 		}
-		if (reifiedRelationship.symmetric) {
-			owl.addSymmetricObjectProperty(ontology, relationshipIri)
+		if (relationship.inverseFunctional) {
+			owl.addInverseFunctionalObjectProperty(ontology, forwardIri)
 		}
-		if (reifiedRelationship.asymmetric) {
-			owl.addAsymmetricObjectProperty(ontology, relationshipIri)
+		if (relationship.symmetric) {
+			owl.addSymmetricObjectProperty(ontology, forwardIri)
 		}
-		if (reifiedRelationship.reflexive) {
-			owl.addReflexiveObjectProperty(ontology, relationshipIri)
+		if (relationship.asymmetric) {
+			owl.addAsymmetricObjectProperty(ontology, forwardIri)
 		}
-		if (reifiedRelationship.irreflexive) {
-			owl.addIrreflexiveObjectProperty(ontology, relationshipIri)
+		if (relationship.reflexive) {
+			owl.addReflexiveObjectProperty(ontology, forwardIri)
 		}
-		if (reifiedRelationship.transitive) {
-			owl.addTransitiveObjectProperty(ontology, relationshipIri)
+		if (relationship.irreflexive) {
+			owl.addIrreflexiveObjectProperty(ontology, forwardIri)
 		}
-		// source relationship
-		val relationshipSourceIri = relationship.sourceIri
-		owl.addObjectProperty(ontology, relationshipSourceIri)
-		owl.addSubObjectPropertyOfAxiom(ontology, relationshipSourceIri, OML+'forwardRelationshipSource')
-		owl.addObjectPropertyDomainAxiom(ontology, relationshipSourceIri, reifiedRelationship.iri)
-		owl.addObjectPropertyRangeAxiom(ontology, relationshipSourceIri, relationship.source.iri)
-		owl.addFunctionalObjectProperty(ontology, relationshipSourceIri)
-		if (reifiedRelationship.functional) {
-			owl.addInverseFunctionalObjectProperty(ontology, relationshipSourceIri)
+		if (relationship.transitive) {
+			owl.addTransitiveObjectProperty(ontology, forwardIri)
 		}
-		// target relationship
-		val relationshipTargetIri = relationship.targetIri
-		owl.addObjectProperty(ontology, relationshipTargetIri)
-		owl.addSubObjectPropertyOfAxiom(ontology, relationshipTargetIri, OML+'forwardRelationshipTarget')
-		owl.addObjectPropertyDomainAxiom(ontology, relationshipTargetIri, reifiedRelationship.iri)
-		owl.addObjectPropertyRangeAxiom(ontology, relationshipTargetIri, relationship.target.iri)
-		owl.addFunctionalObjectProperty(ontology, relationshipTargetIri)
-		if (reifiedRelationship.inverseFunctional) {
-			owl.addInverseFunctionalObjectProperty(ontology, relationshipTargetIri)
+		if (relationship instanceof ReifiedRelationship) {
+			// forward source relationship
+			val forwardSourceIri = forward.sourceIri
+			owl.addObjectProperty(ontology, forwardSourceIri)
+			owl.addSubObjectPropertyOfAxiom(ontology, forwardSourceIri, omlForwardIri+'Source')
+			owl.addObjectPropertyDomainAxiom(ontology, forwardSourceIri, relationship.iri)
+			owl.addObjectPropertyRangeAxiom(ontology, forwardSourceIri, forward.source.iri)
+			owl.addFunctionalObjectProperty(ontology, forwardSourceIri)
+			if (relationship.functional) {
+				owl.addInverseFunctionalObjectProperty(ontology, forwardSourceIri)
+			}
+			// forward target relationship
+			val forwardTargetIri = forward.targetIri
+			owl.addObjectProperty(ontology, forwardTargetIri)
+			owl.addSubObjectPropertyOfAxiom(ontology, forwardTargetIri, omlForwardIri+'Target')
+			owl.addObjectPropertyDomainAxiom(ontology, forwardTargetIri, relationship.iri)
+			owl.addObjectPropertyRangeAxiom(ontology, forwardTargetIri, forward.target.iri)
+			owl.addFunctionalObjectProperty(ontology, forwardTargetIri)
+			if (relationship.inverseFunctional) {
+				owl.addInverseFunctionalObjectProperty(ontology, forwardTargetIri)
+			}
+			// derivation rule for forward relationship
+			val graphIri = forward.graph.iri
+			val antedecents = new ArrayList
+			antedecents += owl.getObjectPropertyAtom(forwardSourceIri, graphIri+'r', graphIri+'s')
+			antedecents += owl.getObjectPropertyAtom(forwardTargetIri, graphIri+'r', graphIri+'t')
+			val consequent = owl.getObjectPropertyAtom(forwardIri, graphIri+'s', graphIri+'s')
+			val annotation = owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(forward.name+' derivation'))
+			owl.addNRule(ontology, consequent, antedecents, annotation)
 		}
-		// derivation rule for main relationship
-		val graphIri = relationship.graph.iri
-		val antedecents = new ArrayList
-		antedecents += owl.getObjectPropertyAtom(relationshipSourceIri, graphIri+'r', graphIri+'s')
-		antedecents += owl.getObjectPropertyAtom(relationshipTargetIri, graphIri+'r', graphIri+'t')
-		val consequent = owl.getObjectPropertyAtom(relationshipIri, graphIri+'s', graphIri+'s')
-		val annotation = owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(relationship.name+' derivation'))
-		owl.addNRule(ontology, consequent, antedecents, annotation)
 	}
 
-	protected def dispatch void visit(InverseRelationship relationship) {
-		val relationshipIri = relationship.iri
-		owl.addObjectProperty(ontology, relationshipIri)
-		owl.addSubObjectPropertyOfAxiom(ontology, relationshipIri, OML+'inverseRelationship')
-		//owl2.addObjectPropertyDomainAxiom(ontology, relationshipIri, relationship.source.iri)
-		//owl2.addObjectPropertyRangeAxiom(ontology, relationshipIri, relationship.target.iri)
-		owl.addInversePropertyAxiom(ontology, relationshipIri, relationship.forwardRelationship.iri)
+	protected def dispatch void visit(InverseDirection inverse) {
+		val relationship = inverse.relationship
+		val omlInverseIri = if (relationship instanceof ReifiedRelationship) {
+			OML+'reifiedRelationshipInverse'
+		} else {
+			OML+'unreifiedRelationshipInverse'
+		}
+		// inverse relationship
+		val inverseIri = inverse.iri
+		owl.addObjectProperty(ontology, inverseIri)
+		owl.addSubObjectPropertyOfAxiom(ontology, inverseIri, omlInverseIri)
+		owl.addInversePropertyAxiom(ontology, inverseIri, inverse.forwardRelationship.iri)
 	}
 
 	protected def dispatch void visit(ConceptInstance instance) {
@@ -376,12 +359,12 @@ class Oml2Owl extends OmlVisitor {
 
 	protected def dispatch void visit(ExistentialRelationshipRestrictionAxiom axiom) {
 		val annotations = axiom.annotations.map[owl.getAnnotation(property.iri, value.literal)]
-		owl.addObjectSomeValuesFrom(ontology, axiom.restrictedEntity.iri, axiom.relationship.iri, axiom.restrictedTo.iri, annotations)
+		owl.addObjectSomeValuesFrom(ontology, axiom.restrictedEntity.iri, axiom.relationshipDirection.iri, axiom.restrictedTo.iri, annotations)
 	}
 
 	protected def dispatch void visit(UniversalRelationshipRestrictionAxiom axiom) {
 		val annotations = axiom.annotations.map[owl.getAnnotation(property.iri, value.literal)]
-		owl.addObjectAllValuesFrom(ontology, axiom.restrictedEntity.iri, axiom.relationship.iri, axiom.restrictedTo.iri, annotations)
+		owl.addObjectAllValuesFrom(ontology, axiom.restrictedEntity.iri, axiom.relationshipDirection.iri, axiom.restrictedTo.iri, annotations)
 	}
 
 	protected def dispatch void visit(ExistentialScalarPropertyRestrictionAxiom axiom) {
@@ -477,8 +460,8 @@ class Oml2Owl extends OmlVisitor {
 		owl.getClassAtom(predicate.entity.iri, predicate.variableIri)
 	}
 
-	protected dispatch def getAtom(UnidirectionalRelationshipPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.relationship.iri, predicate.variable1Iri, predicate.variable2Iri)
+	protected dispatch def getAtom(DirectionalRelationshipPredicate predicate) {
+		owl.getObjectPropertyAtom(predicate.relationshipDirection.iri, predicate.variable1Iri, predicate.variable2Iri)
 	}
 
 	protected dispatch def getAtom(ReifiedRelationshipPredicate predicate) {
