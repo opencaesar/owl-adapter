@@ -31,3 +31,11 @@ Windows:
     cd owl-adapter
     gradlew.bat oml2owl:run --args="-i path/to/oml/folder -o path/to/owl/folder"
 ```
+
+## Release
+
+Replace \<version\> by the version, e.g., 1.2
+```
+  git tag -a v<version> -m "v<version>"
+  git push origin v<version>
+```
