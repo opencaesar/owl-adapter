@@ -8,7 +8,7 @@ applicationName = 'oml2owl'
 dependencies {
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation "com.beust:jcommander:1.72"
-    implementation "io.opencaesar:io.opencaesar.oml.dsl:${versions.oml}"
+    implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
 	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
 
     // Use JUnit test framework

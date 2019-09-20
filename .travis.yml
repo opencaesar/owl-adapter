@@ -2,10 +2,10 @@ language: java
 install: true
 
 jdk:
-- oraclejdk8
+- openjdk8
 
 before_script:
-- cd io.opencaesar.owl.adapter
+- cd owl-adapter
 
 script:
   - ./gradlew build

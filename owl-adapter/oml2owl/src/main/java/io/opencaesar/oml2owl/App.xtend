@@ -94,17 +94,11 @@ class App {
 			if (inputResource !== null) {
 				LOGGER.info("Reading: "+inputURI)
 				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
-				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl2')
+				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
 				outputFiles.put(outputFile, new Oml2Owl(inputResource, owl2api).run)
 			}
 		}
 		
-		val resourceURL = ClassLoader.getSystemClassLoader().getResource("opencaesar.io/Oml.oml")
-		val resource = inputResourceSet.getResource(URI.createURI(resourceURL.toString), true)
-		val outputFile = new File(outputPath+"/opencaesar.io/Oml.owl2")
-		outputFiles.put(outputFile, new Oml2Owl(resource, owl2api).run)
-		
-
 		// save the output resources
 		for (outputEntry : outputFiles.entrySet) {
 			val file = outputEntry.key
