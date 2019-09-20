@@ -5,7 +5,7 @@ jdk:
 - oraclejdk8
 
 before_script:
-- cd io.opencaesar.owl.adapter
+- cd owl-adapter
 
 script:
   - ./gradlew build

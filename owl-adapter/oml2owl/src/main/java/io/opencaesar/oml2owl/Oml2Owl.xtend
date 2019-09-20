@@ -70,9 +70,7 @@ import org.semanticweb.owlapi.vocab.OWLFacet
 import static extension io.opencaesar.oml.Oml.*
 
 class Oml2Owl extends OmlVisitor {
-	
-	val OML = "http://opencaesar.io/Oml#"
-	
+		
 	val Resource inputResource 
 	val OwlApi owl	
 	var OWLOntology ontology
@@ -93,34 +91,34 @@ class Oml2Owl extends OmlVisitor {
 
 	protected def dispatch void visit(Terminology terminology) {
 		ontology = owl.createOntology(terminology.iri)
-		owl.addImportsDeclaration(ontology, OML)
-		owl.addOntologyAnnotation(ontology, OML+'kindOfTerminology', owl.getLiteral(terminology.kind.toString))
+		owl.addImportsDeclaration(ontology, OmlConstants.OML)
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.getLiteral(OmlConstants.Terminology))
 	}
 
 	protected def dispatch void visit(Description description) {
 		ontology = owl.createOntology(description.iri)
-		owl.addImportsDeclaration(ontology, OML)
-		owl.addOntologyAnnotation(ontology, OML+'kindOfDescription', owl.getLiteral(description.kind.toString))
+		owl.addImportsDeclaration(ontology, OmlConstants.OML)
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.getLiteral(OmlConstants.Description))
 	}
 
 	protected def dispatch void visit(Aspect aspect) {
 		owl.addClass(ontology, aspect.iri)
-		owl.addSubClassOfAxiom(ontology, aspect.iri, OML+'Aspect')
+		owl.addSubClassOfAxiom(ontology, aspect.iri, OmlConstants.Aspect)
 	}
 
 	protected def dispatch void visit(Concept concept) {
 		owl.addClass(ontology, concept.iri)
-		owl.addSubClassOfAxiom(ontology, concept.iri, OML+'Concept')
+		owl.addSubClassOfAxiom(ontology, concept.iri, OmlConstants.Concept)
 	}
 
 	protected def dispatch void visit(ReifiedRelationship relationship) {
 		owl.addClass(ontology, relationship.iri)
-		owl.addSubClassOfAxiom(ontology, relationship.iri, OML+'ReifiedRelationship')
+		owl.addSubClassOfAxiom(ontology, relationship.iri, OmlConstants.ReifiedRelationship)
 	}
 
 	protected def dispatch void visit(Structure structure) {
 		owl.addClass(ontology, structure.iri)
-		owl.addSubClassOfAxiom(ontology, structure.iri, OML+'Structure')
+		owl.addSubClassOfAxiom(ontology, structure.iri, OmlConstants.Structure)
 	}
 
 	protected def dispatch void visit(Scalar scalar) {
@@ -237,9 +235,9 @@ class Oml2Owl extends OmlVisitor {
 	protected def dispatch void visit(ForwardDirection forward) {
 		val relationship = forward.relationship
 		val omlForwardIri = if (relationship instanceof ReifiedRelationship) {
-			OML+'reifiedRelationshipForward'
+			OmlConstants.reifiedRelationshipForward
 		} else {
-			OML+'unreifiedRelationshipForward'
+			OmlConstants.unreifiedRelationshipForward
 		}
 		// forward relationship
 		val forwardIri = forward.iri
@@ -294,7 +292,7 @@ class Oml2Owl extends OmlVisitor {
 			val antedecents = new ArrayList
 			antedecents += owl.getObjectPropertyAtom(forwardSourceIri, graphIri+'r', graphIri+'s')
 			antedecents += owl.getObjectPropertyAtom(forwardTargetIri, graphIri+'r', graphIri+'t')
-			val consequent = owl.getObjectPropertyAtom(forwardIri, graphIri+'s', graphIri+'s')
+			val consequent = owl.getObjectPropertyAtom(forwardIri, graphIri+'s', graphIri+'t')
 			val annotation = owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(forward.name+' derivation'))
 			owl.addNRule(ontology, consequent, antedecents, annotation)
 		}
@@ -303,9 +301,9 @@ class Oml2Owl extends OmlVisitor {
 	protected def dispatch void visit(InverseDirection inverse) {
 		val relationship = inverse.relationship
 		val omlInverseIri = if (relationship instanceof ReifiedRelationship) {
-			OML+'reifiedRelationshipInverse'
+			OmlConstants.reifiedRelationshipInverse
 		} else {
-			OML+'unreifiedRelationshipInverse'
+			OmlConstants.unreifiedRelationshipInverse
 		}
 		// inverse relationship
 		val inverseIri = inverse.iri
@@ -424,11 +422,19 @@ class Oml2Owl extends OmlVisitor {
 		owl.addSubClassOfAxiom(ontology, specific.iri, general.iri, annotations)
 	}
 	
+	protected dispatch def void specializes(Concept specific, Aspect general, OWLAnnotation...annotations) {
+		owl.addSubClassOfAxiom(ontology, specific.iri, general.iri, annotations)
+	}
+
 	protected dispatch def void specializes(Aspect specific, Aspect general, OWLAnnotation...annotations) {
 		owl.addSubClassOfAxiom(ontology, specific.iri, general.iri, annotations)
 	}
 
 	protected dispatch def void specializes(ReifiedRelationship specific, ReifiedRelationship general, OWLAnnotation...annotations) {
+		owl.addSubClassOfAxiom(ontology, specific.iri, general.iri, annotations)
+	}
+
+	protected dispatch def void specializes(ReifiedRelationship specific, Aspect general, OWLAnnotation...annotations) {
 		owl.addSubClassOfAxiom(ontology, specific.iri, general.iri, annotations)
 	}
 
