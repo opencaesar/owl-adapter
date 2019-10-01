@@ -13,6 +13,21 @@ import org.eclipse.xtext.util.Tuples
 import org.jgrapht.graph.DefaultEdge
 import org.jgrapht.graph.DirectedAcyclicGraph
 import org.jgrapht.alg.TransitiveReduction
+import org.jgrapht.alg.connectivity.ConnectivityInspector
+import org.jgrapht.graph.AsUndirectedGraph
+import org.jgrapht.GraphTests
+
+class UnconnectedTaxonomyException extends RuntimeException {	
+	new(String s) {
+		super(s)
+	}
+}
+
+class InvalidTreeException extends RuntimeException {	
+	new(String s) {
+		super(s)
+	}
+}
 
 class TaxonomyEdge extends DefaultEdge {
 	
@@ -330,4 +345,39 @@ class Taxonomy extends DirectedAcyclicGraph<ClassExpression, TaxonomyEdge> {
 		]
 		map
 	}
+	
+	/**
+	 * Test whether this Taxonomy is connected.
+	 * 
+	 * @return	boolean
+	 */
+	 def boolean isConnected() {
+	 	new ConnectivityInspector(this).isConnected
+	 }
+	 
+	/**
+	 * Throw UnconnectedTaxonomyException unless connected.
+	 */
+	 def void ensureConnected() throws UnconnectedTaxonomyException {
+	 	if (!isConnected) throw new UnconnectedTaxonomyException("taxonomy is not connected")
+	 }
+	 
+	 /**
+	  * Test whether this Taxonomy is a tree.
+	  * 
+	  * @return	boolean
+	  *
+	  */
+	  def boolean isTree() {
+	  	val ug = new AsUndirectedGraph(this)
+		GraphTests.isTree(ug)
+	  }
+
+	/**
+	 * Throw InvalidTreeException unless connected.
+	 */
+	 def void ensureTree() throws InvalidTreeException {
+	 	if (!isTree) throw new InvalidTreeException("treeify method returned an invalid tree")
+	 }
+	 
 }

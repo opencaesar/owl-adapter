@@ -8,24 +8,9 @@ import io.opencaesar.oml2owl.utils.Singleton
 import io.opencaesar.oml2owl.utils.Taxonomy
 import java.util.List
 import org.eclipse.emf.ecore.resource.Resource
-import org.jgrapht.GraphTests
-import org.jgrapht.alg.connectivity.ConnectivityInspector
-import org.jgrapht.graph.AsUndirectedGraph
 import org.semanticweb.owlapi.model.OWLOntology
 
 import static extension io.opencaesar.oml.Oml.*
-
-class UnconnectedGraphException extends RuntimeException {	
-	new(String s) {
-		super(s)
-	}
-}
-
-class InvalidTreeException extends RuntimeException {	
-	new(String s) {
-		super(s)
-	}
-}
 
 class CloseBundle {
 	
@@ -81,16 +66,11 @@ class CloseBundle {
 		allGraphs.add(graph)
 		
 		val Taxonomy taxonomy = omlTaxonomy(allGraphs).rootAt(owlThing)
-		if (!(new ConnectivityInspector(taxonomy).isConnected)) {
-			throw (new UnconnectedGraphException("taxonomy is not connected"))
-		}
+		taxonomy.ensureConnected
 		
 		val Taxonomy tree = taxonomy.treeify
-		val ug = new AsUndirectedGraph(tree)
-		if (!(GraphTests.isTree(ug))) {
-			throw (new InvalidTreeException("treeify method returned an invalid tree"))
-		}
-		
+		tree.ensureTree
+				
 		val siblingMap = tree.siblingMap
 		siblingMap.values.forEach[ v |
 			owlApi.addDisjointClassesAxiom(ontology, v)
