@@ -1,7 +1,9 @@
 package io.opencaesar.oml2owl
 
+import io.opencaesar.oml2owl.utils.ClassExpression
 import java.math.BigDecimal
 import java.util.Collections
+import java.util.Set
 import org.semanticweb.owlapi.model.AddImport
 import org.semanticweb.owlapi.model.AddOntologyAnnotation
 import org.semanticweb.owlapi.model.IRI
@@ -15,6 +17,9 @@ import org.semanticweb.owlapi.model.OWLOntology
 import org.semanticweb.owlapi.model.OWLOntologyManager
 import org.semanticweb.owlapi.model.SWRLAtom
 import org.semanticweb.owlapi.vocab.OWLFacet
+
+import static extension io.opencaesar.oml2owl.utils.OwlClassExpression.*
+import org.semanticweb.owlapi.model.OWLClassExpression
 
 class OwlApi {
 	
@@ -190,6 +195,12 @@ class OwlApi {
 		return axiom
 	}
 
+	def addDisjointClassesAxiom(OWLOntology ontology, Set<ClassExpression> classes, OWLAnnotation...annotations) {
+		val axiom = factory.getOWLDisjointClassesAxiom(classes.map[toOwlClassExpression(this)])
+		manager.addAxiom(ontology, axiom)
+		return axiom
+	}
+	
 	def addObjectSomeValuesFrom(OWLOntology ontology, String classIri, String propertyIri, String typeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLObjectProperty(propertyIri)
@@ -385,4 +396,27 @@ class OwlApi {
 		return factory.getOWLLiteral(value, datatype)
 	}
 
+	def getOWLThing() {
+		return factory.getOWLThing
+	}
+
+	def getOWLNothing() {
+		return factory.getOWLNothing
+	}
+	
+	def getOWLClass(IRI iri) {
+		return factory.getOWLClass(iri)
+	}
+	
+	def getOWLObjectComplementOf(OWLClassExpression e) {
+		return factory.getOWLObjectComplementOf(e)
+	}
+	
+	def getOWLObjectIntersectionOf(Set<? extends OWLClassExpression> operands) {
+		return factory.getOWLObjectIntersectionOf(operands)
+	}
+	
+	def getOWLObjectUnionOf(Set<? extends OWLClassExpression> operands) {
+		return factory.getOWLObjectUnionOf(operands)
+	}
 }
