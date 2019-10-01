@@ -107,12 +107,6 @@ class App {
 			new CloseBundle(resource, ontology, owl2api).run
 		]		
 		
-		val resourceURL = ClassLoader.getSystemClassLoader().getResource("opencaesar.io/Oml.oml")
-		val resource = inputResourceSet.getResource(URI.createURI(resourceURL.toString), true)
-		val outputFile = new File(outputPath+"/opencaesar.io/Oml.owl2")
-		outputFiles.put(outputFile, new Oml2Owl(resource, owl2api).run)
-		
-
 		// save the output resources
 		for (outputEntry : outputFiles.entrySet) {
 			val file = outputEntry.key
