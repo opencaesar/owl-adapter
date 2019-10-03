@@ -11,17 +11,16 @@ import org.eclipse.emf.ecore.resource.Resource
 import org.semanticweb.owlapi.model.OWLOntology
 
 import static extension io.opencaesar.oml.Oml.*
+import java.util.Map
+import java.util.Set
+import io.opencaesar.oml2owl.utils.ClassExpression
 
 class CloseBundle {
 	
 	protected val Resource resource
-	protected val OWLOntology ontology
-	protected val OwlApi owlApi
 		
-  	new(Resource resource, OWLOntology ontology, OwlApi owlApi) {
+  	new(Resource resource) {
 		this.resource = resource
-		this.ontology = ontology
-		this.owlApi = owlApi
 	}
 	
 	private def Taxonomy omlTaxonomy(List<Graph> allGraphs) {
@@ -57,7 +56,7 @@ class CloseBundle {
 		taxonomy
 	}
 	
-	def void run() {
+	def Map<ClassExpression, Set<ClassExpression>> getSiblingMap() {
 		
 		val Singleton owlThing = new Singleton("owl:Thing")
 
@@ -71,10 +70,36 @@ class CloseBundle {
 		val Taxonomy tree = taxonomy.treeify
 		tree.ensureTree
 				
-		val siblingMap = tree.siblingMap
-		siblingMap.values.forEach[ v |
+		tree.siblingMap		
+	}
+}
+
+class CloseBundleToOwl extends CloseBundle {
+	
+	protected val OWLOntology ontology
+	protected val OwlApi owlApi
+
+	new(Resource resource, OWLOntology ontology, OwlApi owlApi) {
+		super(resource)
+		this.ontology = ontology
+		this.owlApi = owlApi
+	}
+	
+	def void run() {
+		getSiblingMap.values.forEach[ v |
 			owlApi.addDisjointClassesAxiom(ontology, v)
 		]
 		
+	}
+}
+
+class CloseBundleToOml extends CloseBundle {
+	
+	new(Resource resource) {
+		super(resource)
+	}
+	
+	def void run() throws RuntimeException {
+		throw new RuntimeException("CloseBundleToOml not implemented")
 	}
 }

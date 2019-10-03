@@ -104,7 +104,7 @@ class App {
 		}
 		
 		oml2owl.filter[true].forEach[resource, ontology |
-			new CloseBundle(resource, ontology, owl2api).run
+			new CloseBundleToOwl(resource, ontology, owl2api).run
 		]		
 		
 		// save the output resources

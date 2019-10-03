@@ -1,0 +1,14 @@
+open terminology <http://io.opencaesar.oml2owl/src/test/resources/input/vocabulary-2> as vocabulary-2 {
+
+	extends <vocabulary-1.oml>
+	
+	concept d specializes vocabulary-1:b
+	concept e specializes vocabulary-1:b
+	concept f specializes vocabulary-1:c
+	concept g specializes vocabulary-1:c
+	concept h specializes e
+	concept i specializes vocabulary-1:c, e
+	concept j specializes i
+	concept k specializes f, j
+	
+}
