@@ -96,7 +96,7 @@ class App {
 			if (inputResource !== null) {
 				LOGGER.info("Reading: "+inputURI)
 				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
-				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl2')
+				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
 				val ontology = new Oml2Owl(inputResource, owl2api).run
 				outputFiles.put(outputFile, ontology)
 				oml2owl.put(inputResource, ontology)
