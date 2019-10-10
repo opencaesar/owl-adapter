@@ -64,13 +64,14 @@ import java.util.stream.Collectors
 	 * 				specified ClassExpression
 	 */
 	def ClassExpression difference(ClassExpression e) {
-		(e instanceof Empty) ?
+		if (e instanceof Empty)
 			// Theorem 11
-			this :
-				(e instanceof Universal || this.equals(e)) ?
-					//Theorem 13, Theorem 16
-					new Empty :
-						new Difference(this, e)
+			this
+		else if (e instanceof Universal || this.equals(e))
+			// Theorem 13, Theorem 16
+			new Empty
+		else
+			new Difference(this, e)
 	}
 	
 	/**
@@ -79,13 +80,14 @@ import java.util.stream.Collectors
 	 * 				specified ClassExpression
 	 */	
 	def ClassExpression intersection(ClassExpression e) {
-		this.equals(e) ?
+		if (this.equals(e))
 			// Theorem 2
-			this:
-				(e instanceof Intersection || e instanceof Empty || e instanceof Universal) ?
-					// Theorem 3
-					e.intersection(this) :
-						new Intersection(new HashSet<ClassExpression>(#[this, e]))
+			this
+		else if ((e instanceof Intersection || e instanceof Empty || e instanceof Universal))
+			// Theorem 3
+			e.intersection(this)
+		else
+			new Intersection(new HashSet<ClassExpression>(#[this, e]))
 	}
 	
 	/**
@@ -94,13 +96,14 @@ import java.util.stream.Collectors
 	 * 				specified ClassExpression
 	 */
 	def ClassExpression union(ClassExpression e) {
-		this.equals(e) ?
+		if (this.equals(e))
 			// Theorem 5
-			this:
-				(e instanceof Union || e instanceof Empty || e instanceof Universal) ?
-					// Theorem 6
-					e.union(this) :
-						new Union(new HashSet<ClassExpression>(#[this, e]))		
+			this
+		else if ((e instanceof Union || e instanceof Empty || e instanceof Universal))
+			// Theorem 6
+			e.union(this)
+		else
+			new Union(new HashSet<ClassExpression>(#[this, e]))
 	}
 	
 	/**
@@ -452,13 +455,14 @@ class Difference extends Binary {
 	 * 				specified ClassExpression (simplified)
 	 */
 	override ClassExpression difference(ClassExpression e) {
-		(e instanceof Empty) ?
+		if (e instanceof Empty)
 			// Theorem 11
-			this :
-				(e instanceof Universal || this.equals(e)) ?
-					//Theorem 13, Theorem 16
-					new Empty :
-						new Difference(a, b.union(e))
+			this
+		else if (e instanceof Universal || this.equals(e))
+			// Theorem 13, Theorem 16
+			new Empty
+		else
+			new Difference(a, b.union(e))
 	}
 	
 }
@@ -496,7 +500,7 @@ abstract class Nary extends ClassExpression {
 	 * @return	String string denoting this Nary as an atom
 	 */
 	 override String toAtom() {
-	 	(s.size <= 1) ? toString() : super.toAtom()
+	 	if (s.size <= 1) toString() else super.toAtom()
 	 }
 }
 
@@ -549,7 +553,7 @@ class Intersection extends Nary {
 		val newSet = new HashSet(s)		
 		// Theorem 4
 		if (e instanceof Intersection)
-			newSet.addAll((e as Intersection).s)
+			newSet.addAll(e.s)
 		else
 			newSet.add(e)						
 		new Intersection(newSet)
@@ -606,7 +610,7 @@ class Union extends Nary {
 		val newSet = new HashSet(s)
 		// Theorem 7
 		if (e instanceof Union)
-			newSet.addAll((e as Union).s)
+			newSet.addAll(e.s)
 		else
 			newSet.add(e)			
 		new Union(newSet)
