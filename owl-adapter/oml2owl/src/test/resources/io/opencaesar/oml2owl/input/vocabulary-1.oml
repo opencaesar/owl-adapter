@@ -1,0 +1,7 @@
+open terminology <http://io.opencaesar.oml2owl/src/test/resources/input/vocabulary-1> as vocabulary-1 {
+
+	concept a
+	concept b specializes a
+	concept c specializes a
+	
+}

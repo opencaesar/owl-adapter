@@ -87,6 +87,8 @@ class App {
 		val ontologyManager = OWLManager.createOWLOntologyManager()
 		val owl2api = new OwlApi(ontologyManager)
 		val outputFiles = new HashMap
+		
+		val oml2owl = new HashMap
 
 		for (inputFile : inputFiles) {
 			val inputURI = URI.createFileURI(inputFile.absolutePath)
@@ -95,9 +97,15 @@ class App {
 				LOGGER.info("Reading: "+inputURI)
 				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
-				outputFiles.put(outputFile, new Oml2Owl(inputResource, owl2api).run)
+				val ontology = new Oml2Owl(inputResource, owl2api).run
+				outputFiles.put(outputFile, ontology)
+				oml2owl.put(inputResource, ontology)
 			}
 		}
+		
+		oml2owl.filter[true].forEach[resource, ontology |
+			new CloseBundleToOwl(resource, ontology, owl2api).run
+		]		
 		
 		// save the output resources
 		for (outputEntry : outputFiles.entrySet) {
