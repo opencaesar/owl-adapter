@@ -14,6 +14,7 @@ import static extension io.opencaesar.oml.Oml.*
 import java.util.Map
 import java.util.Set
 import io.opencaesar.oml2owl.utils.ClassExpression
+import io.opencaesar.oml2owl.utils.Universal
 
 class CloseBundle {
 	
@@ -58,13 +59,13 @@ class CloseBundle {
 	
 	def Map<ClassExpression, Set<ClassExpression>> getSiblingMap() {
 		
-		val Singleton owlThing = new Singleton("owl:Thing")
+		val Universal universal = new Universal
 
 		val graph = resource.contents.filter(Graph).findFirst[true]
 		val allGraphs = graph.allImports.map[importedGraph].toList
 		allGraphs.add(graph)
 		
-		val Taxonomy taxonomy = omlTaxonomy(allGraphs).rootAt(owlThing)
+		val Taxonomy taxonomy = omlTaxonomy(allGraphs).rootAt(universal)
 		taxonomy.ensureConnected
 		
 		val Taxonomy tree = taxonomy.treeify
