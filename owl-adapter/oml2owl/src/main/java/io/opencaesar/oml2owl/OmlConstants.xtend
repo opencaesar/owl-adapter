@@ -6,30 +6,32 @@ interface OmlConstants {
 	
 	static val ontologyType = OML+'ontologyType'
 
-	// owl:Ontology oml:ontologyType XXX 
+	// owl:Ontology oml:ontologyType ?x 
 	
-	static val Terminology = OML+'Terminology'
+	static val Vocabulary = OML+'Vocabulary'
 	
+	static val Bundle = OML+'Bundle'
+
 	static val Description = OML+'Description'
 	
-	// owl:Class rdfs:subClassOf XXX 
+	// owl:Class rdfs:subClassOf x?
 	
 	static val Aspect = OML+'Aspect'
 	
 	static val Concept = OML+'Concept'
 
-	static val ReifiedRelationship = OML+'ReifiedRelationship'
+	static val RelationEntity = OML+'RelationEntity'
 
 	static val Structure = OML+'Structure'
 	
 
-	// owl:ObjectProperty rdfs:subPropertyOf XXX 
+	// owl:ObjectProperty rdfs:subPropertyOf x?
 	
-	static val reifiedRelationshipForward = OML+'reifiedRelationshipForward'
+	static val forwardRelation = OML+'forwardRelation'
 	
-	static val reifiedRelationshipInverse = OML+'reifiedRelationshipInverse'
+	static val inverseRelation = OML+'inverseRelation'
 
-	static val unreifiedRelationshipForward = OML+'unreifiedRelationshipForward'
+	static val sourceRelation = OML+'sourceRelation'
 	
-	static val unreifiedRelationshipInverse = OML+'unreifiedRelationshipInverse'
+	static val targetRelation = OML+'targetRelation'
 }

@@ -2,19 +2,20 @@ package io.opencaesar.oml2owl
 
 import io.opencaesar.oml.Aspect
 import io.opencaesar.oml.Entity
-import io.opencaesar.oml.Graph
-import io.opencaesar.oml.TermSpecializationAxiom
+import io.opencaesar.oml.Ontology
+import io.opencaesar.oml.SpecializationAxiom
+import io.opencaesar.oml2owl.utils.ClassExpression
 import io.opencaesar.oml2owl.utils.Singleton
 import io.opencaesar.oml2owl.utils.Taxonomy
+import io.opencaesar.oml2owl.utils.Universal
 import java.util.List
+import java.util.Map
+import java.util.Set
 import org.eclipse.emf.ecore.resource.Resource
 import org.semanticweb.owlapi.model.OWLOntology
 
-import static extension io.opencaesar.oml.Oml.*
-import java.util.Map
-import java.util.Set
-import io.opencaesar.oml2owl.utils.ClassExpression
-import io.opencaesar.oml2owl.utils.Universal
+import static extension io.opencaesar.oml.util.OmlRead.*
+import static extension io.opencaesar.oml2owl.utils.OwlClassExpression.*
 
 class CloseBundle {
 	
@@ -24,18 +25,18 @@ class CloseBundle {
 		this.resource = resource
 	}
 	
-	private def Taxonomy omlTaxonomy(List<Graph> allGraphs) {
+	private def Taxonomy omlTaxonomy(List<Ontology> allOntologies) {
 
 		val Taxonomy taxonomy = new Taxonomy
 
-		allGraphs.forEach [ g |
+		allOntologies.forEach [ g |
 			g.eAllContents.filter(Entity).forEach [ Entity entity |
 				taxonomy.addVertex(new Singleton(entity))
 			]
 		]
 		
-		allGraphs.forEach [ g |
-			g.eAllContents.filter(TermSpecializationAxiom).forEach [ axiom |
+		allOntologies.forEach [ g |
+			g.eAllContents.filter(SpecializationAxiom).forEach [ axiom |
 				val specialized = axiom.specializedTerm
 				val specializing = axiom.specializingTerm
 
@@ -61,11 +62,9 @@ class CloseBundle {
 		
 		val Universal universal = new Universal
 
-		val graph = resource.contents.filter(Graph).findFirst[true]
-		val allGraphs = graph.allImports.map[importedGraph].toList
-		allGraphs.add(graph)
+		val AllOntologies = resource.ontology.reflexiveClosure[importedOntologies].toList
 		
-		val Taxonomy taxonomy = omlTaxonomy(allGraphs).rootAt(universal)
+		val Taxonomy taxonomy = omlTaxonomy(AllOntologies).rootAt(universal)
 		taxonomy.ensureConnected
 		
 		val Taxonomy tree = taxonomy.treeify
@@ -88,7 +87,7 @@ class CloseBundleToOwl extends CloseBundle {
 	
 	def void run() {
 		getSiblingMap.values.forEach[ v |
-			owlApi.addDisjointClassesAxiom(ontology, v)
+			owlApi.addDisjointClasses(ontology, v.map[toOwlClassExpression(owlApi)])
 		]
 		
 	}
