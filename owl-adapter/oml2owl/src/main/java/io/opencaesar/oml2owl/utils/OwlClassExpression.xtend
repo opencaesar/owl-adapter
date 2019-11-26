@@ -1,7 +1,7 @@
 package io.opencaesar.oml2owl.utils
 
 import io.opencaesar.oml.Entity
-import io.opencaesar.oml.Oml
+import io.opencaesar.oml.util.OmlRead
 import io.opencaesar.oml2owl.OwlApi
 import java.util.HashSet
 import org.semanticweb.owlapi.model.IRI
@@ -22,7 +22,7 @@ class OwlClassExpression {
 	}
 	
 	static dispatch def OWLClass toOwlClassExpression(Singleton s, OwlApi a) {
-		a.getOWLClass(IRI.create(Oml.getIri(s.encapsulatedClass as Entity)))
+		a.getOWLClass(IRI.create(OmlRead.getIri(s.encapsulatedClass as Entity)))
 	}
 	
 	static dispatch def OWLObjectComplementOf toOwlClassExpression(Complement c, OwlApi a) {

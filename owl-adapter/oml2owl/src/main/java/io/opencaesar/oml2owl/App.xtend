@@ -4,18 +4,23 @@ import com.beust.jcommander.IParameterValidator
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
+import io.opencaesar.oml.Bundle
+import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import java.io.File
 import java.util.ArrayList
 import java.util.Collection
-import java.util.HashMap
-import io.opencaesar.oml.dsl.OmlStandaloneSetup
+import java.util.LinkedHashMap
 import org.apache.log4j.AppenderSkeleton
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.eclipse.emf.common.util.URI
+import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.resource.XtextResourceSet
 import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.IRI
+import org.semanticweb.owlapi.model.OWLOntology
+
+import static extension io.opencaesar.oml.util.OmlRead.*
 
 class App {
 
@@ -86,9 +91,8 @@ class App {
 
 		val ontologyManager = OWLManager.createOWLOntologyManager()
 		val owl2api = new OwlApi(ontologyManager)
-		val outputFiles = new HashMap
-		
-		val oml2owl = new HashMap
+		val outputFiles = new LinkedHashMap<File, OWLOntology>
+		val oml2owl = new LinkedHashMap<Resource, OWLOntology>
 
 		for (inputFile : inputFiles) {
 			val inputURI = URI.createFileURI(inputFile.absolutePath)
@@ -97,23 +101,22 @@ class App {
 				LOGGER.info("Reading: "+inputURI)
 				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
-				val ontology = new Oml2Owl(inputResource, owl2api).run
-				outputFiles.put(outputFile, ontology)
-				oml2owl.put(inputResource, ontology)
+				val owlOntology = new Oml2Owl(inputResource, owl2api).run
+				outputFiles.put(outputFile, owlOntology)
+				oml2owl.put(inputResource, owlOntology)
 			}
 		}
 		
-		oml2owl.filter[true].forEach[resource, ontology |
-			new CloseBundleToOwl(resource, ontology, owl2api).run
-		]		
+		// run the bundle closure algorithm
+		oml2owl.entrySet.filter[e|e.key.ontology instanceof Bundle].forEach[entry|
+			new CloseBundleToOwl(entry.key, entry.value, owl2api).run
+		]
 		
 		// save the output resources
-		for (outputEntry : outputFiles.entrySet) {
-			val file = outputEntry.key
-			val ontology = outputEntry.value
+		outputFiles.forEach[file, owlOntology |
 			LOGGER.info("Saving: "+file)
-			ontologyManager.saveOntology(ontology, /*new TurtleDocumentFormat, */IRI.create(file))
-		}
+			ontologyManager.saveOntology(owlOntology, /*new TurtleDocumentFormat, */IRI.create(file))
+		]
 
 		LOGGER.info("=================================================================")
 		LOGGER.info("                          E N D")
