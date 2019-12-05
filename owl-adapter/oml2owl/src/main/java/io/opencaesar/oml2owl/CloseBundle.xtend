@@ -64,7 +64,7 @@ class CloseBundle {
 
 		val AllOntologies = resource.ontology.reflexiveClosure[importedOntologies].toList
 		
-		val Taxonomy taxonomy = omlTaxonomy(AllOntologies).rootAt(universal).transitiveReduction
+		val Taxonomy taxonomy = omlTaxonomy(AllOntologies).transitiveReduction.rootAt(universal)
 		taxonomy.ensureConnected
 		
 		val Taxonomy tree = taxonomy.treeify

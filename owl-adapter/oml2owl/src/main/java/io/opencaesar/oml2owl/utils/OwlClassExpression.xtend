@@ -29,11 +29,11 @@ class OwlClassExpression {
 		a.getOWLObjectComplementOf(c.e.toOwlClassExpression(a))
 	}
 	
-	static dispatch def OWLObjectIntersectionOf toOwlClassExpression(Difference d, OwlApi a) {
-		val operands = new HashSet<OWLClassExpression>
-		operands.add(d.a.toOwlClassExpression(a))
-		operands.add(d.b.complement.toOwlClassExpression(a))
-		a.getOWLObjectIntersectionOf(operands)
+	static dispatch def OWLClassExpression toOwlClassExpression(Difference d, OwlApi a) {
+		val operands = new HashSet<ClassExpression>
+		operands.add(d.a)
+		operands.add(d.b.complement)
+		new Intersection(operands).toOwlClassExpression(a)
 	}
 
 	static dispatch def OWLObjectIntersectionOf toOwlClassExpression(Intersection i, OwlApi a) {
