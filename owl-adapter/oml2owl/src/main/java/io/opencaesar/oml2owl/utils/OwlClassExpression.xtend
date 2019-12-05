@@ -3,7 +3,6 @@ package io.opencaesar.oml2owl.utils
 import io.opencaesar.oml.Entity
 import io.opencaesar.oml.util.OmlRead
 import io.opencaesar.oml2owl.OwlApi
-import java.util.HashSet
 import org.semanticweb.owlapi.model.IRI
 import org.semanticweb.owlapi.model.OWLClass
 import org.semanticweb.owlapi.model.OWLClassExpression
@@ -29,21 +28,16 @@ class OwlClassExpression {
 		a.getOWLObjectComplementOf(c.e.toOwlClassExpression(a))
 	}
 	
-	static dispatch def OWLObjectIntersectionOf toOwlClassExpression(Difference d, OwlApi a) {
-		val operands = new HashSet<OWLClassExpression>
-		operands.add(d.a.toOwlClassExpression(a))
-		operands.add(d.b.complement.toOwlClassExpression(a))
-		a.getOWLObjectIntersectionOf(operands)
+	static dispatch def OWLClassExpression toOwlClassExpression(Difference d, OwlApi a) {
+		d.a.intersection(d.b.complement).toOwlClassExpression(a)
 	}
 
 	static dispatch def OWLObjectIntersectionOf toOwlClassExpression(Intersection i, OwlApi a) {
-		val operands = i.s.map[toOwlClassExpression(a)].toSet
-		a.getOWLObjectIntersectionOf(operands)
+		a.getOWLObjectIntersectionOf(i.s.map[toOwlClassExpression(a)].toSet)
 	}
 
 	static dispatch def OWLObjectUnionOf toOwlClassExpression(Union u, OwlApi a) {
-		val operands = u.s.map[toOwlClassExpression(a)].toSet
-		a.getOWLObjectUnionOf(operands)
+		a.getOWLObjectUnionOf(u.s.map[toOwlClassExpression(a)].toSet)
 	}
 
 }

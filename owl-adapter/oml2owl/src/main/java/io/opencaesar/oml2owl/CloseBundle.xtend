@@ -55,16 +55,14 @@ class CloseBundle {
 				}
 			]
 		]
-		taxonomy
+		taxonomy.transitiveReduction.rootAt(new Universal)
 	}
 	
 	def Map<ClassExpression, Set<ClassExpression>> getSiblingMap() {
 		
-		val Universal universal = new Universal
-
 		val AllOntologies = resource.ontology.reflexiveClosure[importedOntologies].toList
 		
-		val Taxonomy taxonomy = omlTaxonomy(AllOntologies).rootAt(universal).transitiveReduction
+		val Taxonomy taxonomy = omlTaxonomy(AllOntologies)
 		taxonomy.ensureConnected
 		
 		val Taxonomy tree = taxonomy.treeify
