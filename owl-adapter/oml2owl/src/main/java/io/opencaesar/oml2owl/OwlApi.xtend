@@ -16,6 +16,8 @@ import org.semanticweb.owlapi.model.OWLOntologyManager
 import org.semanticweb.owlapi.model.SWRLAtom
 import org.semanticweb.owlapi.model.OWLClassExpression
 import org.semanticweb.owlapi.vocab.OWLFacet
+import org.semanticweb.owlapi.model.OWLClass
+import java.util.Set
 
 class OwlApi {
 	
@@ -192,7 +194,13 @@ class OwlApi {
 	}
 
 	def addDisjointClasses(OWLOntology ontology, Iterable<OWLClassExpression> classes, OWLAnnotation...annotations) {
-		val axiom = factory.getOWLDisjointClassesAxiom(classes)
+		val axiom = factory.getOWLDisjointClassesAxiom(classes.toSet, annotations)
+		manager.addAxiom(ontology, axiom)
+		return axiom
+	}
+	
+	def addDisjointUnion(OWLOntology ontology, OWLClass owlClass, Set<OWLClassExpression> subClasses, OWLAnnotation...annotations) {
+		val axiom = factory.getOWLDisjointUnionAxiom(owlClass, subClasses, annotations)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}

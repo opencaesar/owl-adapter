@@ -16,6 +16,7 @@ import org.semanticweb.owlapi.model.OWLOntology
 
 import static extension io.opencaesar.oml.util.OmlRead.*
 import static extension io.opencaesar.oml2owl.utils.OwlClassExpression.*
+import org.semanticweb.owlapi.model.OWLClass
 
 class CloseBundle {
 	
@@ -75,17 +76,25 @@ class CloseBundle {
 class CloseBundleToOwl extends CloseBundle {
 	
 	protected val OWLOntology ontology
+	protected val boolean disjointUnions
 	protected val OwlApi owlApi
 
-	new(Resource resource, OWLOntology ontology, OwlApi owlApi) {
+	new(Resource resource, OWLOntology ontology, boolean disjointUnions, OwlApi owlApi) {
 		super(resource)
 		this.ontology = ontology
+		this.disjointUnions = disjointUnions
 		this.owlApi = owlApi
 	}
 	
 	def void run() {
-		getSiblingMap.values.forEach[ v |
-			owlApi.addDisjointClasses(ontology, v.map[toOwlClassExpression(owlApi)])
+		getSiblingMap.forEach[ ce, v |
+			if (disjointUnions && (ce instanceof Singleton))
+			  owlApi.addDisjointUnion(ontology, 
+				(ce as Singleton).toOwlClassExpression(owlApi) as OWLClass,
+			  	v.map[toOwlClassExpression(owlApi)].toSet
+			  )
+			else
+			  owlApi.addDisjointClasses(ontology, v.map[toOwlClassExpression(owlApi)])
 		]
 		
 	}

@@ -41,9 +41,16 @@ class App {
 	package String outputPath = "."
 
 	@Parameter(
+		names=#["--disjoint-unions"], 
+		description="Create disjoint union axioms", 
+		order=3
+	)
+	package boolean disjointUnions = false
+	
+	@Parameter(
 		names=#["-d", "--debug"], 
 		description="Shows debug logging statements", 
-		order=3
+		order=4
 	)
 	package boolean debug
 
@@ -109,7 +116,7 @@ class App {
 		
 		// run the bundle closure algorithm
 		oml2owl.entrySet.filter[e|e.key.ontology instanceof Bundle].forEach[entry|
-			new CloseBundleToOwl(entry.key, entry.value, owl2api).run
+			new CloseBundleToOwl(entry.key, entry.value, disjointUnions, owl2api).run
 		]
 		
 		// save the output resources
