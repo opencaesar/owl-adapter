@@ -8,6 +8,7 @@ import io.opencaesar.oml2owl.utils.ClassExpression
 import io.opencaesar.oml2owl.utils.Singleton
 import io.opencaesar.oml2owl.utils.Taxonomy
 import io.opencaesar.oml2owl.utils.Universal
+import java.util.HashMap
 import java.util.List
 import java.util.Map
 import java.util.Set
@@ -28,28 +29,26 @@ class CloseBundle {
 	private def Taxonomy omlTaxonomy(List<Ontology> allOntologies) {
 
 		val Taxonomy taxonomy = new Taxonomy
-
+		val singletonMap = new HashMap<Entity, Singleton>
+		
 		allOntologies.forEach [ g |
-			g.eAllContents.filter(Entity).forEach [ Entity entity |
-				taxonomy.addVertex(new Singleton(entity))
+			g.eAllContents.filter(Entity).filter[e | !(e instanceof Aspect)].forEach [ Entity entity |
+				val s = new Singleton(entity)
+				singletonMap.put(entity, s)
+				taxonomy.addVertex(s)
 			]
 		]
 		
 		allOntologies.forEach [ g |
 			g.eAllContents.filter(SpecializationAxiom).forEach [ axiom |
-				val specialized = axiom.specializedTerm
-				val specializing = axiom.specializingTerm
+				val specializedSingleton = singletonMap.get(axiom.specializedTerm)
+				val specializingSingleton = singletonMap.get(axiom.specializingTerm)
 
-				if ((specialized instanceof Entity) &&
-					!(specialized instanceof Aspect) &&
-					(specializing instanceof Entity) &&
-					!(specializing instanceof Aspect)) {
-					val specializedSingleton = new Singleton(specialized)
-					val specializingSingleton = new Singleton(specializing)
+				if (specializedSingleton !== null && specializingSingleton !== null) {
 					try {
 						taxonomy.addEdge(specializedSingleton, specializingSingleton)
 					} catch (IllegalArgumentException e) {
-						val msg = e.getMessage + ": while adding edge " + specialized.toString + " -> " + specializing.toString
+						val msg = e.getMessage + ": while adding edge " + specializedSingleton.toString + " -> " + specializingSingleton.toString
 						throw new IllegalArgumentException(msg)
 					}
 				}
