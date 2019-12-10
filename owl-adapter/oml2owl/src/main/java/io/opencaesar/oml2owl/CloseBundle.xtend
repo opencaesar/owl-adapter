@@ -61,9 +61,9 @@ class CloseBundle {
 	
 	def Map<ClassExpression, Set<ClassExpression>> getSiblingMap() {
 		
-		val AllOntologies = resource.ontology.reflexiveClosure[importedOntologies].toList
+		val allOntologies = resource.ontology.reflexiveClosure[importedOntologies].toList
 		
-		val Taxonomy taxonomy = omlTaxonomy(AllOntologies)
+		val Taxonomy taxonomy = omlTaxonomy(allOntologies)
 		taxonomy.ensureConnected
 		
 		val Taxonomy tree = taxonomy.treeify
