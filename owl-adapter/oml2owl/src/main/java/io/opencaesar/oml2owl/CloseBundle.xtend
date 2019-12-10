@@ -88,7 +88,7 @@ class CloseBundleToOwl extends CloseBundle {
 	
 	def void run() {
 		getSiblingMap.forEach[ ce, v |
-			if (disjointUnions && (ce instanceof Singleton))
+			if (disjointUnions && (ce instanceof Singleton || ce instanceof Universal))
 			  owlApi.addDisjointUnion(ontology, 
 				(ce as Singleton).toOwlClassExpression(owlApi) as OWLClass,
 			  	v.map[toOwlClassExpression(owlApi)].toSet
