@@ -165,6 +165,18 @@ class OwlApi {
 		return axiom
 	}
 
+	def addSWRLSameAs(OWLOntology ontology, String variable1, String variable2) {
+		val arg1 = factory.getSWRLVariable(variable1)
+		val arg2 = factory.getSWRLVariable(variable2)
+		return factory.getSWRLSameIndividualAtom(arg1, arg2)
+	}
+	
+	def addSWRLDifferentFrom(OWLOntology ontology, String variable1, String variable2) {
+		val arg1 = factory.getSWRLVariable(variable1)
+		val arg2 = factory.getSWRLVariable(variable2)
+		return factory.getSWRLDifferentIndividualsAtom(arg1, arg2)
+	}
+	
 	def getClassAtom(String classIri, String variableIri) {
 		val class = factory.getOWLClass(classIri)
 		val variable = factory.getSWRLVariable(variableIri)

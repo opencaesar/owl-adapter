@@ -50,6 +50,8 @@ import io.opencaesar.oml.StructuredProperty
 import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom
 import io.opencaesar.oml.StructuredPropertyValueAssertion
 import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom
+import io.opencaesar.oml.SWRLDifferentFromPredicate
+import io.opencaesar.oml.SWRLSameAsPredicate
 import io.opencaesar.oml.Term
 import io.opencaesar.oml.Vocabulary
 import io.opencaesar.oml.VocabularyExtension
@@ -489,6 +491,16 @@ class Oml2Owl extends OmlVisitor {
 		}
 	}
 
+	protected dispatch def getAtom(SWRLSameAsPredicate predicate) {
+		owl.addSWRLSameAs(ontology, predicate.variable1Iri, predicate.variable2Iri)
+	}
+	
+	protected dispatch def getAtom(SWRLDifferentFromPredicate predicate) {
+		owl.addSWRLDifferentFrom(ontology, predicate.variable1Iri, predicate.variable2Iri)
+		
+	}
+	
+	
 	protected dispatch def getAtom(RelationPredicate predicate) {
 		if (predicate.inverse) {
 			owl.getObjectPropertyInverseAtom(predicate.relation.iri, predicate.variable1Iri, predicate.variable2Iri)
