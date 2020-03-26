@@ -33,6 +33,6 @@ Windows:
 
 Replace \<version\> by the version, e.g., 1.2
 ```
-  git tag -a v<version> -m "v<version>"
-  git push origin v<version>
+  git tag -a <version> -m "<version>"
+  git push origin <version>
 ```
