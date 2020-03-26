@@ -27,6 +27,7 @@ import io.opencaesar.oml.KeyAxiom
 import io.opencaesar.oml.LinkAssertion
 import io.opencaesar.oml.Member
 import io.opencaesar.oml.Ontology
+import io.opencaesar.oml.QuotedLiteral
 import io.opencaesar.oml.RangeRestrictionKind
 import io.opencaesar.oml.Reference
 import io.opencaesar.oml.Relation
@@ -64,9 +65,8 @@ import org.semanticweb.owlapi.model.OWLOntology
 import org.semanticweb.owlapi.vocab.OWLFacet
 
 import static extension io.opencaesar.oml.util.OmlRead.*
-import io.opencaesar.oml.QuotedLiteral
 
-class Oml2Owl extends OmlVisitor {
+class Oml2Owl extends OmlVisitor<Void> {
 
 	val Resource inputResource 
 	val OwlApi owl	
@@ -78,7 +78,7 @@ class Oml2Owl extends OmlVisitor {
 	}
 	
 	def OWLOntology run() {
-		visit(inputResource)
+		inputResource.contents.forEach[doSwitch]
 		return ontology
 	}
 

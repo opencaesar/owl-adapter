@@ -6,6 +6,7 @@ import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
 import io.opencaesar.oml.Bundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
+import io.opencaesar.oml.util.OmlXMIResourceFactory
 import java.io.File
 import java.util.ArrayList
 import java.util.Collection
@@ -23,6 +24,10 @@ import org.semanticweb.owlapi.model.OWLOntology
 import static extension io.opencaesar.oml.util.OmlRead.*
 
 class App {
+
+	package static val OML = 'oml'
+	package static val OMLXMI = "omlxmi"
+	package static val OMLZIP = "omlzip"
 
 	@Parameter(
 		names=#["--input","-i"], 
@@ -94,6 +99,7 @@ class App {
 		val inputFiles = collectOMLFiles(inputFolder)
 		
 		OmlStandaloneSetup.doSetup()
+		OmlXMIResourceFactory.register
 		val inputResourceSet = new XtextResourceSet
 
 		val ontologyManager = OWLManager.createOWLOntologyManager()
@@ -103,9 +109,9 @@ class App {
 
 		for (inputFile : inputFiles) {
 			val inputURI = URI.createFileURI(inputFile.absolutePath)
+			LOGGER.info("Reading: "+inputURI)
 			val inputResource = inputResourceSet.getResource(inputURI, true)
 			if (inputResource !== null) {
-				LOGGER.info("Reading: "+inputURI)
 				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
 				val owlOntology = new Oml2Owl(inputResource, owl2api).run
@@ -134,7 +140,8 @@ class App {
 		val omlFiles = new ArrayList<File>
 		for (file : directory.listFiles()) {
 			if (file.isFile) {
-				if (getFileExtension(file) == "oml" && !file.canonicalPath.contains("www.w3.org")) {
+				if ((getFileExtension(file) == OML || getFileExtension(file) == OMLXMI) && 
+					!file.canonicalPath.contains("www.w3.org")) {
 					omlFiles.add(file)
 				}
 			} else if (file.isDirectory) {

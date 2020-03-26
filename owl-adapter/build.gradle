@@ -15,7 +15,7 @@ subprojects {
 	version = '0.5.0'
 	
 	ext.versions = [
-	    oml: '0.5.+',
+	    oml: '0.6.+',
 		owl: '5.1.+'
 	]
 
