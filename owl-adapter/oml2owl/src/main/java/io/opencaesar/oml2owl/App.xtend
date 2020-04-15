@@ -6,6 +6,7 @@ import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
 import io.opencaesar.oml.Bundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
+import io.opencaesar.oml.util.OmlXMIResourceFactory
 import java.io.File
 import java.util.ArrayList
 import java.util.Collection
@@ -24,10 +25,14 @@ import static extension io.opencaesar.oml.util.OmlRead.*
 
 class App {
 
+	package static val OML = 'oml'
+	package static val OMLXMI = "omlxmi"
+	package static val OMLZIP = "omlzip"
+
 	@Parameter(
 		names=#["--input","-i"], 
 		description="Location of OML input folder (Required)",
-		validateWith=FolderPath, 
+		validateWith=InputFolderPath, 
 		required=true, 
 		order=1)
 	package String inputPath = null
@@ -35,7 +40,7 @@ class App {
 	@Parameter(
 		names=#["--output", "-o"], 
 		description="Location of the OWL2 output folder", 
-		validateWith=FolderPath, 
+		validateWith=OutputFolderPath, 
 		order=2
 	)
 	package String outputPath = "."
@@ -94,6 +99,7 @@ class App {
 		val inputFiles = collectOMLFiles(inputFolder)
 		
 		OmlStandaloneSetup.doSetup()
+		OmlXMIResourceFactory.register
 		val inputResourceSet = new XtextResourceSet
 
 		val ontologyManager = OWLManager.createOWLOntologyManager()
@@ -106,14 +112,22 @@ class App {
 			val inputResource = inputResourceSet.getResource(inputURI, true)
 			if (inputResource !== null) {
 				LOGGER.info("Reading: "+inputURI)
+			}
+		}
+		
+		for (inputFile : inputFiles) {
+			val inputURI = URI.createFileURI(inputFile.absolutePath)
+			val inputResource = inputResourceSet.getResource(inputURI, true)
+			if (inputResource !== null) {
 				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
+				LOGGER.info("Creating: "+outputFile)
 				val owlOntology = new Oml2Owl(inputResource, owl2api).run
 				outputFiles.put(outputFile, owlOntology)
 				oml2owl.put(inputResource, owlOntology)
 			}
 		}
-		
+
 		// run the bundle closure algorithm
 		oml2owl.entrySet.filter[e|e.key.ontology instanceof Bundle].forEach[entry|
 			new CloseBundleToOwl(entry.key, entry.value, disjointUnions, owl2api).run
@@ -134,7 +148,8 @@ class App {
 		val omlFiles = new ArrayList<File>
 		for (file : directory.listFiles()) {
 			if (file.isFile) {
-				if (getFileExtension(file) == "oml" && !file.canonicalPath.contains("www.w3.org")) {
+				if ((getFileExtension(file) == OML || getFileExtension(file) == OMLXMI) && 
+					!file.canonicalPath.contains("www.w3.org")) {
 					omlFiles.add(file)
 				}
 			} else if (file.isDirectory) {
@@ -152,11 +167,20 @@ class App {
         	return ""
     }
 
-	static class FolderPath implements IParameterValidator {
+	static class InputFolderPath implements IParameterValidator {
 		override validate(String name, String value) throws ParameterException {
 			val directory = new File(value)
 			if (!directory.isDirectory) {
 				throw new ParameterException("Parameter " + name + " should be a valid folder path");
+			}
+	  	}
+	}
+
+	static class OutputFolderPath implements IParameterValidator {
+		override validate(String name, String value) throws ParameterException {
+			val directory = new File(value)
+			if (!directory.exists) {
+				directory.mkdir
 			}
 	  	}
 	}
