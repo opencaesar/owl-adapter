@@ -16,6 +16,7 @@ import io.opencaesar.oml.DecimalLiteral
 import io.opencaesar.oml.Description
 import io.opencaesar.oml.DescriptionExtension
 import io.opencaesar.oml.DescriptionUsage
+import io.opencaesar.oml.DifferentFromPredicate
 import io.opencaesar.oml.DoubleLiteral
 import io.opencaesar.oml.EntityPredicate
 import io.opencaesar.oml.EnumeratedScalar
@@ -34,13 +35,15 @@ import io.opencaesar.oml.Relation
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom
 import io.opencaesar.oml.RelationEntity
 import io.opencaesar.oml.RelationEntityPredicate
-import io.opencaesar.oml.RelationEntityPredicateKind
 import io.opencaesar.oml.RelationInstance
 import io.opencaesar.oml.RelationPredicate
 import io.opencaesar.oml.RelationRangeRestrictionAxiom
+import io.opencaesar.oml.RelationTargetRestrictionAxiom
 import io.opencaesar.oml.RelationTypeAssertion
 import io.opencaesar.oml.Rule
+import io.opencaesar.oml.SameAsPredicate
 import io.opencaesar.oml.ScalarProperty
+import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom
 import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom
 import io.opencaesar.oml.ScalarPropertyValueAssertion
 import io.opencaesar.oml.ScalarPropertyValueRestrictionAxiom
@@ -48,6 +51,7 @@ import io.opencaesar.oml.SpecializationAxiom
 import io.opencaesar.oml.Structure
 import io.opencaesar.oml.StructureInstance
 import io.opencaesar.oml.StructuredProperty
+import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom
 import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom
 import io.opencaesar.oml.StructuredPropertyValueAssertion
 import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom
@@ -78,7 +82,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 	
 	def OWLOntology run() {
-		inputResource.contents.forEach[doSwitch]
+		inputResource.allContents.forEach[doSwitch]
 		return ontology
 	}
 
@@ -257,7 +261,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 		antedecents += owl.getObjectPropertyAtom(forwardTargetIri, graphIri+'r', graphIri+'t')
 		val consequent = owl.getObjectPropertyAtom(forwardIri, graphIri+'s', graphIri+'t')
 		val annotation = owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(forward.name+' derivation'))
-		owl.addNRule(ontology, consequent, antedecents, annotation)
+		owl.addNRule(ontology, #[consequent], antedecents, annotation)
 		return null
 	}
 
@@ -276,7 +280,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 			annotations = new ArrayList(annotations)
 			annotations += owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(rule.name))
 		}
-		owl.addNRule(ontology, rule.consequent.atom, rule.antecedent.map[atom], annotations)
+		owl.addNRule(ontology, rule.consequent.map[atom], rule.antecedent.map[atom], annotations)
 		return null
 	}
 
@@ -334,60 +338,90 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseScalarPropertyRangeRestrictionAxiom(ScalarPropertyRangeRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == RangeRestrictionKind.ALL) {
-			owl.addDataAllValuesFrom(ontology, axiom.restrictingTypeُ.iri, axiom.property.iri, axiom.range.iri, annotations)
+			owl.addDataAllValuesFrom(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.range.iri, annotations)
 		} else {
-			owl.addDataSomeValuesFrom(ontology, axiom.restrictingTypeُ.iri, axiom.property.iri, axiom.range.iri, annotations)
+			owl.addDataSomeValuesFrom(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.range.iri, annotations)
 		}
 		return null
 	}
 
 	override caseScalarPropertyValueRestrictionAxiom(ScalarPropertyValueRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
-		owl.addDataHasValue(ontology, axiom.restrictingTypeُ.iri, axiom.property.iri, axiom.value.literal, annotations)
+		owl.addDataHasValue(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.value.literal, annotations)
+		return null
+	}
+
+	override caseScalarPropertyCardinalityRestrictionAxiom(ScalarPropertyCardinalityRestrictionAxiom axiom) {
+		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		if (axiom.kind == CardinalityRestrictionKind.MIN) {
+			owl.addDataMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
+			owl.addDataMaxCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+		} else {
+			owl.addDataExactCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+		}
 		return null
 	}
 
 	override caseStructuredPropertyRangeRestrictionAxiom(StructuredPropertyRangeRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == RangeRestrictionKind.ALL) {
-			owl.addObjectAllValuesFrom(ontology, axiom.restrictingTypeُ.iri, axiom.property.iri, axiom.range.iri, annotations)
+			owl.addObjectAllValuesFrom(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.range.iri, annotations)
 		} else {
-			owl.addObjectSomeValuesFrom(ontology, axiom.restrictingTypeُ.iri, axiom.property.iri, axiom.range.iri, annotations)
+			owl.addObjectSomeValuesFrom(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.range.iri, annotations)
 		}
 		return null
 	}
 
 	override caseStructuredPropertyValueRestrictionAxiom(StructuredPropertyValueRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
-		owl.addObjectHasValue(ontology, axiom.restrictingTypeُ.iri, axiom.property.iri, axiom.value.createIndividual, annotations)
+		owl.addObjectHasValue(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.value.createIndividual, annotations)
+		return null
+	}
+
+	override caseStructuredPropertyCardinalityRestrictionAxiom(StructuredPropertyCardinalityRestrictionAxiom axiom) {
+		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		if (axiom.kind == CardinalityRestrictionKind.MIN) {
+			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
+			owl.addObjectMaxCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+		} else {
+			owl.addObjectExactCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+		}
 		return null
 	}
 
 	override caseRelationRangeRestrictionAxiom(RelationRangeRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == RangeRestrictionKind.ALL) {
-			owl.addObjectAllValuesFrom(ontology, axiom.restrictingTypeُ.iri, axiom.relation.iri, axiom.range.iri, annotations)
+			owl.addObjectAllValuesFrom(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.range.iri, annotations)
 		} else {
-			owl.addObjectSomeValuesFrom(ontology, axiom.restrictingTypeُ.iri, axiom.relation.iri, axiom.range.iri, annotations)
+			owl.addObjectSomeValuesFrom(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.range.iri, annotations)
 		}
 		return null
 	}
 	
+	override caseRelationTargetRestrictionAxiom(RelationTargetRestrictionAxiom axiom) {
+		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		owl.addObjectHasValue(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.target.iri, annotations)
+		return null
+	}
+
 	override caseRelationCardinalityRestrictionAxiom(RelationCardinalityRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
-			owl.addObjectMinCardinality(ontology, axiom.restrictingTypeُ.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
+			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
-			owl.addObjectMaxCardinality(ontology, axiom.restrictingTypeُ.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
+			owl.addObjectMaxCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
 		} else {
-			owl.addObjectExactCardinality(ontology, axiom.restrictingTypeُ.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
+			owl.addObjectExactCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
 		}
 		return null
 	}
 	
 	override caseKeyAxiom(KeyAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
-		owl.addHasKey(ontology, axiom.restrictingTypeُ.iri, axiom.properties.map[iri], annotations)
+		owl.addHasKey(ontology, axiom.restrictingType.iri, axiom.properties.map[iri], annotations)
 		return null
 	}
 
@@ -477,24 +511,20 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected dispatch def getAtom(RelationEntityPredicate predicate) {
-		switch (predicate.kind) {
-			case RelationEntityPredicateKind.SOURCE_TO_RELATION:
-				owl.getObjectPropertyAtom(predicate.entity.forward.sourceIri, predicate.variable1Iri, predicate.variable2Iri)
-			case RelationEntityPredicateKind.RELATION_TO_SOURCE:
-				owl.getObjectPropertyInverseAtom(predicate.entity.forward.sourceIri, predicate.variable1Iri, predicate.variable2Iri)
-			case RelationEntityPredicateKind.TARGET_TO_RELATION:
-				owl.getObjectPropertyAtom(predicate.entity.forward.targetIri, predicate.variable1Iri, predicate.variable2Iri)
-			case RelationEntityPredicateKind.RELATION_TO_TARGET:
-				owl.getObjectPropertyInverseAtom(predicate.entity.forward.targetIri, predicate.variable1Iri, predicate.variable2Iri)
-		}
+		owl.getObjectPropertyAtom(predicate.entity.forward.sourceIri, predicate.entityVariableIri, predicate.variable1Iri)
+		owl.getObjectPropertyAtom(predicate.entity.forward.targetIri, predicate.entityVariableIri, predicate.variable2Iri)
 	}
 
 	protected dispatch def getAtom(RelationPredicate predicate) {
-		if (predicate.inverse) {
-			owl.getObjectPropertyInverseAtom(predicate.relation.iri, predicate.variable1Iri, predicate.variable2Iri)
-		} else {
-			owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1Iri, predicate.variable2Iri)
-		}
+		owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1Iri, predicate.variable2Iri)
+	}
+
+	protected dispatch def getAtom(SameAsPredicate predicate) {
+		owl.getSameIndividualAtom(predicate.variable1Iri, predicate.variable2Iri)
+	}
+
+	protected dispatch def getAtom(DifferentFromPredicate predicate) {
+		owl.getDifferentIndividualsAtom(predicate.variable1Iri, predicate.variable2Iri)
 	}
 
 	protected dispatch def getLiteral(QuotedLiteral literal) {
