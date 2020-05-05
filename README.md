@@ -12,13 +12,13 @@ An [OML](https://github.com/opencaesar/oml) adapter for [OWL2-DL](https://www.w3
 ```
       
 ## Build
-Requirements: java 8, node 8.x, 
+Requirements: java 8, node 8.x 
 ```
     cd owl-adapter
     ./gradlew build
 ```
 
-## Run
+## Run as CLI
 
 MacOS/Linux:
 ```
@@ -27,6 +27,39 @@ MacOS/Linux:
 Windows:
 ```
     gradlew.bat oml2owl:run --args="-i path/to/oml/folder -o path/to/owl/folder"
+```
+
+## Run from Gradle
+Optionally install it in your local maven repo (if you modified it)
+```
+    ./gradlew install
+```
+In a gradle.build script, add the following:
+```
+buildscript {
+	repositories {
+		mavenLocal()
+		maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
+	}
+	dependencies {
+		classpath 'io.opencaesar.owl:oml2owl:+'
+	}
+}
+
+apply plugin: 'io.opencaesar.oml2owl'
+
+oml2owl {
+	inputPath = 'path/to/oml/folder'
+	outputPath = 'path/to/owl/folder'
+}
+
+task build {
+	dependsOn generateOwl
+}
+
+task clean(type: Delete) {
+	delete 'path/to/owl/folder'
+}
 ```
 
 ## Release
