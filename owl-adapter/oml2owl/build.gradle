@@ -15,3 +15,12 @@ dependencies {
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
 }
+
+gradlePlugin {
+    plugins {
+        oml2OwlPlugin {
+            id = 'io.opencaesar.oml2owl'
+            implementationClass = 'io.opencaesar.oml2owl.GradlePlugin'
+        }
+    }
+}

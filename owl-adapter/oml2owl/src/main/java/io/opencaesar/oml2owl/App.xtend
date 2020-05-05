@@ -40,7 +40,7 @@ class App {
 		validateWith=InputFolderPath, 
 		required=true, 
 		order=1)
-	package String inputPath = null
+	String inputPath = null
 
 	@Parameter(
 		names=#["--output", "-o"], 
@@ -48,35 +48,35 @@ class App {
 		validateWith=OutputFolderPath, 
 		order=2
 	)
-	package String outputPath = "."
+	String outputPath = "."
 
 	@Parameter(
 		names=#["--disjoint-unions", "-u"], 
 		description="Create disjoint union axioms", 
 		order=3
 	)
-	package boolean disjointUnions = false
+	boolean disjointUnions = false
 	
 	@Parameter(
 		names=#["--annotations-on-axioms", "-a"], 
 		description="Emit annotations on axioms", 
 		order=4
 	)
-	package boolean annotationsOnAxioms = false
+	boolean annotationsOnAxioms = false
 
 	@Parameter(
 		names=#["--debug", "-d"], 
 		description="Shows debug logging statements", 
 		order=5
 	)
-	package boolean debug
+	boolean debug
 
 	@Parameter(
 		names=#["--help","-h"], 
 		description="Displays summary of options", 
 		help=true, 
 		order=6)
-	package boolean help
+	boolean help
 
 	val LOGGER = LogManager.getLogger(App)
 

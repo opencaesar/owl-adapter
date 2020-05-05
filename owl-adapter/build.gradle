@@ -31,6 +31,7 @@ subprojects {
 	apply plugin: 'org.xtext.xtend'
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
+	apply plugin: 'java-gradle-plugin'
 	
 	apply from: "${rootDir}/gradle/source-layout.gradle"
 	apply from: "${rootDir}/gradle/maven-deployment.gradle"
