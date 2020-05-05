@@ -6,22 +6,19 @@ import io.opencaesar.oml.AnnotationProperty
 import io.opencaesar.oml.Aspect
 import io.opencaesar.oml.BooleanLiteral
 import io.opencaesar.oml.Bundle
-import io.opencaesar.oml.BundleExtension
-import io.opencaesar.oml.BundleInclusion
 import io.opencaesar.oml.CardinalityRestrictionKind
 import io.opencaesar.oml.Concept
 import io.opencaesar.oml.ConceptInstance
 import io.opencaesar.oml.ConceptTypeAssertion
 import io.opencaesar.oml.DecimalLiteral
 import io.opencaesar.oml.Description
-import io.opencaesar.oml.DescriptionExtension
-import io.opencaesar.oml.DescriptionUsage
 import io.opencaesar.oml.DifferentFromPredicate
 import io.opencaesar.oml.DoubleLiteral
 import io.opencaesar.oml.EntityPredicate
 import io.opencaesar.oml.EnumeratedScalar
 import io.opencaesar.oml.FacetedScalar
 import io.opencaesar.oml.ForwardRelation
+import io.opencaesar.oml.Import
 import io.opencaesar.oml.IntegerLiteral
 import io.opencaesar.oml.InverseRelation
 import io.opencaesar.oml.KeyAxiom
@@ -31,7 +28,6 @@ import io.opencaesar.oml.Ontology
 import io.opencaesar.oml.QuotedLiteral
 import io.opencaesar.oml.RangeRestrictionKind
 import io.opencaesar.oml.Reference
-import io.opencaesar.oml.Relation
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom
 import io.opencaesar.oml.RelationEntity
 import io.opencaesar.oml.RelationEntityPredicate
@@ -57,7 +53,6 @@ import io.opencaesar.oml.StructuredPropertyValueAssertion
 import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom
 import io.opencaesar.oml.Term
 import io.opencaesar.oml.Vocabulary
-import io.opencaesar.oml.VocabularyExtension
 import io.opencaesar.oml.util.OmlVisitor
 import java.util.ArrayList
 import org.eclipse.emf.ecore.resource.Resource
@@ -71,7 +66,14 @@ import org.semanticweb.owlapi.vocab.OWLFacet
 import static extension io.opencaesar.oml.util.OmlRead.*
 
 class Oml2Owl extends OmlVisitor<Void> {
-
+	
+	public static val BUILT_IN_ONTOLOGIES = #[
+		'http://www.w3.org/2001/XMLSchema',
+		'http://www.w3.org/1999/02/22-rdf-syntax-ns',
+		'http://www.w3.org/2000/01/rdf-schema',
+		'http://www.w3.org/2002/07/owl'
+	]
+	
 	val Resource inputResource 
 	val OwlApi owl	
 	var OWLOntology ontology
@@ -93,22 +95,19 @@ class Oml2Owl extends OmlVisitor<Void> {
 
 	override caseVocabulary(Vocabulary vocabulary) {
 		ontology = owl.createOntology(vocabulary.iri)
-		owl.addImportsDeclaration(ontology, OmlConstants.OML)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.getLiteral(OmlConstants.Vocabulary))
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Vocabulary))
 		return null
 	}
 
 	override caseBundle(Bundle bundle) {
 		ontology = owl.createOntology(bundle.iri)
-		owl.addImportsDeclaration(ontology, OmlConstants.OML)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.getLiteral(OmlConstants.Bundle))
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Bundle))
 		return null
 	}
 
 	override caseDescription(Description description) {
 		ontology = owl.createOntology(description.iri)
-		owl.addImportsDeclaration(ontology, OmlConstants.OML)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.getLiteral(OmlConstants.Description))
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Description))
 		return null
 	}
 
@@ -124,9 +123,32 @@ class Oml2Owl extends OmlVisitor<Void> {
 		return null
 	}
 
-	override caseRelationEntity(RelationEntity relation) {
-		owl.addClass(ontology, relation.iri)
-		owl.addSubClassOf(ontology, relation.iri, OmlConstants.RelationEntity)
+	override caseRelationEntity(RelationEntity entity) {
+		owl.addClass(ontology, entity.iri)
+		owl.addSubClassOf(ontology, entity.iri, OmlConstants.RelationEntity)
+
+		// source relation
+		val sourceIri = entity.sourceIri
+		owl.addObjectProperty(ontology, sourceIri)
+		owl.addSubObjectPropertyOf(ontology, sourceIri, OmlConstants.sourceRelation)
+		owl.addObjectPropertyDomain(ontology, sourceIri, entity.iri)
+		owl.addObjectPropertyRange(ontology, sourceIri, entity.source.iri)
+		owl.addFunctionalObjectProperty(ontology, sourceIri)
+		if (entity.functional) {
+			owl.addInverseFunctionalObjectProperty(ontology, sourceIri)
+		}
+		
+		// target relation
+		val targetIri = entity.targetIri
+		owl.addObjectProperty(ontology, targetIri)
+		owl.addSubObjectPropertyOf(ontology, targetIri, OmlConstants.targetRelation)
+		owl.addObjectPropertyDomain(ontology, targetIri, entity.iri)
+		owl.addObjectPropertyRange(ontology, targetIri, entity.target.iri)
+		owl.addFunctionalObjectProperty(ontology, targetIri)
+		if (entity.inverseFunctional) {
+			owl.addInverseFunctionalObjectProperty(ontology, targetIri)
+		}
+
 		return null
 	}
 
@@ -138,37 +160,6 @@ class Oml2Owl extends OmlVisitor<Void> {
 
 	override caseFacetedScalar(FacetedScalar scalar) {
 		owl.addDatatype(ontology, scalar.iri)
-		val restrictions = new ArrayList
-		if (scalar.length !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.LENGTH, owl.getLiteral(scalar.length))
-		}
-		if (scalar.maxLength !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.MAX_LENGTH, owl.getLiteral(scalar.length))
-		}
-		if (scalar.minLength !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.MIN_LENGTH, owl.getLiteral(scalar.length))
-		}
-		if (scalar.pattern !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.PATTERN, owl.getLiteral(scalar.pattern))
-		}
-		if (scalar.language !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.LANG_RANGE, owl.getLiteral(scalar.language))
-		}
-		if (scalar.minInclusive !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.MIN_INCLUSIVE, getLiteral(scalar.minInclusive))
-		}
-		if (scalar.maxInclusive !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.MAX_INCLUSIVE, getLiteral(scalar.maxInclusive))
-		}
-		if (scalar.minExclusive !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.MIN_EXCLUSIVE, getLiteral(scalar.minExclusive))
-		}
-		if (scalar.maxExclusive !== null) {
-			restrictions += owl.getFacetRestriction(OWLFacet.MAX_EXCLUSIVE, getLiteral(scalar.maxExclusive))
-		}
-		if (!restrictions.isEmpty) {
-			owl.addDatatypeRestriction(ontology, scalar.iri, scalar.specializedScalar.iri, restrictions)
-		}
 		return null
 	}
 
@@ -185,6 +176,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseScalarProperty(ScalarProperty property) {
 		val propertyIri = property.iri
 		owl.addDataProperty(ontology, propertyIri)
+		owl.addSubDataPropertyOf(ontology, propertyIri, OmlConstants.scalarProperty)
 		owl.addDataPropertyDomain(ontology, propertyIri, property.domain.iri)
 		owl.addDataPropertyRange(ontology, propertyIri, property.range.iri)
 		if (property.functional) {
@@ -196,6 +188,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseStructuredProperty(StructuredProperty property) {
 		val propertyIri = property.iri
 		owl.addObjectProperty(ontology, propertyIri)
+		owl.addSubObjectPropertyOf(ontology, propertyIri, OmlConstants.structuredProperty)
 		owl.addObjectPropertyDomain(ontology, propertyIri, property.domain.iri)
 		owl.addObjectPropertyRange(ontology, propertyIri, property.range.iri)
 		if (property.functional) {
@@ -234,32 +227,13 @@ class Oml2Owl extends OmlVisitor<Void> {
 		if (entity.transitive) {
 			owl.addTransitiveObjectProperty(ontology, forwardIri)
 		}
-		// forward source relation
-		val forwardSourceIri = forward.sourceIri
-		owl.addObjectProperty(ontology, forwardSourceIri)
-		owl.addSubObjectPropertyOf(ontology, forwardSourceIri, OmlConstants.sourceRelation)
-		owl.addObjectPropertyDomain(ontology, forwardSourceIri, entity.iri)
-		owl.addObjectPropertyRange(ontology, forwardSourceIri, forward.domain.iri)
-		owl.addFunctionalObjectProperty(ontology, forwardSourceIri)
-		if (entity.functional) {
-			owl.addInverseFunctionalObjectProperty(ontology, forwardSourceIri)
-		}
-		// forward target relation
-		val forwardTargetIri = forward.targetIri
-		owl.addObjectProperty(ontology, forwardTargetIri)
-		owl.addSubObjectPropertyOf(ontology, forwardTargetIri, OmlConstants.targetRelation)
-		owl.addObjectPropertyDomain(ontology, forwardTargetIri, entity.iri)
-		owl.addObjectPropertyRange(ontology, forwardTargetIri, forward.range.iri)
-		owl.addFunctionalObjectProperty(ontology, forwardTargetIri)
-		if (entity.inverseFunctional) {
-			owl.addInverseFunctionalObjectProperty(ontology, forwardTargetIri)
-		}
+		
 		// derivation rule for forward relation
-		val graphIri = forward.ontology.iri
+		val graphNs = forward.ontology.namespace
 		val antedecents = new ArrayList
-		antedecents += owl.getObjectPropertyAtom(forwardSourceIri, graphIri+'r', graphIri+'s')
-		antedecents += owl.getObjectPropertyAtom(forwardTargetIri, graphIri+'r', graphIri+'t')
-		val consequent = owl.getObjectPropertyAtom(forwardIri, graphIri+'s', graphIri+'t')
+		antedecents += owl.getObjectPropertyAtom(entity.sourceIri, graphNs+'r', graphNs+'s')
+		antedecents += owl.getObjectPropertyAtom(entity.targetIri, graphNs+'r', graphNs+'t')
+		val consequent = owl.getObjectPropertyAtom(forwardIri, graphNs+'s', graphNs+'t')
 		val annotation = owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(forward.name+' derivation'))
 		owl.addNRule(ontology, #[consequent], antedecents, annotation)
 		return null
@@ -270,7 +244,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 		val inverseIri = inverse.iri
 		owl.addObjectProperty(ontology, inverseIri)
 		owl.addSubObjectPropertyOf(ontology, inverseIri, OmlConstants.inverseRelation)
-		owl.addInverseProperty(ontology, inverseIri, inverse.inverse.iri)
+		owl.addInverseProperties(ontology, inverseIri, inverse.inverse.iri)
 		return null
 	}
 
@@ -286,52 +260,43 @@ class Oml2Owl extends OmlVisitor<Void> {
 
 	protected def createIndividual(StructureInstance instance) {
 		val individual = owl.getAnonymousIndividual(instance.getId)
-		instance.ownedPropertyValues.forEach[appliesTo(individual)]
+		instance.ownedPropertyValues.forEach[it.appliesTo(individual)]
 		individual
 	}
 	
 	override caseConceptInstance(ConceptInstance instance) {
 		val instanceIri = instance.iri
 		val individual = owl.addNamedIndividual(ontology, instanceIri)
-		instance.ownedPropertyValues.forEach[assertion|assertion.appliesTo(individual)]
+		instance.ownedPropertyValues.forEach[it.appliesTo(individual)]
 		return null
 	}
 
 	override caseRelationInstance(RelationInstance instance) {
 		val instanceIri = instance.iri
 		val individual = owl.addNamedIndividual(ontology, instanceIri)
-		instance.ownedPropertyValues.forEach[assertion|assertion.appliesTo(individual)]
+		instance.ownedPropertyValues.forEach[it.appliesTo(individual)]
 		return null
 	}
 
-	override caseVocabularyExtension(VocabularyExtension _extension) {
-		owl.addImportsDeclaration(ontology, _extension.extendedVocabulary.iri)
-		return null
-	}
-
-	override caseBundleInclusion(BundleInclusion inclusion) {
-		owl.addImportsDeclaration(ontology, inclusion.includedVocabulary.iri)
-		return null
-	}
-
-	override caseBundleExtension(BundleExtension _extension) {
-		owl.addImportsDeclaration(ontology, _extension.extendedBundle.iri)
-		return null
-	}
-
-	override caseDescriptionUsage(DescriptionUsage usage) {
-		owl.addImportsDeclaration(ontology, usage.usedTerminology.iri)
-		return null
-	}
-
-	override caseDescriptionExtension(DescriptionExtension _extension) {
-		owl.addImportsDeclaration(ontology, _extension.extendedDescription.iri)
+	override caseImport(Import ^import) {
+		val iri = ^import.importedOntology.iri
+		if (isBuiltInOntology(iri)) {
+			val indirectImports = ^import.closure[it.importedOntology.importsWithSource]
+			indirectImports.forEach[i2|
+				val iri2 = i2.importedOntology.iri
+				if (!isBuiltInOntology(iri2)) {
+					owl.addImportsDeclaration(ontology, iri2)
+				}
+			]
+		} else {
+			owl.addImportsDeclaration(ontology, iri)
+		}
 		return null
 	}
 
 	override caseSpecializationAxiom(SpecializationAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
-		axiom.specializingTerm.specializes(axiom.specializedTerm, annotations)
+		axiom.specializingTerm.specializes(axiom.specializedTerm, axiom.owningReference, annotations)
 		return null
 	}
 
@@ -354,11 +319,11 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseScalarPropertyCardinalityRestrictionAxiom(ScalarPropertyCardinalityRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
-			owl.addDataMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+			owl.addDataMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
-			owl.addDataMaxCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+			owl.addDataMaxCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else {
-			owl.addDataExactCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+			owl.addDataExactCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		}
 		return null
 	}
@@ -382,11 +347,11 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseStructuredPropertyCardinalityRestrictionAxiom(StructuredPropertyCardinalityRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
-			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
-			owl.addObjectMaxCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+			owl.addObjectMaxCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else {
-			owl.addObjectExactCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, annotations)
+			owl.addObjectExactCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		}
 		return null
 	}
@@ -410,11 +375,11 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseRelationCardinalityRestrictionAxiom(RelationCardinalityRestrictionAxiom axiom) {
 		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
-			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
+			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
-			owl.addObjectMaxCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
+			owl.addObjectMaxCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else {
-			owl.addObjectExactCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, annotations)
+			owl.addObjectExactCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		}
 		return null
 	}
@@ -436,8 +401,8 @@ class Oml2Owl extends OmlVisitor<Void> {
 		val instanceIri = instance.iri
 		val annotations = assertion.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
 		owl.addClassAssertion(ontology, instanceIri, assertion.type.iri, annotations)
-		owl.addObjectPropertyAssertion(ontology, instanceIri, assertion.type.forward.sourceIri, instance.source.iri)
-		owl.addObjectPropertyAssertion(ontology, instanceIri, assertion.type.forward.targetIri, instance.target.iri)
+		owl.addObjectPropertyAssertion(ontology, instanceIri, assertion.type.sourceIri, instance.source.iri)
+		owl.addObjectPropertyAssertion(ontology, instanceIri, assertion.type.targetIri, instance.target.iri)
 		return null
 	}
 
@@ -459,35 +424,91 @@ class Oml2Owl extends OmlVisitor<Void> {
 		reference.resolve.addsAnnotation(annotation)
 	}
 
-	protected dispatch def void specializes(Term specific, Term general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(Term specific, Term general, Reference owningReference, OWLAnnotation...annotations) {
 		// all other cases are not mapped or mapped differently
 	}
 
-	protected dispatch def void specializes(Concept specific, Concept general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(Concept specific, Concept general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubClassOf(ontology, specific.iri, general.iri, annotations)
 	}
 	
-	protected dispatch def void specializes(Concept specific, Aspect general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(Concept specific, Aspect general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubClassOf(ontology, specific.iri, general.iri, annotations)
 	}
 
-	protected dispatch def void specializes(Aspect specific, Aspect general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(Aspect specific, Aspect general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubClassOf(ontology, specific.iri, general.iri, annotations)
 	}
 
-	protected dispatch def void specializes(RelationEntity specific, RelationEntity general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(RelationEntity specific, RelationEntity general, Reference owningReference, OWLAnnotation...annotations) {
+		owl.addSubClassOf(ontology, specific.iri, general.iri, annotations)
+		owl.addSubObjectPropertyOf(ontology, specific.sourceIri, general.sourceIri, annotations)
+		owl.addSubObjectPropertyOf(ontology, specific.targetIri, general.targetIri, annotations)
+		owl.addSubObjectPropertyOf(ontology, specific.forward.iri, general.forward.iri, annotations)
+		if (specific.inverse !== null && general.inverse !== null) {
+			owl.addSubObjectPropertyOf(ontology, specific.inverse.iri, general.inverse.iri, annotations)
+		} else {
+			// it's not obvious yet how to handle the other inverse relation cases
+		}
+	}
+
+	protected dispatch def void specializes(RelationEntity specific, Aspect general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubClassOf(ontology, specific.iri, general.iri, annotations)
 	}
 
-	protected dispatch def void specializes(RelationEntity specific, Aspect general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(Structure specific, Structure general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubClassOf(ontology, specific.iri, general.iri, annotations)
 	}
 
-	protected dispatch def void specializes(ScalarProperty specific, ScalarProperty general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(EnumeratedScalar specific, EnumeratedScalar general, Reference owningReference, OWLAnnotation...annotations) {
+		owl.addDatatypeDefinition(ontology, specific.iri, general.iri, annotations)
+	}
+	
+	protected dispatch def void specializes(FacetedScalar specific, FacetedScalar general, Reference owningReference, OWLAnnotation...annotations) {
+		if (owningReference !== null) {
+			owl.addDatatypeDefinition(ontology, specific.iri, general.iri, annotations)
+		} else {
+			val restrictions = new ArrayList
+			if (specific.length !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.LENGTH, owl.getLiteral(specific.length))
+			}
+			if (specific.maxLength !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.MAX_LENGTH, owl.getLiteral(specific.length))
+			}
+			if (specific.minLength !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.MIN_LENGTH, owl.getLiteral(specific.length))
+			}
+			if (specific.pattern !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.PATTERN, owl.getLiteral(specific.pattern))
+			}
+			if (specific.language !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.LANG_RANGE, owl.getLiteral(specific.language))
+			}
+			if (specific.minInclusive !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.MIN_INCLUSIVE, getLiteral(specific.minInclusive))
+			}
+			if (specific.maxInclusive !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.MAX_INCLUSIVE, getLiteral(specific.maxInclusive))
+			}
+			if (specific.minExclusive !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.MIN_EXCLUSIVE, getLiteral(specific.minExclusive))
+			}
+			if (specific.maxExclusive !== null) {
+				restrictions += owl.getFacetRestriction(OWLFacet.MAX_EXCLUSIVE, getLiteral(specific.maxExclusive))
+			}
+			if (!restrictions.isEmpty) {
+				owl.addDatatypeDefinition(ontology, specific.iri, general.iri, restrictions, annotations)
+			} else {
+				owl.addDatatypeDefinition(ontology, specific.iri, general.iri, annotations)
+			}
+		}
+	}
+
+	protected dispatch def void specializes(ScalarProperty specific, ScalarProperty general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubDataPropertyOf(ontology, specific.iri, general.iri, annotations)
 	}
 
-	protected dispatch def void specializes(StructuredProperty specific, StructuredProperty general, OWLAnnotation...annotations) {
+	protected dispatch def void specializes(StructuredProperty specific, StructuredProperty general, Reference owningReference, OWLAnnotation...annotations) {
 		owl.addSubObjectPropertyOf(ontology, specific.iri, general.iri, annotations)
 	}
 
@@ -511,8 +532,8 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected dispatch def getAtom(RelationEntityPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.entity.forward.sourceIri, predicate.entityVariableIri, predicate.variable1Iri)
-		owl.getObjectPropertyAtom(predicate.entity.forward.targetIri, predicate.entityVariableIri, predicate.variable2Iri)
+		owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariableIri, predicate.variable1Iri)
+		owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariableIri, predicate.variable2Iri)
 	}
 
 	protected dispatch def getAtom(RelationPredicate predicate) {
@@ -569,11 +590,15 @@ class Oml2Owl extends OmlVisitor<Void> {
 		}
 	}
 	
-	protected def String getSourceIri(Relation relation) {
-		relation.iri + 'Source'
+	protected def String getSourceIri(RelationEntity entity) {
+		entity.ontology?.namespace+'has'+entity.name.toFirstUpper+'Source'
 	}
 
-	protected def String getTargetIri(Relation relation) {
-		relation.iri + 'Target'
+	protected def String getTargetIri(RelationEntity entity) {
+		entity.ontology?.namespace+'has'+entity.name.toFirstUpper+'Target'
+	}
+
+	static def isBuiltInOntology(String iri) {
+		BUILT_IN_ONTOLOGIES.contains(iri)
 	}
 }

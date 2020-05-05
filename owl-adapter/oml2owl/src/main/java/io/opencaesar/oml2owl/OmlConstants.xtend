@@ -2,36 +2,45 @@ package io.opencaesar.oml2owl
 
 interface OmlConstants {
 	
-	static val OML = "http://opencaesar.io/oml#"
+	static val omlPath = "opencaesar.io/oml"
+
+	static val omlIRI = "http://"+omlPath
+
+	static val omlNS = omlIRI+ '#'
 	
-	static val ontologyType = OML+'ontologyType'
+	// oml:ontologyType annotation
+	
+	static val ontologyType = omlNS+'ontologyType'
 
 	// owl:Ontology oml:ontologyType ?x 
 	
-	static val Vocabulary = OML+'Vocabulary'
+	static val Vocabulary = omlNS+'Vocabulary'
 	
-	static val Bundle = OML+'Bundle'
+	static val Bundle = omlNS+'Bundle'
 
-	static val Description = OML+'Description'
+	static val Description = omlNS+'Description'
 	
 	// owl:Class rdfs:subClassOf x?
 	
-	static val Aspect = OML+'Aspect'
+	static val Aspect = omlNS+'Aspect'
 	
-	static val Concept = OML+'Concept'
+	static val Concept = omlNS+'Concept'
 
-	static val RelationEntity = OML+'RelationEntity'
+	static val RelationEntity = omlNS+'RelationEntity'
 
-	static val Structure = OML+'Structure'
-	
+	static val Structure = omlNS+'Structure'
 
 	// owl:ObjectProperty rdfs:subPropertyOf x?
 	
-	static val forwardRelation = OML+'forwardRelation'
+	static val forwardRelation = omlNS+'forwardRelation'
 	
-	static val inverseRelation = OML+'inverseRelation'
+	static val inverseRelation = omlNS+'inverseRelation'
 
-	static val sourceRelation = OML+'sourceRelation'
+	static val sourceRelation = omlNS+'sourceRelation'
 	
-	static val targetRelation = OML+'targetRelation'
+	static val targetRelation = omlNS+'targetRelation'
+
+	static val structuredProperty = omlNS+'structuredProperty'
+
+	static val scalarProperty = omlNS+'scalarProperty'
 }

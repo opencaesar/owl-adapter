@@ -1,6 +1,8 @@
 package io.opencaesar.oml2owl
 
 import java.math.BigDecimal
+import java.util.Collection
+import java.util.Collections
 import java.util.Set
 import org.semanticweb.owlapi.model.AddImport
 import org.semanticweb.owlapi.model.AddOntologyAnnotation
@@ -23,12 +25,18 @@ class OwlApi {
 	val XSD = "http://www.w3.org/2001/XMLSchema#"
 	val OWLOntologyManager manager
 	val OWLDataFactory factory
+	var annotationsOnAxioms = false
 	
-	new(OWLOntologyManager manager) {
+	new(OWLOntologyManager manager, boolean annotationsOnAxioms) {
 		this.manager = manager
 		this.factory = manager.getOWLDataFactory()
+		this.annotationsOnAxioms = annotationsOnAxioms
 	}
 	
+	def createIri(String iri) {
+		IRI.create(iri)
+	}
+
 	def createOntology(String iri) {
 		return manager.createOntology(IRI.create(iri))
 	}
@@ -53,13 +61,21 @@ class OwlApi {
 		return datatype
 	}
 
-	def addDatatypeRestriction(OWLOntology ontology, String subIri, String superIri, OWLFacetRestriction...restrictions) {
-		val datatype = factory.getOWLDatatype(subIri)
-		val restrictedDatatype = factory.getOWLDatatype(superIri)
+	def addDatatypeDefinition(OWLOntology ontology, String datatypeIri, String restrictedIri, OWLFacetRestriction[] restrictions, OWLAnnotation...annotations) {
+		val datatype = factory.getOWLDatatype(datatypeIri)
+		val restrictedDatatype = factory.getOWLDatatype(restrictedIri)
 		val restriction = factory.getOWLDatatypeRestriction(restrictedDatatype, restrictions)
-		val axiom = factory.getOWLDatatypeDefinitionAxiom(datatype, restriction)
+		val axiom = factory.getOWLDatatypeDefinitionAxiom(datatype, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
-		return restriction
+		return axiom
+	}
+
+	def addDatatypeDefinition(OWLOntology ontology, String datatypeIri, String synonymIri, OWLAnnotation...annotations) {
+		val datatype = factory.getOWLDatatype(datatypeIri)
+		val synonymDatatype = factory.getOWLDatatype(synonymIri)
+		val axiom = factory.getOWLDatatypeDefinitionAxiom(datatype, synonymDatatype, annotations.checkIfNeeded)
+		manager.addAxiom(ontology, axiom)
+		return axiom
 	}
 
 	def addDataOneOf(OWLOntology ontology, String subIri, OWLLiteral...literals) {
@@ -154,6 +170,10 @@ class OwlApi {
 		return individual
 	}
 
+	def getNamedIndividual(String nodeId) {
+		return factory.getOWLNamedIndividual(nodeId)
+	}
+
 	def getAnonymousIndividual(String nodeId) {
 		return factory.getOWLAnonymousIndividual(nodeId)
 	}
@@ -192,19 +212,19 @@ class OwlApi {
 	def addSubClassOf(OWLOntology ontology, String subIri, String superIri, OWLAnnotation...annotations) {
 		val subClass = factory.getOWLClass(subIri)
 		val supClass = factory.getOWLClass(superIri)
-		val axiom = factory.getOWLSubClassOfAxiom(subClass, supClass, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(subClass, supClass, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
 	def addDisjointClasses(OWLOntology ontology, Iterable<OWLClassExpression> classes, OWLAnnotation...annotations) {
-		val axiom = factory.getOWLDisjointClassesAxiom(classes.toSet, annotations)
+		val axiom = factory.getOWLDisjointClassesAxiom(classes.toSet, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 	
 	def addDisjointUnion(OWLOntology ontology, OWLClass owlClass, Set<OWLClassExpression> subClasses, OWLAnnotation...annotations) {
-		val axiom = factory.getOWLDisjointUnionAxiom(owlClass, subClasses, annotations)
+		val axiom = factory.getOWLDisjointUnionAxiom(owlClass, subClasses, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -212,7 +232,7 @@ class OwlApi {
 	def addHasKey(OWLOntology ontology, String classIri, Iterable<String> keyPropertyIris, OWLAnnotation...annotations) {
 		val aClass = factory.getOWLClass(classIri)
 		val keyProperties = keyPropertyIris.map[iri|factory.getOWLDataProperty(iri)].toList
-		val axiom = factory.getOWLHasKeyAxiom(aClass, keyProperties, annotations)
+		val axiom = factory.getOWLHasKeyAxiom(aClass, keyProperties, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -222,7 +242,7 @@ class OwlApi {
 		val property = factory.getOWLObjectProperty(propertyIri)
 		val type = factory.getOWLClass(typeIri)
 		val restriction = factory.getOWLObjectSomeValuesFrom(property, type)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -232,7 +252,7 @@ class OwlApi {
 		val property = factory.getOWLObjectProperty(propertyIri)
 		val type = factory.getOWLClass(typeIri)
 		val restriction = factory.getOWLObjectAllValuesFrom(property, type)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -241,7 +261,7 @@ class OwlApi {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLObjectProperty(propertyIri)
 		val restriction = factory.getOWLObjectHasValue(property, individual)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -251,61 +271,79 @@ class OwlApi {
 		val property = factory.getOWLObjectProperty(propertyIri)
 		val individual = factory.getOWLNamedIndividual(individualIri)
 		val restriction = factory.getOWLObjectHasValue(property, individual)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
-	def addObjectExactCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, OWLAnnotation...annotations) {
+	def addObjectExactCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, String rangeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLObjectProperty(propertyIri)
-		val restriction = factory.getOWLObjectExactCardinality(cardinality, property)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val restriction = if (rangeIri !== null)
+			factory.getOWLObjectExactCardinality(cardinality, property, factory.getOWLClass(rangeIri))
+		else
+			factory.getOWLObjectExactCardinality(cardinality, property)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
-	def addObjectMinCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, OWLAnnotation...annotations) {
+	def addObjectMinCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, String rangeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLObjectProperty(propertyIri)
-		val restriction = factory.getOWLObjectMinCardinality(cardinality, property)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val restriction = if (rangeIri !== null)
+			factory.getOWLObjectMinCardinality(cardinality, property, factory.getOWLClass(rangeIri))
+		else
+			factory.getOWLObjectMinCardinality(cardinality, property)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
-	def addObjectMaxCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, OWLAnnotation...annotations) {
+	def addObjectMaxCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, String rangeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLObjectProperty(propertyIri)
-		val restriction = factory.getOWLObjectMaxCardinality(cardinality, property)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val restriction = if (rangeIri !== null)
+			factory.getOWLObjectMaxCardinality(cardinality, property, factory.getOWLClass(rangeIri))
+		else
+			factory.getOWLObjectMaxCardinality(cardinality, property)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
-	def addDataExactCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, OWLAnnotation...annotations) {
+	def addDataExactCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, String rangeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLDataProperty(propertyIri)
-		val restriction = factory.getOWLDataExactCardinality(cardinality, property)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val restriction = if (rangeIri !== null)
+			factory.getOWLDataExactCardinality(cardinality, property, factory.getOWLDatatype(rangeIri))
+		else
+			factory.getOWLDataExactCardinality(cardinality, property)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
-	def addDataMinCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, OWLAnnotation...annotations) {
+	def addDataMinCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, String rangeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLDataProperty(propertyIri)
-		val restriction = factory.getOWLDataMinCardinality(cardinality, property)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val restriction = if (rangeIri !== null)
+			factory.getOWLDataMinCardinality(cardinality, property, factory.getOWLDatatype(rangeIri))
+		else
+			factory.getOWLDataMinCardinality(cardinality, property)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
-	def addDataMaxCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, OWLAnnotation...annotations) {
+	def addDataMaxCardinality(OWLOntology ontology, String classIri, String propertyIri, int cardinality, String rangeIri, OWLAnnotation...annotations) {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLDataProperty(propertyIri)
-		val restriction = factory.getOWLDataMaxCardinality(cardinality, property)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val restriction = if (rangeIri !== null)
+			factory.getOWLDataMaxCardinality(cardinality, property, factory.getOWLDatatype(rangeIri))
+		else
+			factory.getOWLDataMaxCardinality(cardinality, property)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -315,7 +353,7 @@ class OwlApi {
 		val property = factory.getOWLDataProperty(propertyIri)
 		val type = factory.getOWLDatatype(typeIri)
 		val restriction = factory.getOWLDataSomeValuesFrom(property, type)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -325,7 +363,7 @@ class OwlApi {
 		val property = factory.getOWLDataProperty(propertyIri)
 		val type = factory.getOWLDatatype(typeIri)
 		val restriction = factory.getOWLDataAllValuesFrom(property, type)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -334,7 +372,7 @@ class OwlApi {
 		val class = factory.getOWLClass(classIri)
 		val property = factory.getOWLDataProperty(propertyIri)
 		val restriction = factory.getOWLDataHasValue(property, literal)
-		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations)
+		val axiom = factory.getOWLSubClassOfAxiom(class, restriction, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -342,7 +380,7 @@ class OwlApi {
 	def addSubObjectPropertyOf(OWLOntology ontology, String subPropertyIri, String superPropertyIri, OWLAnnotation...annotations) {
 		val subProperty = factory.getOWLObjectProperty(subPropertyIri)
 		val supProperty = factory.getOWLObjectProperty(superPropertyIri)
-		val axiom = factory.getOWLSubObjectPropertyOfAxiom(subProperty, supProperty, annotations)
+		val axiom = factory.getOWLSubObjectPropertyOfAxiom(subProperty, supProperty, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -366,7 +404,7 @@ class OwlApi {
 	def addSubDataPropertyOf(OWLOntology ontology, String subPropertyIri, String superPropertyIri, OWLAnnotation...annotations) {
 		val subProperty = factory.getOWLDataProperty(subPropertyIri)
 		val supProperty = factory.getOWLDataProperty(superPropertyIri)
-		val axiom = factory.getOWLSubDataPropertyOfAxiom(subProperty, supProperty, annotations)
+		val axiom = factory.getOWLSubDataPropertyOfAxiom(subProperty, supProperty, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -387,7 +425,7 @@ class OwlApi {
 		return axiom
 	}
 
-	def addInverseProperty(OWLOntology ontology, String forwardPropertyIri, String inversePropertyIri) {
+	def addInverseProperties(OWLOntology ontology, String forwardPropertyIri, String inversePropertyIri) {
 		val forwardproperty = factory.getOWLObjectProperty(forwardPropertyIri)
 		val inverseProperty = factory.getOWLObjectProperty(inversePropertyIri)
 		val axiom = factory.getOWLInverseObjectPropertiesAxiom(forwardproperty, inverseProperty)
@@ -398,7 +436,7 @@ class OwlApi {
 	def addClassAssertion(OWLOntology ontology, String individualIri, String classIri, OWLAnnotation...annotations) {
 		val individual = factory.getOWLNamedIndividual(individualIri)
 		val class = factory.getOWLClass(classIri)
-		val axiom = factory.getOWLClassAssertionAxiom(class, individual, annotations)
+		val axiom = factory.getOWLClassAssertionAxiom(class, individual, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -406,24 +444,24 @@ class OwlApi {
 	def addObjectPropertyAssertion(OWLOntology ontology, String individualIri, String propertyIri, String objectIri, OWLAnnotation...annotations) {
 		val object = factory.getOWLNamedIndividual(objectIri)
 		val individual = factory.getOWLNamedIndividual(individualIri)
-		return addObjectPropertyAssertion(ontology, individual, propertyIri, object, annotations)
+		return addObjectPropertyAssertion(ontology, individual, propertyIri, object, annotations.checkIfNeeded)
 	}
 
 	def addObjectPropertyAssertion(OWLOntology ontology, OWLIndividual individual, String propertyIri, OWLIndividual object, OWLAnnotation...annotations) {
 		val property = factory.getOWLObjectProperty(propertyIri)
-		val axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, annotations)
+		val axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
 
 	def addDataPropertyAssertion(OWLOntology ontology, String individualIri, String propertyIri, OWLLiteral literal, OWLAnnotation...annotations) {
 		val individual = factory.getOWLNamedIndividual(individualIri)
-		return addDataPropertyAssertion(ontology, individual, propertyIri, literal, annotations)
+		return addDataPropertyAssertion(ontology, individual, propertyIri, literal, annotations.checkIfNeeded)
 	}
 
 	def addDataPropertyAssertion(OWLOntology ontology, OWLIndividual individual, String propertyIri, OWLLiteral literal, OWLAnnotation...annotations) {
 		val property = factory.getOWLDataProperty(propertyIri)
-		val axiom = factory.getOWLDataPropertyAssertionAxiom(property, individual, literal, annotations)
+		val axiom = factory.getOWLDataPropertyAssertionAxiom(property, individual, literal, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -502,5 +540,13 @@ class OwlApi {
 	
 	def getOWLObjectUnionOf(Iterable<? extends OWLClassExpression> operands) {
 		return factory.getOWLObjectUnionOf(operands)
+	}
+	
+	private def Collection<OWLAnnotation> checkIfNeeded(OWLAnnotation...annotations) {
+		if (annotationsOnAxioms) {
+			annotations
+		} else {
+			Collections.EMPTY_LIST
+		}
 	}
 }
