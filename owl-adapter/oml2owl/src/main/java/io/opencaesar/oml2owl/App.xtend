@@ -4,12 +4,15 @@ import com.beust.jcommander.IParameterValidator
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
+import com.google.common.io.CharStreams
 import io.opencaesar.oml.Bundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlXMIResourceFactory
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
+import java.io.InputStreamReader
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
@@ -104,6 +107,7 @@ class App {
 	def void run() {
 		LOGGER.info("=================================================================")
 		LOGGER.info("                        S T A R T")
+		LOGGER.info("                      OML to Owl "+getAppVersion)
 		LOGGER.info("=================================================================")
 		LOGGER.info("Input Folder= " + inputPath)
 		LOGGER.info("Output Folder= " + outputPath)
@@ -238,6 +242,23 @@ class App {
         else 
         	return ""
     }
+
+	/**
+	 * Get application version id from properties file.
+	 * @return version string from build.properties or UNKNOWN
+	 */
+	def String getAppVersion() {
+		var version = "UNKNOWN"
+		try {
+			val input = Thread.currentThread().getContextClassLoader().getResourceAsStream("version.txt")
+			val reader = new InputStreamReader(input)
+			version = CharStreams.toString(reader);
+		} catch (IOException e) {
+			val errorMsg = "Could not read version.txt file." + e
+			LOGGER.error(errorMsg, e)
+		}
+		version
+	}
 
 	static class InputFolderPath implements IParameterValidator {
 		override validate(String name, String value) throws ParameterException {

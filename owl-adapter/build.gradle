@@ -42,4 +42,16 @@ subprojects {
 	configurations.all {
 		exclude group: 'asm'
 	}
+
+	task createVersion {
+	    doLast {
+	        def version = project.version.toString()
+	        def file = new File("$projectDir/src/main/resources/version.txt")
+	        file.write(version)
+	    }
+	}
+	
+	classes {
+	    dependsOn createVersion
+	}
 }

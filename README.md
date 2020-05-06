@@ -66,6 +66,7 @@ task clean(type: Delete) {
 
 Replace \<version\> by the version, e.g., 1.2
 ```
+  ./setversion <version>
   git tag -a <version> -m "<version>"
   git push origin <version>
 ```
