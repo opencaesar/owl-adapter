@@ -40,6 +40,7 @@ buildscript {
 	repositories {
 		mavenLocal()
 		maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
+		maven { url 'https://dl.bintray.com/opencaesar/oml' }
 	}
 	dependencies {
 		classpath 'io.opencaesar.owl:oml2owl:+'
