@@ -425,10 +425,10 @@ class OwlApi {
 		return axiom
 	}
 
-	def addInverseProperties(OWLOntology ontology, String forwardPropertyIri, String inversePropertyIri) {
+	def addInverseProperties(OWLOntology ontology, String forwardPropertyIri, String reversePropertyIri) {
 		val forwardproperty = factory.getOWLObjectProperty(forwardPropertyIri)
-		val inverseProperty = factory.getOWLObjectProperty(inversePropertyIri)
-		val axiom = factory.getOWLInverseObjectPropertiesAxiom(forwardproperty, inverseProperty)
+		val reverseProperty = factory.getOWLObjectProperty(reversePropertyIri)
+		val axiom = factory.getOWLInverseObjectPropertiesAxiom(forwardproperty, reverseProperty)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}

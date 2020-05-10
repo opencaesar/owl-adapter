@@ -20,7 +20,6 @@ import io.opencaesar.oml.FacetedScalar
 import io.opencaesar.oml.ForwardRelation
 import io.opencaesar.oml.Import
 import io.opencaesar.oml.IntegerLiteral
-import io.opencaesar.oml.InverseRelation
 import io.opencaesar.oml.KeyAxiom
 import io.opencaesar.oml.LinkAssertion
 import io.opencaesar.oml.Member
@@ -36,6 +35,7 @@ import io.opencaesar.oml.RelationPredicate
 import io.opencaesar.oml.RelationRangeRestrictionAxiom
 import io.opencaesar.oml.RelationTargetRestrictionAxiom
 import io.opencaesar.oml.RelationTypeAssertion
+import io.opencaesar.oml.ReverseRelation
 import io.opencaesar.oml.Rule
 import io.opencaesar.oml.SameAsPredicate
 import io.opencaesar.oml.ScalarProperty
@@ -239,12 +239,12 @@ class Oml2Owl extends OmlVisitor<Void> {
 		return null
 	}
 
-	override caseInverseRelation(InverseRelation inverse) {
-		// inverse relation
-		val inverseIri = inverse.iri
-		owl.addObjectProperty(ontology, inverseIri)
-		owl.addSubObjectPropertyOf(ontology, inverseIri, OmlConstants.inverseRelation)
-		owl.addInverseProperties(ontology, inverseIri, inverse.inverse.iri)
+	override caseReverseRelation(ReverseRelation reverse) {
+		// reverse relation
+		val reverseIri = reverse.iri
+		owl.addObjectProperty(ontology, reverseIri)
+		owl.addSubObjectPropertyOf(ontology, reverseIri, OmlConstants.reverseRelation)
+		owl.addInverseProperties(ontology, reverseIri, reverse.inverse.iri)
 		return null
 	}
 
@@ -445,10 +445,10 @@ class Oml2Owl extends OmlVisitor<Void> {
 		owl.addSubObjectPropertyOf(ontology, specific.sourceIri, general.sourceIri, annotations)
 		owl.addSubObjectPropertyOf(ontology, specific.targetIri, general.targetIri, annotations)
 		owl.addSubObjectPropertyOf(ontology, specific.forward.iri, general.forward.iri, annotations)
-		if (specific.inverse !== null && general.inverse !== null) {
-			owl.addSubObjectPropertyOf(ontology, specific.inverse.iri, general.inverse.iri, annotations)
+		if (specific.reverse !== null && general.reverse !== null) {
+			owl.addSubObjectPropertyOf(ontology, specific.reverse.iri, general.reverse.iri, annotations)
 		} else {
-			// it's not obvious yet how to handle the other inverse relation cases
+			// it's not obvious yet how to handle the other reverse relation cases
 		}
 	}
 
@@ -528,24 +528,24 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected dispatch def getAtom(EntityPredicate predicate) {
-		owl.getClassAtom(predicate.entity.iri, predicate.variableIri)
+		owl.getClassAtom(predicate.entity.iri, predicate.variable.iri)
 	}
 
 	protected dispatch def getAtom(RelationEntityPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariableIri, predicate.variable1Iri)
-		owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariableIri, predicate.variable2Iri)
+		owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariable.iri, predicate.variable1.iri)
+		owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariable.iri, predicate.variable2.iri)
 	}
 
 	protected dispatch def getAtom(RelationPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1Iri, predicate.variable2Iri)
+		owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1.iri, predicate.variable2.iri)
 	}
 
 	protected dispatch def getAtom(SameAsPredicate predicate) {
-		owl.getSameIndividualAtom(predicate.variable1Iri, predicate.variable2Iri)
+		owl.getSameIndividualAtom(predicate.variable1.iri, predicate.variable2.iri)
 	}
 
 	protected dispatch def getAtom(DifferentFromPredicate predicate) {
-		owl.getDifferentIndividualsAtom(predicate.variable1Iri, predicate.variable2Iri)
+		owl.getDifferentIndividualsAtom(predicate.variable1.iri, predicate.variable2.iri)
 	}
 
 	protected dispatch def getLiteral(QuotedLiteral literal) {
@@ -596,6 +596,10 @@ class Oml2Owl extends OmlVisitor<Void> {
 
 	protected def String getTargetIri(RelationEntity entity) {
 		entity.ontology?.namespace+'has'+entity.name.toFirstUpper+'Target'
+	}
+	
+	protected def getIri(String variableName) {
+		"urn:swrl#"+variableName
 	}
 
 	static def isBuiltInOntology(String iri) {

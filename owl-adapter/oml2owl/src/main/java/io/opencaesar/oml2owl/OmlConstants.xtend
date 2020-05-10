@@ -34,7 +34,7 @@ interface OmlConstants {
 	
 	static val forwardRelation = omlNS+'forwardRelation'
 	
-	static val inverseRelation = omlNS+'inverseRelation'
+	static val reverseRelation = omlNS+'reverseRelation'
 
 	static val sourceRelation = omlNS+'sourceRelation'
 	
