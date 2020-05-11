@@ -229,11 +229,10 @@ class Oml2Owl extends OmlVisitor<Void> {
 		}
 		
 		// derivation rule for forward relation
-		val graphNs = forward.ontology.namespace
 		val antedecents = new ArrayList
-		antedecents += owl.getObjectPropertyAtom(entity.sourceIri, graphNs+'r', graphNs+'s')
-		antedecents += owl.getObjectPropertyAtom(entity.targetIri, graphNs+'r', graphNs+'t')
-		val consequent = owl.getObjectPropertyAtom(forwardIri, graphNs+'s', graphNs+'t')
+		antedecents += owl.getObjectPropertyAtom(entity.sourceIri, 'r'.swrlIri, 's'.swrlIri)
+		antedecents += owl.getObjectPropertyAtom(entity.targetIri, 'r'.swrlIri, 't'.swrlIri)
+		val consequent = owl.getObjectPropertyAtom(forwardIri, 's'.swrlIri, 't'.swrlIri)
 		val annotation = owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(forward.name+' derivation'))
 		owl.addNRule(ontology, #[consequent], antedecents, annotation)
 		return null
@@ -528,24 +527,24 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected dispatch def getAtom(EntityPredicate predicate) {
-		owl.getClassAtom(predicate.entity.iri, predicate.variable.iri)
+		owl.getClassAtom(predicate.entity.iri, predicate.variable.swrlIri)
 	}
 
 	protected dispatch def getAtom(RelationEntityPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariable.iri, predicate.variable1.iri)
-		owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariable.iri, predicate.variable2.iri)
+		owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariable.swrlIri, predicate.variable1.swrlIri)
+		owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariable.swrlIri, predicate.variable2.swrlIri)
 	}
 
 	protected dispatch def getAtom(RelationPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1.iri, predicate.variable2.iri)
+		owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1.swrlIri, predicate.variable2.swrlIri)
 	}
 
 	protected dispatch def getAtom(SameAsPredicate predicate) {
-		owl.getSameIndividualAtom(predicate.variable1.iri, predicate.variable2.iri)
+		owl.getSameIndividualAtom(predicate.variable1.swrlIri, predicate.variable2.swrlIri)
 	}
 
 	protected dispatch def getAtom(DifferentFromPredicate predicate) {
-		owl.getDifferentIndividualsAtom(predicate.variable1.iri, predicate.variable2.iri)
+		owl.getDifferentIndividualsAtom(predicate.variable1.swrlIri, predicate.variable2.swrlIri)
 	}
 
 	protected dispatch def getLiteral(QuotedLiteral literal) {
@@ -598,7 +597,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 		entity.ontology?.namespace+'has'+entity.name.toFirstUpper+'Target'
 	}
 	
-	protected def getIri(String variableName) {
+	protected def getSwrlIri(String variableName) {
 		"urn:swrl#"+variableName
 	}
 
