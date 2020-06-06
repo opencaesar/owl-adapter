@@ -2,7 +2,6 @@ package io.opencaesar.oml2owl.utils
 
 import io.opencaesar.oml.Entity
 import io.opencaesar.oml.util.OmlRead
-import io.opencaesar.oml2owl.OwlApi
 import org.semanticweb.owlapi.model.IRI
 import org.semanticweb.owlapi.model.OWLClass
 import org.semanticweb.owlapi.model.OWLClassExpression

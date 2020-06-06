@@ -16,10 +16,12 @@ interface OmlConstants {
 	
 	static val Vocabulary = omlNS+'Vocabulary'
 	
-	static val Bundle = omlNS+'Bundle'
+	static val VocabularyBundle = omlNS+'VocabularyBundle'
 
 	static val Description = omlNS+'Description'
 	
+	static val DescriptionBundle = omlNS+'DescriptionBundle'
+
 	// owl:Class rdfs:subClassOf x?
 	
 	static val Aspect = omlNS+'Aspect'

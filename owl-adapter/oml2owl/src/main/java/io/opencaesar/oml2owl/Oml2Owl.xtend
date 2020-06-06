@@ -5,13 +5,13 @@ import io.opencaesar.oml.Annotation
 import io.opencaesar.oml.AnnotationProperty
 import io.opencaesar.oml.Aspect
 import io.opencaesar.oml.BooleanLiteral
-import io.opencaesar.oml.Bundle
 import io.opencaesar.oml.CardinalityRestrictionKind
 import io.opencaesar.oml.Concept
 import io.opencaesar.oml.ConceptInstance
 import io.opencaesar.oml.ConceptTypeAssertion
 import io.opencaesar.oml.DecimalLiteral
 import io.opencaesar.oml.Description
+import io.opencaesar.oml.DescriptionBundle
 import io.opencaesar.oml.DifferentFromPredicate
 import io.opencaesar.oml.DoubleLiteral
 import io.opencaesar.oml.EntityPredicate
@@ -53,7 +53,9 @@ import io.opencaesar.oml.StructuredPropertyValueAssertion
 import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom
 import io.opencaesar.oml.Term
 import io.opencaesar.oml.Vocabulary
+import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.util.OmlVisitor
+import io.opencaesar.oml2owl.utils.OwlApi
 import java.util.ArrayList
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.rdf4j.model.vocabulary.RDFS
@@ -99,15 +101,21 @@ class Oml2Owl extends OmlVisitor<Void> {
 		return null
 	}
 
-	override caseBundle(Bundle bundle) {
+	override caseVocabularyBundle(VocabularyBundle bundle) {
 		ontology = owl.createOntology(bundle.iri)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Bundle))
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.VocabularyBundle))
 		return null
 	}
 
 	override caseDescription(Description description) {
 		ontology = owl.createOntology(description.iri)
 		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Description))
+		return null
+	}
+
+	override caseDescriptionBundle(DescriptionBundle bundle) {
+		ontology = owl.createOntology(bundle.iri)
+		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.DescriptionBundle))
 		return null
 	}
 

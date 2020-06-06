@@ -1,4 +1,4 @@
-package io.opencaesar.oml2owl
+package io.opencaesar.oml2owl.utils
 
 import java.math.BigDecimal
 import java.util.Collection

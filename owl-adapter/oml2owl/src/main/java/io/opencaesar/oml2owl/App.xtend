@@ -5,9 +5,11 @@ import com.beust.jcommander.JCommander
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
 import com.google.common.io.CharStreams
-import io.opencaesar.oml.Bundle
+import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlXMIResourceFactory
+import io.opencaesar.oml2owl.utils.CloseBundleToOwl
+import io.opencaesar.oml2owl.utils.OwlApi
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -156,7 +158,7 @@ class App {
 		threads1.forEach[join]
 		
 		// run the bundle closure algorithm
-		oml2owl.entrySet.filter[e|e.key.ontology instanceof Bundle].forEach[entry|
+		oml2owl.entrySet.filter[e|e.key.ontology instanceof VocabularyBundle].forEach[entry|
 			LOGGER.info("Closing bundle: "+entry.key.URI)
 			new CloseBundleToOwl(entry.key, entry.value, disjointUnions, owl2api).run
 		]

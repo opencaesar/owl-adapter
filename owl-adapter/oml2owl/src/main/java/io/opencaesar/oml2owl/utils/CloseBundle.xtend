@@ -1,23 +1,19 @@
-package io.opencaesar.oml2owl
+package io.opencaesar.oml2owl.utils
 
 import io.opencaesar.oml.Aspect
 import io.opencaesar.oml.Entity
 import io.opencaesar.oml.Ontology
 import io.opencaesar.oml.SpecializationAxiom
-import io.opencaesar.oml2owl.utils.ClassExpression
-import io.opencaesar.oml2owl.utils.Singleton
-import io.opencaesar.oml2owl.utils.Taxonomy
-import io.opencaesar.oml2owl.utils.Universal
 import java.util.HashMap
 import java.util.List
 import java.util.Map
 import java.util.Set
 import org.eclipse.emf.ecore.resource.Resource
+import org.semanticweb.owlapi.model.OWLClass
 import org.semanticweb.owlapi.model.OWLOntology
 
 import static extension io.opencaesar.oml.util.OmlRead.*
 import static extension io.opencaesar.oml2owl.utils.OwlClassExpression.*
-import org.semanticweb.owlapi.model.OWLClass
 
 class CloseBundle {
 	
@@ -61,7 +57,7 @@ class CloseBundle {
 	def Map<ClassExpression, Set<ClassExpression>> getSiblingMap() {
 		
 		val allOntologies = resource.ontology.reflexiveClosure[importedOntologies].toList
-		
+				
 		val Taxonomy taxonomy = omlTaxonomy(allOntologies)
 		taxonomy.ensureConnected
 		
