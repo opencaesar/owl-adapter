@@ -63,6 +63,7 @@ import org.semanticweb.owlapi.model.OWLAnnotation
 import org.semanticweb.owlapi.model.OWLIndividual
 import org.semanticweb.owlapi.model.OWLNamedIndividual
 import org.semanticweb.owlapi.model.OWLOntology
+import org.semanticweb.owlapi.model.SWRLAtom
 import org.semanticweb.owlapi.vocab.OWLFacet
 
 import static extension io.opencaesar.oml.util.OmlRead.*
@@ -261,7 +262,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 			annotations = new ArrayList(annotations)
 			annotations += owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(rule.name))
 		}
-		owl.addNRule(ontology, rule.consequent.map[atom], rule.antecedent.map[atom], annotations)
+		owl.addNRule(ontology, rule.consequent.flatMap[atom], rule.antecedent.flatMap[atom], annotations)
 		return null
 	}
 
@@ -535,24 +536,34 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected dispatch def getAtom(EntityPredicate predicate) {
-		owl.getClassAtom(predicate.entity.iri, predicate.variable.swrlIri)
+		val atoms = new ArrayList<SWRLAtom>
+		atoms += owl.getClassAtom(predicate.entity.iri, predicate.variable.swrlIri)
+		atoms
 	}
 
 	protected dispatch def getAtom(RelationEntityPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariable.swrlIri, predicate.variable1.swrlIri)
-		owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariable.swrlIri, predicate.variable2.swrlIri)
+		val atoms = new ArrayList<SWRLAtom>
+		atoms += owl.getObjectPropertyAtom(predicate.entity.sourceIri, predicate.entityVariable.swrlIri, predicate.variable1.swrlIri)
+		atoms += owl.getObjectPropertyAtom(predicate.entity.targetIri, predicate.entityVariable.swrlIri, predicate.variable2.swrlIri)
+		atoms
 	}
 
 	protected dispatch def getAtom(RelationPredicate predicate) {
-		owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1.swrlIri, predicate.variable2.swrlIri)
+		val atoms = new ArrayList<SWRLAtom>
+		atoms += owl.getObjectPropertyAtom(predicate.relation.iri, predicate.variable1.swrlIri, predicate.variable2.swrlIri)
+		atoms
 	}
 
 	protected dispatch def getAtom(SameAsPredicate predicate) {
-		owl.getSameIndividualAtom(predicate.variable1.swrlIri, predicate.variable2.swrlIri)
+		val atoms = new ArrayList<SWRLAtom>
+		atoms += owl.getSameIndividualAtom(predicate.variable1.swrlIri, predicate.variable2.swrlIri)
+		atoms
 	}
 
 	protected dispatch def getAtom(DifferentFromPredicate predicate) {
-		owl.getDifferentIndividualsAtom(predicate.variable1.swrlIri, predicate.variable2.swrlIri)
+		val atoms = new ArrayList<SWRLAtom>
+		atoms += owl.getDifferentIndividualsAtom(predicate.variable1.swrlIri, predicate.variable2.swrlIri)
+		atoms
 	}
 
 	protected dispatch def getLiteral(QuotedLiteral literal) {
