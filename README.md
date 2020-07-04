@@ -34,13 +34,14 @@ Optionally install it in your local maven repo (if you modified it)
 ```
     ./gradlew install
 ```
-In a gradle.build script, add the following:
+In a build.gradle script, add the following:
 ```
 buildscript {
 	repositories {
 		mavenLocal()
 		maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
 		maven { url 'https://dl.bintray.com/opencaesar/oml' }
+		jcenter()
 	}
 	dependencies {
 		classpath 'io.opencaesar.owl:oml2owl:+'
