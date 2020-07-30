@@ -16,6 +16,7 @@ import org.jgrapht.alg.TransitiveReduction
 import org.jgrapht.alg.connectivity.ConnectivityInspector
 import org.jgrapht.graph.AsUndirectedGraph
 import org.jgrapht.GraphTests
+import org.jgrapht.traverse.DepthFirstIterator
 
 class UnconnectedTaxonomyException extends RuntimeException {	
 	new(String s) {
@@ -92,7 +93,12 @@ class Taxonomy extends DirectedAcyclicGraph<ClassExpression, TaxonomyEdge> {
 	}
 	
 	def Optional<ClassExpression> multiParentChild() {
-		vertexSet.stream.filter[parentsOf.length > 1].findFirst
+		val dfi = new DepthFirstIterator(this)
+		while (dfi.hasNext) {
+			val v = dfi.next
+			if (directParentsOf(v).size > 1) return Optional.of(v)
+		}
+		return Optional.empty
 	}
 	
 	def Taxonomy exciseVertex(ClassExpression v) {
