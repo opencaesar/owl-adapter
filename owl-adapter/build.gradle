@@ -5,14 +5,14 @@ buildscript {
 		jcenter()
 	}
 	dependencies {
-		classpath 'org.xtext:xtext-gradle-plugin:1.0.21'
+		classpath 'org.xtext:xtext-gradle-plugin:2.0.8'
 		classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.+'
 	}
 }
 
 subprojects {
 	group = 'io.opencaesar.owl'
-	version = '0.7.1'
+	version = '0.7.2'
 	
 	ext.versions = [
 	    oml: '0.7.+',
@@ -26,12 +26,11 @@ subprojects {
 		jcenter()
 	}
 	
-	apply plugin: 'com.jfrog.bintray'
-	apply plugin: 'java'
-	apply plugin: 'org.xtext.xtend'
+	apply plugin: 'java-library'
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
-	apply plugin: 'java-gradle-plugin'
+	apply plugin: 'com.jfrog.bintray'
+	apply plugin: 'org.xtext.xtend'
 	
 	apply from: "${rootDir}/gradle/source-layout.gradle"
 	apply from: "${rootDir}/gradle/maven-deployment.gradle"

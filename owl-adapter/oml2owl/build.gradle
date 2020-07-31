@@ -2,25 +2,17 @@ apply plugin: 'application'
 
 ext.title = 'Oml to Owl'
 description = 'Oml to Owl Interface'
-mainClassName = 'io.opencaesar.oml2owl.App'
+mainClassName = 'io.opencaesar.oml2owl.Oml2OwlApp'
 applicationName = 'oml2owl'
 
 dependencies {
-    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation "com.beust:jcommander:1.72"
+ 	implementation 'log4j:log4j:1.2.17'
+	implementation 'org.slf4j:slf4j-simple:1.7.30'
+	
     implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
 	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
-	implementation "org.jgrapht:jgrapht-core:1.3.1"
+	implementation "org.jgrapht:jgrapht-core:1.1.0"
 	
-    // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
-}
-
-gradlePlugin {
-    plugins {
-        oml2OwlPlugin {
-            id = 'io.opencaesar.oml2owl'
-            implementationClass = 'io.opencaesar.oml2owl.GradlePlugin'
-        }
-    }
 }

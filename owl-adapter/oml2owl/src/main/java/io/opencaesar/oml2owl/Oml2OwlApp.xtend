@@ -33,14 +33,13 @@ import org.semanticweb.owlapi.model.OWLOntology
 
 import static extension io.opencaesar.oml.util.OmlRead.*
 
-class App {
+class Oml2OwlApp {
 
 	package static val OML = 'oml'
 	package static val OMLXMI = "omlxmi"
-	package static val OMLZIP = "omlzip"
 
 	@Parameter(
-		names=#["--input","-i"], 
+		names=#["--input-path","-i"], 
 		description="Location of OML input folder (Required)",
 		validateWith=InputFolderPath, 
 		required=true, 
@@ -48,7 +47,7 @@ class App {
 	String inputPath = null
 
 	@Parameter(
-		names=#["--output", "-o"], 
+		names=#["--output-path", "-o"], 
 		description="Location of the OWL2 output folder", 
 		validateWith=OutputFolderPath, 
 		order=2
@@ -83,10 +82,10 @@ class App {
 		order=6)
 	boolean help
 
-	val LOGGER = LogManager.getLogger(App)
+	val LOGGER = LogManager.getLogger(Oml2OwlApp)
 
 	def static void main(String ... args) {
-		val app = new App
+		val app = new Oml2OwlApp
 		val builder = JCommander.newBuilder().addObject(app).build()
 		builder.parse(args)
 		if (app.help) {
@@ -134,7 +133,7 @@ class App {
 		}
 		
 		// create the equivalent OWL ontologies
-		val threads1 = new ArrayList<Thread>
+		val threads = new ArrayList<Thread>
 		for (inputFile : inputFiles) {
 			val inputURI = URI.createFileURI(inputFile.absolutePath)
 			val inputResource = inputResourceSet.getResource(inputURI, true)
@@ -151,11 +150,11 @@ class App {
 						LOGGER.info("Created: "+outputFile)
 					}
 				}
-				threads1.add(thread)
+				threads.add(thread)
 				thread.start
 			}
 		}
-		threads1.forEach[join]
+		threads.forEach[join]
 		
 		// run the bundle closure algorithm
 		oml2owl.entrySet.filter[e|e.key.ontology instanceof VocabularyBundle].forEach[entry|
@@ -169,7 +168,7 @@ class App {
 			val thread = new Thread() {
 				override run() {
 					LOGGER.info("Saving: "+file)
-					ontologyManager.saveOntology(owlOntology, /*new TurtleDocumentFormat, */IRI.create(file))
+					ontologyManager.saveOntology(owlOntology, /*new TurtleDocumentFormat,*/ IRI.create(file))
 				}
 			}
 			threads2.add(thread)
@@ -183,16 +182,16 @@ class App {
 			LOGGER.info("Saving: "+outputPath+'/catalog.xml')
 			val catalog = new BufferedWriter(new FileWriter(outputPath+'/catalog.xml'))
 			val baseURI = new File(outputPath).toURI
-			catalog.write('''
-				<?xml version='1.0'?>
-				<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog" prefer="public">
-					 «FOR entry : outputFiles.entrySet»
-					 «val uri = entry.value.ontologyID.ontologyIRI.get()»
-					 «val prefix = baseURI.relativize(entry.key.toURI()).getPath().replace('.owl', '')»
-					 <rewriteURI uriStartString="«uri»" rewritePrefix="«prefix»" />
-					 «ENDFOR»
-				</catalog>
-			''')
+			var content = ""
+			content += "<?xml version='1.0'?>\n"
+			content += "<catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\" prefer=\"public\">\n"
+			for(entry : outputFiles.entrySet) {
+				val uri = entry.value.ontologyID.ontologyIRI.get()
+				val prefix = baseURI.relativize(entry.key.toURI()).getPath().replace('.owl', '')
+				content += "\t<rewriteURI uriStartString=\""+uri+"\" rewritePrefix=\""+prefix+"\" />\n";
+			}
+			content += "</catalog>";
+			catalog.write(content);
 			catalog.close()
 		} else {
 			for (catalogFile : catalogFiles) {

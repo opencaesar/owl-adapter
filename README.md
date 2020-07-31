@@ -1,7 +1,6 @@
-# OML Adapter for OWL
+# OWL Adapter
 
 [![Build Status](https://travis-ci.org/opencaesar/owl-adapter.svg?branch=master)](https://travis-ci.org/opencaesar/owl-adapter)
-[ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/oml2owl/_latestVersion)
 
 An [OML](https://github.com/opencaesar/oml) adapter for [OWL2-DL](https://www.w3.org/TR/owl2-syntax/) + [SWRL Rules](https://www.w3.org/Submission/SWRL/)
 
@@ -12,63 +11,14 @@ An [OML](https://github.com/opencaesar/oml) adapter for [OWL2-DL](https://www.w3
 ```
       
 ## Build
-Requirements: java 8, node 8.x 
+Requirements: JDK 8
 ```
     cd owl-adapter
     ./gradlew build
 ```
 
-## Run as CLI
+## [OML2OWL](owl-adapter/oml2owl/README.md)
 
-MacOS/Linux:
-```
-    ./gradlew oml2owl:run --args="-i path/to/oml/folder -o path/to/owl/folder"
-```
-Windows:
-```
-    gradlew.bat oml2owl:run --args="-i path/to/oml/folder -o path/to/owl/folder"
-```
+[ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/oml2owl/_latestVersion)
 
-## Run from Gradle
-Optionally install it in your local maven repo (if you modified it)
-```
-    ./gradlew install
-```
-In a build.gradle script, add the following:
-```
-buildscript {
-	repositories {
-		mavenLocal()
-		maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
-		maven { url 'https://dl.bintray.com/opencaesar/oml' }
-		jcenter()
-	}
-	dependencies {
-		classpath 'io.opencaesar.owl:oml2owl:+'
-	}
-}
-
-apply plugin: 'io.opencaesar.oml2owl'
-
-oml2owl {
-	inputPath = 'path/to/oml/folder'
-	outputPath = 'path/to/owl/folder'
-}
-
-task build {
-	dependsOn generateOwl
-}
-
-task clean(type: Delete) {
-	delete 'path/to/owl/folder'
-}
-```
-
-## Release
-
-Replace \<version\> by the version, e.g., 1.2
-```
-  ./setversion <version>
-  git tag -a <version> -m "<version>"
-  git push origin <version>
-```
+A tool to translate ontologies from an OML to an OWL representation

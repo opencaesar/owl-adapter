@@ -1,21 +1,19 @@
 package io.opencaesar.oml2owl.utils
 
-import java.util.Optional
 import java.util.HashMap
 import java.util.HashSet
-import java.util.Set
 import java.util.List
+import java.util.Optional
+import java.util.Set
 import java.util.function.Predicate
 import java.util.stream.Collectors
-
 import org.eclipse.xtext.util.Tuples
-
+import org.jgrapht.GraphTests
+import org.jgrapht.alg.ConnectivityInspector
+import org.jgrapht.alg.TransitiveReduction
+import org.jgrapht.graph.AsUndirectedGraph
 import org.jgrapht.graph.DefaultEdge
 import org.jgrapht.graph.DirectedAcyclicGraph
-import org.jgrapht.alg.TransitiveReduction
-import org.jgrapht.alg.connectivity.ConnectivityInspector
-import org.jgrapht.graph.AsUndirectedGraph
-import org.jgrapht.GraphTests
 
 class UnconnectedTaxonomyException extends RuntimeException {	
 	new(String s) {
@@ -352,7 +350,7 @@ class Taxonomy extends DirectedAcyclicGraph<ClassExpression, TaxonomyEdge> {
 	 * @return	boolean
 	 */
 	 def boolean isConnected() {
-	 	new ConnectivityInspector(this).isConnected
+	 	new ConnectivityInspector(this).isGraphConnected
 	 }
 	 
 	/**

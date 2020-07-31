@@ -48,8 +48,12 @@ publishing {
             artifact javadocJar {
                 classifier "javadoc"
             }
-			artifact distZip
-			artifact distTar
+        	afterEvaluate {
+				plugins.withType(ApplicationPlugin) {
+					artifact distZip
+					artifact distTar
+			    }
+        	}
             groupId project.group
             artifactId project.name
             version project.version
