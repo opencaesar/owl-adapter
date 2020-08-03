@@ -8,14 +8,14 @@ A tool to translate ontologies from an OML to an OWL representation
 In a build.gradle script, use:
 ```
 buildscript {
-	repositories {
-		maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
-  		mavenCentral()
-		jcenter()
-	}
-	dependencies {
-		classpath 'io.opencaesar.owl:oml2owl-gradle:+'
-	}
+    repositories {
+        maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'io.opencaesar.owl:oml2owl-gradle:+'
+    }
 }
 task oml2owl(type:io.opencaesar.oml2owl.Oml2OwlTask) {
     inputPath = 'path/to/input/oml/folder' [Required]
