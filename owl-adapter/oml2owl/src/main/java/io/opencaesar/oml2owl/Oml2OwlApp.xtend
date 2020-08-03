@@ -96,10 +96,10 @@ class Oml2OwlApp {
 			val appender = LogManager.getRootLogger.getAppender("stdout")
 			(appender as AppenderSkeleton).setThreshold(Level.DEBUG)
 		}
-		if (app.inputPath.endsWith(File.pathSeparator)) {
+		if (app.inputPath.endsWith(File.separator)) {
 			app.inputPath = app.inputPath.substring(0, app.inputPath.length-1)
 		}
-		if (app.outputPath.endsWith(File.pathSeparator)) {
+		if (app.outputPath.endsWith(File.separator)) {
 			app.outputPath = app.outputPath.substring(0, app.outputPath.length-1)
 		}
 		app.run()
@@ -139,7 +139,7 @@ class Oml2OwlApp {
 			val inputResource = inputResourceSet.getResource(inputURI, true)
 			val builtin = Oml2Owl.isBuiltInOntology(inputResource.ontology?.iri)
 			if (inputResource !== null && !builtin) {
-				var relativePath = outputPath+File.pathSeparator+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
+				var relativePath = outputPath+File.separator+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
 				val thread = new Thread() {
 					override run() {
@@ -179,8 +179,8 @@ class Oml2OwlApp {
 		// copy catalog files
 		val catalogFiles = collectCatalogFiles(inputFolder)
 		if (catalogFiles.empty) {
-			LOGGER.info("Saving: "+outputPath+File.pathSeparator+'catalog.xml')
-			val catalog = new BufferedWriter(new FileWriter(outputPath+File.pathSeparator+'catalog.xml'))
+			LOGGER.info("Saving: "+outputPath+File.separator+'catalog.xml')
+			val catalog = new BufferedWriter(new FileWriter(outputPath+File.separator+'catalog.xml'))
 			val baseURI = new File(outputPath).toURI
 			var content = ""
 			content += "<?xml version='1.0'?>\n"
