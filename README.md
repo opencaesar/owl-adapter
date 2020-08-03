@@ -17,7 +17,7 @@ Requirements: JDK 8
     ./gradlew build
 ```
 
-## [OML2OWL](owl-adapter/oml2owl/README.md)
+## [OML to OWL](owl-adapter/oml2owl/README.md)
 
 [ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/oml2owl/_latestVersion)
 

@@ -1,8 +1,8 @@
-# OML2OWL
+# OML to OWL
 
 [ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/oml2owl/_latestVersion)
 
-A tool to translate ontologies from an Oml to an Owl representation
+A tool to translate ontologies from an OML to an OWL representation
 
 ## Run as CLI
 
