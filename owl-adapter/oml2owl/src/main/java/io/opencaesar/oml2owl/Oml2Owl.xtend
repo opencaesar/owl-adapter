@@ -55,7 +55,7 @@ import io.opencaesar.oml.Term
 import io.opencaesar.oml.Vocabulary
 import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.util.OmlVisitor
-import io.opencaesar.oml2owl.utils.OwlApi
+import io.opencaesar.oml2owl.OwlApi
 import java.util.ArrayList
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.rdf4j.model.vocabulary.RDFS

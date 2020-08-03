@@ -1,17 +1,13 @@
-package io.opencaesar.oml2owl.utils
+package io.opencaesar.oml2owl
 
 import java.math.BigDecimal
-import java.util.Collection
+import java.util.Arrays
 import java.util.Collections
-import java.util.Set
 import org.semanticweb.owlapi.model.AddImport
 import org.semanticweb.owlapi.model.AddOntologyAnnotation
 import org.semanticweb.owlapi.model.IRI
 import org.semanticweb.owlapi.model.OWLAnnotation
 import org.semanticweb.owlapi.model.OWLAnnotationValue
-import org.semanticweb.owlapi.model.OWLClass
-import org.semanticweb.owlapi.model.OWLClassExpression
-import org.semanticweb.owlapi.model.OWLDataFactory
 import org.semanticweb.owlapi.model.OWLFacetRestriction
 import org.semanticweb.owlapi.model.OWLIndividual
 import org.semanticweb.owlapi.model.OWLLiteral
@@ -20,17 +16,14 @@ import org.semanticweb.owlapi.model.OWLOntologyManager
 import org.semanticweb.owlapi.model.SWRLAtom
 import org.semanticweb.owlapi.vocab.OWLFacet
 
-class OwlApi {
+class OwlApi extends io.opencaesar.oml2owl.utils.OwlApi {
 	
 	val XSD = "http://www.w3.org/2001/XMLSchema#"
-	val OWLOntologyManager manager
-	val OWLDataFactory factory
-	var annotationsOnAxioms = false
+	protected final boolean annotationsOnAxioms;
 	
 	new(OWLOntologyManager manager, boolean annotationsOnAxioms) {
-		this.manager = manager
-		this.factory = manager.getOWLDataFactory()
-		this.annotationsOnAxioms = annotationsOnAxioms
+		super(manager)
+		this.annotationsOnAxioms = annotationsOnAxioms;
 	}
 	
 	def createIri(String iri) {
@@ -213,18 +206,6 @@ class OwlApi {
 		val subClass = factory.getOWLClass(subIri)
 		val supClass = factory.getOWLClass(superIri)
 		val axiom = factory.getOWLSubClassOfAxiom(subClass, supClass, annotations.checkIfNeeded)
-		manager.addAxiom(ontology, axiom)
-		return axiom
-	}
-
-	def addDisjointClasses(OWLOntology ontology, Iterable<OWLClassExpression> classes, OWLAnnotation...annotations) {
-		val axiom = factory.getOWLDisjointClassesAxiom(classes.toSet, annotations.checkIfNeeded)
-		manager.addAxiom(ontology, axiom)
-		return axiom
-	}
-	
-	def addDisjointUnion(OWLOntology ontology, OWLClass owlClass, Set<OWLClassExpression> subClasses, OWLAnnotation...annotations) {
-		val axiom = factory.getOWLDisjointUnionAxiom(owlClass, subClasses, annotations.checkIfNeeded)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}
@@ -518,35 +499,11 @@ class OwlApi {
 		return factory.getOWLLiteral(value, langTag)
 	}
 
-	def getOWLThing() {
-		return factory.getOWLThing
-	}
-
-	def getOWLNothing() {
-		return factory.getOWLNothing
-	}
-	
-	def getOWLClass(IRI iri) {
-		return factory.getOWLClass(iri)
-	}
-	
-	def getOWLObjectComplementOf(OWLClassExpression e) {
-		return factory.getOWLObjectComplementOf(e)
-	}
-	
-	def getOWLObjectIntersectionOf(Iterable<? extends OWLClassExpression> operands) {
-		return factory.getOWLObjectIntersectionOf(operands)
-	}
-	
-	def getOWLObjectUnionOf(Iterable<? extends OWLClassExpression> operands) {
-		return factory.getOWLObjectUnionOf(operands)
-	}
-	
-	private def Collection<OWLAnnotation> checkIfNeeded(OWLAnnotation...annotations) {
+	def checkIfNeeded(OWLAnnotation...annotations) {
 		if (annotationsOnAxioms) {
-			annotations
+			return Arrays.asList(annotations);
 		} else {
-			Collections.EMPTY_LIST
+			return Collections.emptyList();
 		}
 	}
 }

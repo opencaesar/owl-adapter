@@ -5,7 +5,7 @@
 A tool to translate ontologies from an Oml to an Owl representation
 
 ## Run as Gradle Task
-
+In a build.gradle script, use:
 ```
 buildscript {
 	repositories {

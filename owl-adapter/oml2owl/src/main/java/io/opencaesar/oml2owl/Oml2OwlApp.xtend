@@ -8,8 +8,7 @@ import com.google.common.io.CharStreams
 import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlXMIResourceFactory
-import io.opencaesar.oml2owl.utils.CloseBundleToOwl
-import io.opencaesar.oml2owl.utils.OwlApi
+import io.opencaesar.oml2owl.utils.CloseBundle.CloseBundleToOwl
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -44,15 +43,16 @@ class Oml2OwlApp {
 		validateWith=InputFolderPath, 
 		required=true, 
 		order=1)
-	String inputPath = null
+	String inputPath
 
 	@Parameter(
 		names=#["--output-path", "-o"], 
 		description="Location of the OWL2 output folder", 
 		validateWith=OutputFolderPath, 
+		required=true, 
 		order=2
 	)
-	String outputPath = "."
+	String outputPath
 
 	@Parameter(
 		names=#["--disjoint-unions", "-u"], 
@@ -96,10 +96,10 @@ class Oml2OwlApp {
 			val appender = LogManager.getRootLogger.getAppender("stdout")
 			(appender as AppenderSkeleton).setThreshold(Level.DEBUG)
 		}
-		if (app.inputPath.endsWith('/')) {
+		if (app.inputPath.endsWith(File.pathSeparator)) {
 			app.inputPath = app.inputPath.substring(0, app.inputPath.length-1)
 		}
-		if (app.outputPath.endsWith('/')) {
+		if (app.outputPath.endsWith(File.pathSeparator)) {
 			app.outputPath = app.outputPath.substring(0, app.outputPath.length-1)
 		}
 		app.run()
@@ -139,7 +139,7 @@ class Oml2OwlApp {
 			val inputResource = inputResourceSet.getResource(inputURI, true)
 			val builtin = Oml2Owl.isBuiltInOntology(inputResource.ontology?.iri)
 			if (inputResource !== null && !builtin) {
-				var relativePath = outputPath+'/'+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
+				var relativePath = outputPath+File.pathSeparator+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
 				val thread = new Thread() {
 					override run() {
@@ -179,8 +179,8 @@ class Oml2OwlApp {
 		// copy catalog files
 		val catalogFiles = collectCatalogFiles(inputFolder)
 		if (catalogFiles.empty) {
-			LOGGER.info("Saving: "+outputPath+'/catalog.xml')
-			val catalog = new BufferedWriter(new FileWriter(outputPath+'/catalog.xml'))
+			LOGGER.info("Saving: "+outputPath+File.pathSeparator+'catalog.xml')
+			val catalog = new BufferedWriter(new FileWriter(outputPath+File.pathSeparator+'catalog.xml'))
 			val baseURI = new File(outputPath).toURI
 			var content = ""
 			content += "<?xml version='1.0'?>\n"
