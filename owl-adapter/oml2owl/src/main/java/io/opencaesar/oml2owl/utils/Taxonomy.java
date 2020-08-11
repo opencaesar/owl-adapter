@@ -28,10 +28,13 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	}
 
 	public Taxonomy(final List<ClassExpression> edgeList) {
+		this(edgeList, edgeList);
+	}
+
+	public Taxonomy(final List<ClassExpression> vertexList, final List<ClassExpression> edgeList) {
 		super(TaxonomyEdge.class);
 		
-		final HashSet<ClassExpression> vertexSet = new HashSet<ClassExpression>(edgeList);
-		vertexSet.forEach(v -> addVertex(v));
+		vertexList.forEach(v -> addVertex(v));
 		
 		final Iterator<ClassExpression> i = edgeList.iterator();
 		while (i.hasNext()) {
