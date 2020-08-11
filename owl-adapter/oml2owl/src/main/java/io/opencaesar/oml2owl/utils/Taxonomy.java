@@ -34,7 +34,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	public Taxonomy(final List<ClassExpression> vertexList, final List<ClassExpression> edgeList) {
 		super(TaxonomyEdge.class);
 		
-		vertexList.forEach(v -> addVertex(v));
+		vertexList.forEach(this::addVertex);
 		
 		final Iterator<ClassExpression> i = edgeList.iterator();
 		while (i.hasNext()) {
@@ -47,7 +47,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	}
 
 	public Set<ClassExpression> childrenOf(final ClassExpression v) {
-		return outgoingEdgesOf(v).stream().map(it -> getEdgeTarget(it)).collect(Collectors.toSet());
+		return outgoingEdgesOf(v).stream().map(this::getEdgeTarget).collect(Collectors.toSet());
 	}
 
 	public Set<ClassExpression> descendantsOf(final ClassExpression v) {
@@ -56,13 +56,13 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 
 	public Set<ClassExpression> directChildrenOf(final ClassExpression v) {
 		final Set<ClassExpression> c = childrenOf(v);
-		final HashSet<ClassExpression> cd = new HashSet<ClassExpression>();
-		c.stream().forEach(e -> cd.addAll(descendantsOf(e)));
+		final HashSet<ClassExpression> cd = new HashSet<>();
+		c.forEach(e -> cd.addAll(descendantsOf(e)));
 		return c.stream().filter(e -> !cd.contains(e)).collect(Collectors.toSet());
 	}
 
 	public Set<ClassExpression> parentsOf(final ClassExpression v) {
-		return incomingEdgesOf(v).stream().map(it -> getEdgeSource(it)).collect(Collectors.toSet());
+		return incomingEdgesOf(v).stream().map(this::getEdgeSource).collect(Collectors.toSet());
 	}
 
 	public Set<ClassExpression> ancestorsOf(final ClassExpression v) {
@@ -71,8 +71,8 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 
 	public Set<ClassExpression> directParentsOf(final ClassExpression v) {
 		final Set<ClassExpression> p = parentsOf(v);
-		final HashSet<ClassExpression> pa = new HashSet<ClassExpression>();
-		p.stream().forEach(e -> pa.addAll(ancestorsOf(e)));
+		final HashSet<ClassExpression> pa = new HashSet<>();
+		p.forEach(e -> pa.addAll(ancestorsOf(e)));
 		return p.stream().filter(e -> !pa.contains(e)).collect(Collectors.toSet());
 	}
 
@@ -85,14 +85,14 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 				 
 		// Copy all vertices except the specified vertex.
 		
-		vertexSet().stream().filter(e -> e != v).forEach(x -> g.addVertex(x));
+		vertexSet().stream().filter(e -> e != v).forEach(g::addVertex);
 
 		// Copy all edges no involving v. Remember parents and children of v.
 		
-		final Set<ClassExpression> parents = new HashSet<ClassExpression>();
-		final Set<ClassExpression> children = new HashSet<ClassExpression>();
+		final Set<ClassExpression> parents = new HashSet<>();
+		final Set<ClassExpression> children = new HashSet<>();
 		
-		edgeSet().stream().forEach(e -> {
+		edgeSet().forEach(e -> {
 			final ClassExpression s = getEdgeSource(e);
 			final ClassExpression t = getEdgeTarget(e);
 			if (s == v) {
@@ -106,7 +106,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 		
 		// Add edges from parents to children.
 		
-		parents.stream().forEach(p -> children.stream().forEach(c -> g.addEdge(p, c)));
+		parents.forEach(p -> children.forEach(c -> g.addEdge(p, c)));
 		
 		return g;
 	}
@@ -122,7 +122,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	}
 
 	public Taxonomy exciseVerticesIf(final Predicate<ClassExpression> predicate) {
-		return exciseVertices(vertexSet().stream().filter(v -> predicate.test(v)).collect(Collectors.toSet()));
+		return exciseVertices(vertexSet().stream().filter(predicate).collect(Collectors.toSet()));
 	}
 
 	public Taxonomy rootAt(final ClassExpression root) {
@@ -153,11 +153,11 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 				
 		// Copy all vertices.
 		
-		vertexSet().stream().forEach(v -> g.addVertex(v));
+		vertexSet().forEach(g::addVertex);
 		
 		// Copy all edges except that from parent to child.
 		
-		edgeSet().stream().map(e -> new AbstractMap.SimpleEntry<ClassExpression, ClassExpression>(getEdgeSource(e), getEdgeTarget(e)))
+		edgeSet().stream().map(e -> new AbstractMap.SimpleEntry<>(getEdgeSource(e), getEdgeTarget(e)))
 			.filter(it -> it.getKey() != parent || it.getValue() != child)
 			.forEach(p -> g.addEdge(p.getKey(), p.getValue()));
 		
@@ -196,11 +196,11 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 				
 		// Copy all vertices.
 		
-		vertexSet().stream().forEach(v -> g.addVertex(v));
+		vertexSet().forEach(g::addVertex);
 		
 		// Copy all edges to child.
 		
-		edgeSet().stream().map(e -> new AbstractMap.SimpleEntry<ClassExpression, ClassExpression>(getEdgeSource(e), getEdgeTarget(e)))
+		edgeSet().stream().map(e -> new AbstractMap.SimpleEntry<>(getEdgeSource(e), getEdgeTarget(e)))
 			.filter(it -> it.getValue() != child)
 			.forEach(p -> g.addEdge(p.getKey(), p.getValue()));
 			
@@ -225,14 +225,13 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 			final Taxonomy g = new Taxonomy();
 			
 			final ClassExpression diff = parent.difference(child);
-			
-			final HashSet<ClassExpression> newVertices = new HashSet<ClassExpression>();
-			newVertices.addAll(vertexSet());
+
+			final HashSet<ClassExpression> newVertices = new HashSet<>(vertexSet());
 			newVertices.remove(parent);
 			newVertices.add(diff);
-			newVertices.stream().forEach(e -> g.addVertex(e));
+			newVertices.forEach(g::addVertex);
 			
-			edgeSet().stream().forEach(e -> {
+			edgeSet().forEach(e -> {
 				final ClassExpression s = getEdgeSource(e);
 				final ClassExpression t = getEdgeTarget(e);
 				if (s == parent) {
@@ -291,11 +290,11 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	 * @return HashMap
 	 */
 	public HashMap<ClassExpression, Set<ClassExpression>> siblingMap() {
-		final HashMap<ClassExpression, Set<ClassExpression>> map = new HashMap<ClassExpression, Set<ClassExpression>>();
-		vertexSet().stream().forEach(p -> {
+		final HashMap<ClassExpression, Set<ClassExpression>> map = new HashMap<>();
+		vertexSet().forEach(p -> {
 			final Set<ClassExpression> cl = edgesOf(p).stream()
 				.filter(e1 -> getEdgeSource(e1) == p)
-				.map(e2 -> getEdgeTarget(e2))
+				.map(this::getEdgeTarget)
 				.collect(Collectors.toSet());
 			if (cl.size() > 1) map.put(p, cl);
 		});
@@ -308,7 +307,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	 * @return boolean
 	 */
 	public boolean isConnected() {
-		return new ConnectivityInspector<ClassExpression, TaxonomyEdge>(this).isGraphConnected();
+		return new ConnectivityInspector<>(this).isGraphConnected();
 	}
 
 	/**
@@ -326,7 +325,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	 * @return boolean
 	 */
 	public boolean isTree() {
-		final AsUndirectedGraph<ClassExpression, TaxonomyEdge> ug = new AsUndirectedGraph<ClassExpression, TaxonomyEdge>(this);
+		final AsUndirectedGraph<ClassExpression, TaxonomyEdge> ug = new AsUndirectedGraph<>(this);
 		return GraphTests.isTree(ug);
 	}
 
