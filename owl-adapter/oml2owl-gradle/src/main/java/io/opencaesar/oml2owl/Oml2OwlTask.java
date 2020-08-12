@@ -5,12 +5,13 @@ import java.util.List;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.TaskExecutionException;
 
 public class Oml2OwlTask extends DefaultTask {
 	
-	public String inputPath;
+	public String inputCatalogPath;
 
-	public String outputPath;
+	public String outputCatalogPath;
 
 	public boolean disjointUnions;
 
@@ -21,13 +22,13 @@ public class Oml2OwlTask extends DefaultTask {
     @TaskAction
     public void run() {
         List<String> args = new ArrayList<String>();
-        if (inputPath != null) {
+        if (inputCatalogPath != null) {
 		    args.add("-i");
-		    args.add(inputPath);
+		    args.add(inputCatalogPath);
         }
-        if (outputPath != null) {
+        if (outputCatalogPath != null) {
 		    args.add("-o");
-		    args.add(outputPath);
+		    args.add(outputCatalogPath);
         }
 	    if (disjointUnions) {
 		    args.add("-u");
@@ -38,7 +39,11 @@ public class Oml2OwlTask extends DefaultTask {
 	    if (debug) {
 		    args.add("-d");
 	    }
-        Oml2OwlApp.main(args.toArray(new String[0]));
+	    try {
+	    	Oml2OwlApp.main(args.toArray(new String[0]));
+		} catch (Exception e) {
+			throw new TaskExecutionException(this, e);
+		}
    	}
     
 }

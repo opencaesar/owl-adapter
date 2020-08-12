@@ -18,8 +18,8 @@ gradlew.bat oml2owl:run --args="..."
 ```
 Args:
 ```
---input-path | -i path/to/oml/folder [Required]
---output-path | -o path/to/owl/folder [Required]
+--input-catalog-path | -i path/to/input/oml/catalog.xml [Required]
+--output-catalog-path | -o path/to/output/owl/catalog.xml [Required]
 --disjoint-unions | -u [Optional]
 --annotations-on-axioms | -a [Optional]
 ```

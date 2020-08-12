@@ -7,13 +7,13 @@ import com.beust.jcommander.ParameterException
 import com.google.common.io.CharStreams
 import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
+import io.opencaesar.oml.util.OmlCatalog
 import io.opencaesar.oml.util.OmlXMIResourceFactory
 import io.opencaesar.oml2owl.utils.CloseBundle.CloseBundleToOwl
-import java.io.BufferedWriter
 import java.io.File
-import java.io.FileWriter
 import java.io.IOException
 import java.io.InputStreamReader
+import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
@@ -38,21 +38,21 @@ class Oml2OwlApp {
 	package static val OMLXMI = "omlxmi"
 
 	@Parameter(
-		names=#["--input-path","-i"], 
-		description="Location of OML input folder (Required)",
-		validateWith=InputFolderPath, 
+		names=#["--input-catalog-path","-i"], 
+		description="Path of the input OML catalog (Required)",
+		validateWith=InputCatalogPath, 
 		required=true, 
 		order=1)
-	String inputPath
+	String inputCatalogPath
 
 	@Parameter(
-		names=#["--output-path", "-o"], 
-		description="Location of the OWL2 output folder", 
-		validateWith=OutputFolderPath, 
+		names=#["--output-catalog-path", "-o"], 
+		description="Path of the output OWL catalog (Required)", 
+		validateWith=OutputCatalogPath, 
 		required=true, 
 		order=2
 	)
-	String outputPath
+	String outputCatalogPath
 
 	@Parameter(
 		names=#["--disjoint-unions", "-u"], 
@@ -96,12 +96,6 @@ class Oml2OwlApp {
 			val appender = LogManager.getRootLogger.getAppender("stdout")
 			(appender as AppenderSkeleton).setThreshold(Level.DEBUG)
 		}
-		if (app.inputPath.endsWith(File.separator)) {
-			app.inputPath = app.inputPath.substring(0, app.inputPath.length-1)
-		}
-		if (app.outputPath.endsWith(File.separator)) {
-			app.outputPath = app.outputPath.substring(0, app.outputPath.length-1)
-		}
 		app.run()
 	}
 
@@ -110,20 +104,17 @@ class Oml2OwlApp {
 		LOGGER.info("                        S T A R T")
 		LOGGER.info("                      OML to Owl "+getAppVersion)
 		LOGGER.info("=================================================================")
-		LOGGER.info("Input Folder= " + inputPath)
-		LOGGER.info("Output Folder= " + outputPath)
-
-		val inputFolder = new File(inputPath)
-		val inputFiles = collectOMLFiles(inputFolder)
+		LOGGER.info("Input catalog path= " + inputCatalogPath)
+		LOGGER.info("Output catalog path= " + outputCatalogPath)
 		
 		OmlStandaloneSetup.doSetup()
 		OmlXMIResourceFactory.register
 		val inputResourceSet = new XtextResourceSet
 
-		val ontologyManager = OWLManager.createOWLOntologyManager()
-		val owl2api = new OwlApi(ontologyManager, annotationsOnAxioms)
-		val outputFiles = new LinkedHashMap<File, OWLOntology>
-		val oml2owl = new LinkedHashMap<Resource, OWLOntology>
+		// collect OML files
+		val inputCatalogFile = new File(inputCatalogPath)
+		val inputFolder = inputCatalogFile.parentFile
+		val inputFiles = collectOMLFiles(inputFolder)
 
 		// load the OML otologies
 		for (inputFile : inputFiles) {
@@ -132,6 +123,16 @@ class Oml2OwlApp {
 			inputResourceSet.getResource(inputURI, true)
 		}
 		
+		// create OWL manager
+		val ontologyManager = OWLManager.createOWLOntologyManager()
+		val owl2api = new OwlApi(ontologyManager, annotationsOnAxioms)
+		val outputFiles = new LinkedHashMap<File, OWLOntology>
+		val oml2owl = new LinkedHashMap<Resource, OWLOntology>
+
+		// get the output OWL folder
+		val outputCatalogFile = new File(outputCatalogPath);
+		val outputFolderPath = outputCatalogFile.parent
+
 		// create the equivalent OWL ontologies
 		val threads = new ArrayList<Thread>
 		for (inputFile : inputFiles) {
@@ -139,7 +140,7 @@ class Oml2OwlApp {
 			val inputResource = inputResourceSet.getResource(inputURI, true)
 			val builtin = Oml2Owl.isBuiltInOntology(inputResource.ontology?.iri)
 			if (inputResource !== null && !builtin) {
-				var relativePath = outputPath+File.separator+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
+				var relativePath = outputFolderPath+File.separator+inputFolder.toURI().relativize(inputFile.toURI()).getPath()
 				val outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+'owl')
 				val thread = new Thread() {
 					override run() {
@@ -176,38 +177,15 @@ class Oml2OwlApp {
 		]
 		threads2.forEach[join]
 		
-		// copy catalog files
-		val catalogFiles = collectCatalogFiles(inputFolder)
-		if (catalogFiles.empty) {
-			LOGGER.info("Saving: "+outputPath+File.separator+'catalog.xml')
-			val catalog = new BufferedWriter(new FileWriter(outputPath+File.separator+'catalog.xml'))
-			val baseURI = new File(outputPath).toURI
-			var content = ""
-			content += "<?xml version='1.0'?>\n"
-			content += "<catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\" prefer=\"public\">\n"
-			for(entry : outputFiles.entrySet) {
-				val uri = entry.value.ontologyID.ontologyIRI.get()
-				val prefix = baseURI.relativize(entry.key.toURI()).getPath().replace('.owl', '')
-				content += "\t<rewriteURI uriStartString=\""+uri+"\" rewritePrefix=\""+prefix+"\" />\n";
-			}
-			content += "</catalog>";
-			catalog.write(content);
-			catalog.close()
-		} else {
-			for (catalogFile : catalogFiles) {
-				val inputCatalog = Paths.get(catalogFile.path)
-				val outputCatalog = Paths.get(catalogFile.path.replaceFirst(inputPath, outputPath))
-				LOGGER.info("Saving: "+outputCatalog)
-				Files.copy(inputCatalog, outputCatalog, StandardCopyOption.REPLACE_EXISTING)
-			}
-		}
+		// create the equivalent OWL catalog
+		copyCatalog(inputCatalogFile, outputCatalogFile) 
 
 		LOGGER.info("=================================================================")
 		LOGGER.info("                          E N D")
 		LOGGER.info("=================================================================")
 	}
 
-	def Collection<File> collectOMLFiles(File directory) {
+	private def Collection<File> collectOMLFiles(File directory) {
 		val omlFiles = new ArrayList<File>
 		for (file : directory.listFiles()) {
 			if (file.isFile) {
@@ -222,18 +200,17 @@ class Oml2OwlApp {
 		return omlFiles
 	}
 
-	def Collection<File> collectCatalogFiles(File directory) {
-		val catalogFiles = new ArrayList<File>
-		for (file : directory.listFiles()) {
-			if (file.isFile) {
-				if (file.name == 'catalog.xml') {
-					catalogFiles.add(file)
-				}
-			} else if (file.isDirectory) {
-				catalogFiles.addAll(collectCatalogFiles(file))
-			}
+	private def void copyCatalog(File inputCatalogFile, File outputCatalogFile) {
+		LOGGER.info("Saving: "+inputCatalogFile)
+		Files.copy(Paths.get(inputCatalogFile.path), Paths.get(outputCatalogFile.path), StandardCopyOption.REPLACE_EXISTING)
+		val inputCatalog = OmlCatalog.create(inputCatalogFile.toURI.toURL)
+		for (c : inputCatalog.nestedCatalogs) {
+			val uri = new URL(c).toURI
+			val nestedInputCatalogFile = new File(uri);
+			var relativePath = inputCatalogFile.parentFile.toURI().relativize(uri).getPath()
+			val nestedOutputCatalogFile = new File(outputCatalogFile.parent+File.separator+relativePath)
+			copyCatalog(nestedInputCatalogFile, nestedOutputCatalogFile)
 		}
-		return catalogFiles
 	}
 
 	private def String getFileExtension(File file) {
@@ -248,7 +225,7 @@ class Oml2OwlApp {
 	 * Get application version id from properties file.
 	 * @return version string from build.properties or UNKNOWN
 	 */
-	def String getAppVersion() {
+	private def String getAppVersion() {
 		var version = "UNKNOWN"
 		try {
 			val input = Thread.currentThread().getContextClassLoader().getResourceAsStream("version.txt")
@@ -261,21 +238,23 @@ class Oml2OwlApp {
 		version
 	}
 
-	static class InputFolderPath implements IParameterValidator {
+	static class InputCatalogPath implements IParameterValidator {
 		override validate(String name, String value) throws ParameterException {
-			val directory = new File(value)
-			if (!directory.isDirectory) {
-				throw new ParameterException("Parameter " + name + " should be a valid folder path");
+			val file = new File(value)
+			if (!file.getName().endsWith("catalog.xml")) {
+				throw new ParameterException("Parameter " + name + " should be a valid OWL catalog path")
 			}
 	  	}
 	}
 
-	static class OutputFolderPath implements IParameterValidator {
+	static class OutputCatalogPath implements IParameterValidator {
 		override validate(String name, String value) throws ParameterException {
-			val directory = new File(value)
-			if (!directory.exists) {
-				directory.mkdir
+			val file = new File(value)
+			if (!file.getName().endsWith("catalog.xml")) {
+				throw new ParameterException("Parameter " + name + " should be a valid OWL catalog path")
 			}
+			val folder = file.parentFile
+			folder.mkdirs
 	  	}
 	}
 	

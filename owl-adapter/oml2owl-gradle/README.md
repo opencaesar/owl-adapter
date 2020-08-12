@@ -18,8 +18,8 @@ buildscript {
     }
 }
 task oml2owl(type:io.opencaesar.oml2owl.Oml2OwlTask) {
-    inputPath = file('path/to/input/oml/folder') [Required]
-    outputPath = file('path/to/output/oml/folder') [Required]
+    inputCatalogPath = file('path/to/input/oml/catalog.xml') [Required]
+    outputCatalogPath = file('path/to/output/owl/catalog.xml') [Required]
     disjointUnions = true [Optional, false by default]
     annotationsOnAxioms = true [Optional, false by default]
 }               
