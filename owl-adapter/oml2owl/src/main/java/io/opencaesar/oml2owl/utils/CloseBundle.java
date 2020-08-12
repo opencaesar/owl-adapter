@@ -1,7 +1,9 @@
 package io.opencaesar.oml2owl.utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Spliterator;
@@ -37,34 +39,31 @@ public class CloseBundle {
 	}
 	
 	private Taxonomy omlTaxonomy(final Iterable<Ontology> allOntologies) {
-		final Taxonomy taxonomy = new Taxonomy();
 		final Map<Entity, Singleton> singletonMap = new HashMap<Entity, Singleton>();
-		
+		final List<ClassExpression>  vertexList = new ArrayList<ClassExpression>();
+		final List<ClassExpression>  edgeList = new ArrayList<ClassExpression>();
+
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof Entity && !(e instanceof Aspect)).map(e -> (Entity)e).forEach(entity -> {
 				final Singleton s = new Singleton(entity);
 				singletonMap.put(entity, s);
-				taxonomy.addVertex(s);
+				vertexList.add(s);
 			});
 		});
-		
+
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof SpecializationAxiom).map(e -> (SpecializationAxiom)e).forEach(axiom -> {
 				final Singleton specializedSingleton = singletonMap.get(axiom.getSpecializedTerm());
 				final Singleton specializingSingleton = singletonMap.get(OmlRead.getSpecializingTerm(axiom));
 
 				if (specializedSingleton != null && specializingSingleton != null) {
-					try {
-						taxonomy.addEdge(specializedSingleton, specializingSingleton);
-					} catch (IllegalArgumentException e) {
-						String msg = e.getMessage() + ": while adding edge " + specializedSingleton.toString() + " -> " + specializingSingleton.toString();
-						throw new IllegalArgumentException(msg);
-					}
+					edgeList.add(specializedSingleton);
+					edgeList.add(specializingSingleton);
 				}
 			});
 		});
 		
-		return taxonomy.transitiveReduction().rootAt(new Universal());
+		return new Taxonomy(vertexList, edgeList).transitiveReduction().rootAt(new Universal());
 	}
 
 	public Map<ClassExpression, Set<ClassExpression>> getSiblingMap() {
