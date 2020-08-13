@@ -3,10 +3,8 @@ package io.opencaesar.oml2owl.utils;
 import io.opencaesar.oml2owl.utils.ClassExpression;
 import io.opencaesar.oml2owl.utils.ClassExpression.Singleton;
 import io.opencaesar.oml2owl.utils.Taxonomy;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -19,11 +17,14 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import static io.opencaesar.oml2owl.utils.Axiom.AxiomType.DISJOINT_CLASSES;
+
 @SuppressWarnings("all")
 public class TestAsymmetricTaxonomy {
 
 	HashMap<String, ClassExpression> vertexMap = new HashMap<String, ClassExpression>();
 	HashMap<ClassExpression, Set<ClassExpression>> siblingMap = new HashMap<ClassExpression, Set<ClassExpression>>();
+	HashSet<Axiom> axioms = new HashSet<Axiom>();
 
 	Taxonomy initialTaxonomy;
 	Taxonomy redundantEdgeTaxonomy;
@@ -282,6 +283,10 @@ public class TestAsymmetricTaxonomy {
 			Stream.of("d", "e\\i", "i\\k", "k").map(s -> vertexMap.get(s)).collect(Collectors.toSet()));
 		siblingMap.put(vertexMap.get("c\\(i∪k)"),
 			Stream.of("f\\k", "g").map(s -> vertexMap.get(s)).collect(Collectors.toSet()));
+
+		siblingMap.forEach((c, s) ->
+				axioms.add(new Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom(s))
+		);
 	}
 
 	@After public void tearDown() throws Exception {
@@ -383,5 +388,9 @@ public class TestAsymmetricTaxonomy {
 
 	@Test public void testSiblingMap() {
 		Assert.assertEquals(siblingMap, afterTreeifyTaxonomy.siblingMap());
+	}
+
+	@Test public void testGenerateAxioms() {
+		Assert.assertEquals(axioms, initialTaxonomy.generateAxioms(DISJOINT_CLASSES));
 	}
 }

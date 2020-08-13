@@ -4,9 +4,11 @@ import java.util.Set;
 
 public abstract class Axiom {
 
-    protected abstract class ClassExpressionSetAxiom extends Axiom {
+    public enum AxiomType {DISJOINT_CLASSES, EQUIVALENT_CLASSES, DISJOINT_UNION}
 
-        private Set<ClassExpression> set;
+    public abstract static class ClassExpressionSetAxiom extends Axiom {
+
+        private final Set<ClassExpression> set;
 
         protected ClassExpressionSetAxiom(Set<ClassExpression> set) {
             super();
@@ -17,10 +19,24 @@ public abstract class Axiom {
             return set;
         }
 
-        protected class DisjointClassesAxiom extends ClassExpressionSetAxiom {
+        public int hashCode() { return set.hashCode(); }
+
+        public String toString(String type) {
+            return type + "(" + set.toString() + ")";
+        }
+
+        protected static class DisjointClassesAxiom extends ClassExpressionSetAxiom {
 
             protected DisjointClassesAxiom(Set<ClassExpression> set) {
                 super(set);
+            }
+
+            public boolean equals(Object o) {
+                return (o instanceof DisjointClassesAxiom) && (((DisjointClassesAxiom) o).getSet().equals(getSet()));
+            }
+
+            public String toString() {
+                return toString("DisjointClasses");
             }
         }
 

@@ -1,13 +1,6 @@
 package io.opencaesar.oml2owl.utils;
 
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -19,6 +12,8 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 
 import com.google.common.base.Objects;
+
+import static io.opencaesar.oml2owl.utils.Axiom.ClassExpressionSetAxiom.*;
 
 @SuppressWarnings("serial")
 public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.TaxonomyEdge> {
@@ -302,6 +297,37 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	}
 
 	/**
+	 * Generate disjointness axioms.
+	 *
+	 * @return List<Axiom>
+	 */
+	public Set<Axiom> generateAxioms(AxiomType axiomType) {
+
+		ensureConnected();
+		final Taxonomy tree = treeify();
+		tree.ensureTree();
+		final HashMap<ClassExpression, Set<ClassExpression>> siblingMap = tree.siblingMap();
+
+		final HashSet<Axiom> axioms = new HashSet<>();
+
+		for (Map.Entry<ClassExpression, Set<ClassExpression>> entry : siblingMap.entrySet()) {
+			ClassExpression c = entry.getKey();
+			Set<ClassExpression> s = entry.getValue();
+			switch (axiomType) {
+				case DISJOINT_CLASSES:
+					axioms.add(new DisjointClassesAxiom(s));
+					break;
+				case EQUIVALENT_CLASSES:
+				case DISJOINT_UNION:
+					break;
+				default:
+			}
+		}
+
+		return axioms;
+	}
+
+	/**
 	 * Test whether this Taxonomy is connected.
 	 * 
 	 * @return boolean
@@ -330,7 +356,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	}
 
 	/**
-	 * Throw InvalidTreeException unless connected.
+	 * Throw InvalidTreeException unless a tree.
 	 */
 	public void ensureTree() throws InvalidTreeException {
 		if (!isTree()) {
