@@ -8,12 +8,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@SuppressWarnings("AssertBetweenInconvertibleTypes")
 public class TestAxiom {
 
     Set<ClassExpression> ces1a, ces1b, ces2a, ces2b;
     Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom djca1a, djca1b, djca2a, djca2b;
     Axiom.ClassExpressionSetAxiom.EquivalentClassesAxiom eqca1a, eqca1b, eqca2a, eqca2b;
     Axiom.ClassExpressionSetAxiom.DisjointUnionAxiom djua1a, djua1b, djua2a, djua2b;
+    ClassExpression.Singleton e;
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
@@ -30,7 +32,7 @@ public class TestAxiom {
         final ClassExpression.Singleton b = new ClassExpression.Singleton("b");
         final ClassExpression.Singleton c = new ClassExpression.Singleton("c");
         final ClassExpression.Singleton d = new ClassExpression.Singleton("d");
-        final ClassExpression.Singleton e = new ClassExpression.Singleton("e");
+        e = new ClassExpression.Singleton("e");
 
         final ClassExpression.Union aub = new ClassExpression.Union(new HashSet<>(Arrays.asList(a, b)));
         final ClassExpression.Union bua = new ClassExpression.Union(new HashSet<>(Arrays.asList(b, a)));
@@ -173,4 +175,25 @@ public class TestAxiom {
         Assert.assertNotEquals(eqca2b, djua2b);
 
     }
+
+    @Test
+    public void testToString() {
+
+        Assert.assertEquals("DisjointClasses(" + ces1a.toString() + ")", djca1a.toString());
+        Assert.assertEquals("DisjointClasses(" + ces1b.toString() + ")", djca1b.toString());
+        Assert.assertEquals("DisjointClasses(" + ces2a.toString() + ")", djca2a.toString());
+        Assert.assertEquals("DisjointClasses(" + ces2b.toString() + ")", djca2b.toString());
+
+        Assert.assertEquals("EquivalentClasses(" + ces1a.toString() + ")", eqca1a.toString());
+        Assert.assertEquals("EquivalentClasses(" + ces1b.toString() + ")", eqca1b.toString());
+        Assert.assertEquals("EquivalentClasses(" + ces2a.toString() + ")", eqca2a.toString());
+        Assert.assertEquals("EquivalentClasses(" + ces2b.toString() + ")", eqca2b.toString());
+
+        Assert.assertEquals("DisjointUnion(" + e.toString() + ", " + ces1a.toString() + ")", djua1a.toString());
+        Assert.assertEquals("DisjointUnion(" + e.toString() + ", " + ces1b.toString() + ")", djua1b.toString());
+        Assert.assertEquals("DisjointUnion(" + e.toString() + ", " + ces2a.toString() + ")", djua2a.toString());
+        Assert.assertEquals("DisjointUnion(" + e.toString() + ", " + ces2b.toString() + ")", djua2b.toString());
+
+    }
+
 }

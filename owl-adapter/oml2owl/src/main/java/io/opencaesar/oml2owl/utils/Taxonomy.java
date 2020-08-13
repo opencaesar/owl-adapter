@@ -301,7 +301,7 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	 *
 	 * @return List<Axiom>
 	 */
-	public Set<Axiom> generateAxioms(AxiomType axiomType) {
+	public Set<Axiom> generateAxioms(AxiomType axiomType) throws UnconnectedTaxonomyException, InvalidTreeException {
 
 		ensureConnected();
 		final Taxonomy tree = treeify();
