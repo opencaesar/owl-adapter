@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TestAxiom {
 
@@ -38,10 +39,10 @@ public class TestAxiom {
         final ClassExpression.Difference ciaubmd = new ClassExpression.Difference(ciaub, d);
         final ClassExpression.Difference buaicmd = new ClassExpression.Difference(buaic, d);
 
-        ces1a = Arrays.asList(aub, ciaub).stream().collect(Collectors.toSet());
-        ces1b = Arrays.asList(bua, buaic).stream().collect(Collectors.toSet());
-        ces2a = Arrays.asList(aub, ciaub, ciaubmd, e).stream().collect(Collectors.toSet());
-        ces2b = Arrays.asList(bua, buaic, buaicmd, e).stream().collect(Collectors.toSet());
+        ces1a = Stream.of(aub, ciaub).collect(Collectors.toSet());
+        ces1b = Stream.of(bua, buaic).collect(Collectors.toSet());
+        ces2a = Stream.of(aub, ciaub, ciaubmd, e).collect(Collectors.toSet());
+        ces2b = Stream.of(bua, buaic, buaicmd, e).collect(Collectors.toSet());
 
         djca1a = new Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom(ces1a);
         djca1b = new Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom(ces1b);
@@ -66,6 +67,7 @@ public class TestAxiom {
 
     @Test
     public void testHashCode() {
+
         Assert.assertEquals(djca1a.hashCode(), djca1b.hashCode());
         Assert.assertEquals(djca2a.hashCode(), djca2b.hashCode());
 
@@ -74,5 +76,101 @@ public class TestAxiom {
 
         Assert.assertEquals(djua1a.hashCode(), djua1b.hashCode());
         Assert.assertEquals(djua2a.hashCode(), djua2b.hashCode());
+    }
+
+    @Test
+    public void testEquals() {
+
+        // equivalent class expressions
+        Assert.assertEquals(djca1a, djca1b);
+        Assert.assertEquals(djca2a, djca2b);
+
+        // non-equivalent class expressions
+        Assert.assertNotEquals(djca1a, djca2a);
+        Assert.assertNotEquals(djca1a, djca2b);
+        Assert.assertNotEquals(djca1b, djca2a);
+        Assert.assertNotEquals(djca1b, djca2b);
+
+        // equivalent class expressions
+        Assert.assertEquals(eqca1a, eqca1b);
+        Assert.assertEquals(eqca2a, eqca2b);
+
+        // non-equivalent class expressions
+        Assert.assertNotEquals(eqca1a, eqca2a);
+        Assert.assertNotEquals(eqca1a, eqca2b);
+        Assert.assertNotEquals(eqca1b, eqca2a);
+        Assert.assertNotEquals(eqca1b, djca2b);
+
+        // equivalent class expressions
+        Assert.assertEquals(djua1a, djua1b);
+        Assert.assertEquals(djua2a, djua2b);
+
+        // non-equivalent class expressions
+        Assert.assertNotEquals(djua1a, djua2a);
+        Assert.assertNotEquals(djua1a, djua2b);
+        Assert.assertNotEquals(djua1b, djua2a);
+        Assert.assertNotEquals(djua1b, djca2b);
+
+        // different axiom types
+        Assert.assertNotEquals(djca1a, eqca1a);
+        Assert.assertNotEquals(djca1a, eqca1b);
+        Assert.assertNotEquals(djca1a, eqca2a);
+        Assert.assertNotEquals(djca1a, eqca2b);
+
+        Assert.assertNotEquals(djca1b, eqca1a);
+        Assert.assertNotEquals(djca1b, eqca1b);
+        Assert.assertNotEquals(djca1b, eqca2a);
+        Assert.assertNotEquals(djca1b, eqca2b);
+
+        Assert.assertNotEquals(djca2a, eqca1a);
+        Assert.assertNotEquals(djca2a, eqca1b);
+        Assert.assertNotEquals(djca2a, eqca2a);
+        Assert.assertNotEquals(djca2a, eqca2b);
+
+        Assert.assertNotEquals(djca2b, eqca1a);
+        Assert.assertNotEquals(djca2b, eqca1b);
+        Assert.assertNotEquals(djca2b, eqca2a);
+        Assert.assertNotEquals(djca2b, eqca2b);
+
+        Assert.assertNotEquals(djca1a, djua1a);
+        Assert.assertNotEquals(djca1a, djua1b);
+        Assert.assertNotEquals(djca1a, djua2a);
+        Assert.assertNotEquals(djca1a, djua2b);
+
+        Assert.assertNotEquals(djca1b, djua1a);
+        Assert.assertNotEquals(djca1b, djua1b);
+        Assert.assertNotEquals(djca1b, djua2a);
+        Assert.assertNotEquals(djca1b, djua2b);
+
+        Assert.assertNotEquals(djca2a, djua1a);
+        Assert.assertNotEquals(djca2a, djua1b);
+        Assert.assertNotEquals(djca2a, djua2a);
+        Assert.assertNotEquals(djca2a, djua2b);
+
+        Assert.assertNotEquals(djca2b, djua1a);
+        Assert.assertNotEquals(djca2b, djua1b);
+        Assert.assertNotEquals(djca2b, djua2a);
+        Assert.assertNotEquals(djca2b, djua2b);
+
+        Assert.assertNotEquals(eqca1a, djua1a);
+        Assert.assertNotEquals(eqca1a, djua1b);
+        Assert.assertNotEquals(eqca1a, djua2a);
+        Assert.assertNotEquals(eqca1a, djua2b);
+
+        Assert.assertNotEquals(eqca1b, djua1a);
+        Assert.assertNotEquals(eqca1b, djua1b);
+        Assert.assertNotEquals(eqca1b, djua2a);
+        Assert.assertNotEquals(eqca1b, djua2b);
+
+        Assert.assertNotEquals(eqca2a, djua1a);
+        Assert.assertNotEquals(eqca2a, djua1b);
+        Assert.assertNotEquals(eqca2a, djua2a);
+        Assert.assertNotEquals(eqca2a, djua2b);
+
+        Assert.assertNotEquals(eqca2b, djua1a);
+        Assert.assertNotEquals(eqca2b, djua1b);
+        Assert.assertNotEquals(eqca2b, djua2a);
+        Assert.assertNotEquals(eqca2b, djua2b);
+
     }
 }
