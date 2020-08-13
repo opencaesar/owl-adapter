@@ -1,21 +1,11 @@
 package io.opencaesar.oml2owl.utils;
 
-import io.opencaesar.oml2owl.utils.ClassExpression;
 import io.opencaesar.oml2owl.utils.ClassExpression.Singleton;
-import io.opencaesar.oml2owl.utils.Taxonomy;
+import org.junit.*;
 
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 import static io.opencaesar.oml2owl.utils.Axiom.AxiomType.DISJOINT_CLASSES;
 

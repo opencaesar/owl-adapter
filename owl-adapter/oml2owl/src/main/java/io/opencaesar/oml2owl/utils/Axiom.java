@@ -1,5 +1,6 @@
 package io.opencaesar.oml2owl.utils;
 
+import java.util.Arrays;
 import java.util.Set;
 
 public abstract class Axiom {
@@ -19,8 +20,14 @@ public abstract class Axiom {
             return set;
         }
 
-        public int hashCode() { return set.hashCode(); }
+        public int hashCode() {
+            return set.hashCode();
+        }
 
+        public boolean equals(Object o) {
+            return (o instanceof ClassExpressionSetAxiom) && (((ClassExpressionSetAxiom) o).getSet().equals(getSet()));
+
+        }
         public String toString(String type) {
             return type + "(" + set.toString() + ")";
         }
@@ -31,23 +38,35 @@ public abstract class Axiom {
                 super(set);
             }
 
+            @Override
             public boolean equals(Object o) {
-                return (o instanceof DisjointClassesAxiom) && (((DisjointClassesAxiom) o).getSet().equals(getSet()));
+                return (o instanceof DisjointClassesAxiom) && super.equals(o);
             }
 
+            @Override
             public String toString() {
-                return toString("DisjointClasses");
+                return super.toString("DisjointClasses");
             }
         }
 
-        protected class EquivalentClassesAxiom extends ClassExpressionSetAxiom {
+        protected static class EquivalentClassesAxiom extends ClassExpressionSetAxiom {
 
             protected EquivalentClassesAxiom(Set<ClassExpression> set) {
                 super(set);
             }
+
+            @Override
+            public boolean equals(Object o) {
+                return (o instanceof EquivalentClassesAxiom) && super.equals(o);
+            }
+
+            @Override
+            public String toString() {
+                return super.toString("EquivalentClasses");
+            }
         }
 
-        protected class DisjointUnionAxiom extends ClassExpressionSetAxiom {
+        protected static class DisjointUnionAxiom extends ClassExpressionSetAxiom {
 
             protected ClassExpression.Singleton c;
 
@@ -58,6 +77,22 @@ public abstract class Axiom {
 
             protected ClassExpression.Singleton getC() {
                 return c;
+            }
+
+            @Override
+            public int hashCode() {
+                return Arrays.asList(c, getSet()).hashCode();
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                return (o instanceof DisjointUnionAxiom) &&
+                        c.equals(((DisjointUnionAxiom) o).getC()) && super.equals(o);
+            }
+
+            @Override
+            public String toString() {
+                return "DisjointUnion(" + c.toString() + ", " + getSet().toString() + ")";
             }
         }
     }

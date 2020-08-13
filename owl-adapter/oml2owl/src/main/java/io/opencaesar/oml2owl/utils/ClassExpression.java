@@ -575,7 +575,7 @@ import java.util.stream.Collectors;
 		 */
 		@Override
 		public String toString() {
-			return toString("∩");
+			return super.toString("∩");
 		}
 		
 		/**
@@ -636,7 +636,7 @@ import java.util.stream.Collectors;
 		 */
 		@Override
 		public String toString() {
-			return toString("∪");
+			return super.toString("∪");
 		}
 		
 		/**
