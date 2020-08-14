@@ -297,11 +297,11 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 	}
 
 	/**
-	 * Generate disjointness axioms.
+	 * Generate closure axioms.
 	 *
 	 * @return List<Axiom>
 	 */
-	public Set<Axiom> generateAxioms(AxiomType axiomType) throws UnconnectedTaxonomyException, InvalidTreeException {
+	public Set<Axiom> generateClosureAxioms(AxiomType axiomType) throws UnconnectedTaxonomyException, InvalidTreeException {
 
 		ensureConnected();
 		final Taxonomy tree = treeify();
@@ -317,9 +317,14 @@ public class Taxonomy extends DirectedAcyclicGraph<ClassExpression, Taxonomy.Tax
 				case DISJOINT_CLASSES:
 					axioms.add(new DisjointClassesAxiom(s));
 					break;
-				case EQUIVALENT_CLASSES:
 				case DISJOINT_UNION:
+					axioms.add(
+					(c instanceof ClassExpression.Singleton) ?
+							new DisjointUnionAxiom((ClassExpression.Singleton) c, s) :
+							new DisjointClassesAxiom(s)
+					);
 					break;
+				case EQUIVALENT_CLASSES:
 				default:
 			}
 		}

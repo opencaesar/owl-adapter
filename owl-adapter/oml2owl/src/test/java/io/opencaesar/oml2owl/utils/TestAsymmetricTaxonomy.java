@@ -8,13 +8,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.opencaesar.oml2owl.utils.Axiom.AxiomType.DISJOINT_CLASSES;
+import static io.opencaesar.oml2owl.utils.Axiom.AxiomType.DISJOINT_UNION;
 
 @SuppressWarnings("all")
 public class TestAsymmetricTaxonomy {
 
 	HashMap<String, ClassExpression> vertexMap = new HashMap<String, ClassExpression>();
 	HashMap<ClassExpression, Set<ClassExpression>> siblingMap = new HashMap<ClassExpression, Set<ClassExpression>>();
-	HashSet<Axiom> axioms = new HashSet<Axiom>();
+	HashSet<Axiom> disjointClassesAxioms = new HashSet<Axiom>();
+	HashSet<Axiom> disjointUnionAxioms = new HashSet<Axiom>();
 
 	Taxonomy initialTaxonomy;
 	Taxonomy redundantEdgeTaxonomy;
@@ -274,9 +276,14 @@ public class TestAsymmetricTaxonomy {
 		siblingMap.put(vertexMap.get("c\\(i∪k)"),
 			Stream.of("f\\k", "g").map(s -> vertexMap.get(s)).collect(Collectors.toSet()));
 
-		siblingMap.forEach((c, s) ->
-				axioms.add(new Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom(s))
-		);
+		siblingMap.forEach((c, s) -> {
+			disjointClassesAxioms.add(new Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom(s));
+			disjointUnionAxioms.add(
+					(c instanceof Singleton) ?
+							new Axiom.ClassExpressionSetAxiom.DisjointUnionAxiom((Singleton) c, s) :
+							new Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom(s)
+			);
+		});
 	}
 
 	@After public void tearDown() throws Exception {
@@ -380,7 +387,8 @@ public class TestAsymmetricTaxonomy {
 		Assert.assertEquals(siblingMap, afterTreeifyTaxonomy.siblingMap());
 	}
 
-	@Test public void testGenerateAxioms() {
-		Assert.assertEquals(axioms, initialTaxonomy.generateAxioms(DISJOINT_CLASSES));
+	@Test public void testGenerateClosureAxioms() {
+		Assert.assertEquals(disjointClassesAxioms, initialTaxonomy.generateClosureAxioms(DISJOINT_CLASSES));
+		Assert.assertEquals(disjointUnionAxioms, initialTaxonomy.generateClosureAxioms(DISJOINT_UNION));
 	}
 }
