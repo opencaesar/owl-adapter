@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.stream.Stream;
 
 import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.parameters.ChangeApplied;
 
 public class OwlApi {
 	
@@ -15,17 +16,9 @@ public class OwlApi {
 		this.manager = manager;
 		this.factory = manager.getOWLDataFactory();
 	}
-	
-	public OWLDisjointClassesAxiom addDisjointClasses(OWLOntology ontology, Collection<OWLClassExpression> classes, OWLAnnotation...annotations) {
-		OWLDisjointClassesAxiom axiom = factory.getOWLDisjointClassesAxiom(classes, Arrays.asList(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
-	}
-	
-	public OWLDisjointUnionAxiom addDisjointUnion(OWLOntology ontology, OWLClass owlClass, Collection<OWLClassExpression> subClasses, OWLAnnotation...annotations) {
-		OWLDisjointUnionAxiom axiom = factory.getOWLDisjointUnionAxiom(owlClass, subClasses, Arrays.asList((annotations)));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+
+	public ChangeApplied addAxiom(OWLOntology o, OWLAxiom a) {
+		return manager.addAxiom(o, a);
 	}
 
 	public OWLClass getOWLThing() {
