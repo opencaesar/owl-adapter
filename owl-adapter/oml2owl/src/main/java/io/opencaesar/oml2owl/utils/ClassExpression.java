@@ -88,7 +88,7 @@ import java.util.stream.Collectors;
 			// Theorem 3
 			return e.intersection(this);
 		else
-			return new Intersection(new HashSet<ClassExpression>(Arrays.asList(this, e)));
+			return new Intersection(new HashSet<>(Arrays.asList(this, e)));
 	}
 	
 	/**
@@ -104,15 +104,13 @@ import java.util.stream.Collectors;
 			// Theorem 6
 			return e.union(this);
 		else
-			return new Union(new HashSet<ClassExpression>(Arrays.asList(this, e)));
+			return new Union(new HashSet<>(Arrays.asList(this, e)));
 	}
 	
 	/**
 	 * @return		String A string representation of this ClassExpression as an atom
 	 */
 	protected String toAtom() { return "(" + toString() + ")"; }
-	
-	/*************************************************************************************/
 	
 	/**
 	 * Universal implements methods for ClassExpressions that denote the universal class.
@@ -522,7 +520,7 @@ import java.util.stream.Collectors;
 		 * @return		String denoting this Nary
 		 */
 		protected String toString(String c) {
-			return String.join(c, s.stream().map(t -> t.toString()).collect(Collectors.toList()));
+			return s.stream().map(Object::toString).collect(Collectors.joining(c));
 		}
 		
 		/**
@@ -584,7 +582,7 @@ import java.util.stream.Collectors;
 		 */
 		@Override
 		protected ClassExpression intersection(ClassExpression e) {		
-			Set<ClassExpression> newSet = new HashSet<ClassExpression>(s);		
+			Set<ClassExpression> newSet = new HashSet<>(s);
 			// Theorem 4
 			if (e instanceof Intersection)
 				newSet.addAll(((Intersection)e).s);
@@ -645,7 +643,7 @@ import java.util.stream.Collectors;
 		 */
 		@Override
 		protected ClassExpression union(ClassExpression e) {
-			Set<ClassExpression> newSet = new HashSet<ClassExpression>(s);
+			Set<ClassExpression> newSet = new HashSet<>(s);
 			// Theorem 7
 			if (e instanceof Union)
 				newSet.addAll(((Union)e).s);
