@@ -1,18 +1,14 @@
 package io.opencaesar.oml2owl.utils;
 
-import io.opencaesar.oml2owl.utils.OwlClassExpression;
-import io.opencaesar.oml2owl.utils.Axiom;
 import io.opencaesar.oml2owl.utils.Axiom.ClassExpressionSetAxiom;
 import io.opencaesar.oml2owl.utils.Axiom.ClassExpressionSetAxiom.DisjointClassesAxiom;
-import io.opencaesar.oml2owl.utils.Axiom.ClassExpressionSetAxiom.EquivalentClassesAxiom;
 import io.opencaesar.oml2owl.utils.Axiom.ClassExpressionSetAxiom.DisjointUnionAxiom;
-
+import io.opencaesar.oml2owl.utils.Axiom.ClassExpressionSetAxiom.EquivalentClassesAxiom;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLClassExpression;
 
 import java.util.Arrays;
-import java.util.Set;
 import java.util.stream.Stream;
 
 public class OwlAxiom {

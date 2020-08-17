@@ -1,11 +1,9 @@
 package io.opencaesar.oml2owl.utils;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.stream.Stream;
-
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.model.parameters.ChangeApplied;
+
+import java.util.stream.Stream;
 
 public class OwlApi {
 	
