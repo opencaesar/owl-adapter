@@ -1,12 +1,16 @@
-package io.opencaesar.oml2owl.utils;
+package io.opencaesar.oml2owl;
 
 import io.opencaesar.oml.Aspect;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.SpecializationAxiom;
 import io.opencaesar.oml.util.OmlRead;
+import io.opencaesar.oml2owl.utils.Axiom;
+import io.opencaesar.oml2owl.utils.ClassExpression;
 import io.opencaesar.oml2owl.utils.ClassExpression.Singleton;
 import io.opencaesar.oml2owl.utils.ClassExpression.Universal;
+import io.opencaesar.oml2owl.utils.OwlApi;
+import io.opencaesar.oml2owl.utils.Taxonomy;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.semanticweb.owlapi.model.OWLOntology;
 
@@ -63,7 +67,7 @@ public class CloseBundle {
 	public static class CloseBundleToOwl extends CloseBundle {
 		protected final OWLOntology ontology;
 		protected final boolean disjointUnions;
-		protected final OwlApi owlApi;
+		protected final io.opencaesar.oml2owl.utils.OwlApi owlApi;
 
 		public CloseBundleToOwl(final Resource resource, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
 			super(resource);

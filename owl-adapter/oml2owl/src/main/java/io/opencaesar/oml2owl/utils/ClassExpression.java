@@ -119,7 +119,7 @@ import java.util.stream.Collectors;
 	 * @version		0.0.1
 	 * @since		0.0.1
 	 */
-	protected static class Universal extends ClassExpression {
+	public static class Universal extends ClassExpression {
 		
 		/**
 		 * @param		o Object
@@ -184,7 +184,7 @@ import java.util.stream.Collectors;
 	 * @version		0.0.1
 	 * @since		0.0.1
 	 */
-	protected static class Empty extends ClassExpression {
+	public static class Empty extends ClassExpression {
 		
 		/**
 		 * @param		o Object
@@ -260,16 +260,16 @@ import java.util.stream.Collectors;
 	 * @version		0.0.1
 	 * @since		0.0.1
 	 */
-	protected static class Singleton extends ClassExpression {
+	public static class Singleton extends ClassExpression {
 		
 		protected Object encapsulatedClass;
-		
+
 		/**
 		 * A Singleton encapsulating the specified class
 		 *
 		 * @param		encapsulatedClass An arbitrary object representing a class
 		 */
-		protected Singleton(Object encapsulatedClass) {
+		public Singleton(Object encapsulatedClass) {
 			this.encapsulatedClass = encapsulatedClass;
 		}
 		
