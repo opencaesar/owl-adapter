@@ -8,6 +8,7 @@ import io.opencaesar.oml.BooleanLiteral
 import io.opencaesar.oml.CardinalityRestrictionKind
 import io.opencaesar.oml.Concept
 import io.opencaesar.oml.ConceptInstance
+import io.opencaesar.oml.ConceptInstanceReference
 import io.opencaesar.oml.ConceptTypeAssertion
 import io.opencaesar.oml.DecimalLiteral
 import io.opencaesar.oml.Description
@@ -31,6 +32,7 @@ import io.opencaesar.oml.RelationCardinalityRestrictionAxiom
 import io.opencaesar.oml.RelationEntity
 import io.opencaesar.oml.RelationEntityPredicate
 import io.opencaesar.oml.RelationInstance
+import io.opencaesar.oml.RelationInstanceReference
 import io.opencaesar.oml.RelationPredicate
 import io.opencaesar.oml.RelationRangeRestrictionAxiom
 import io.opencaesar.oml.RelationTargetRestrictionAxiom
@@ -55,7 +57,6 @@ import io.opencaesar.oml.Term
 import io.opencaesar.oml.Vocabulary
 import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.util.OmlVisitor
-import io.opencaesar.oml2owl.OwlApi
 import java.util.ArrayList
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.rdf4j.model.vocabulary.RDFS
@@ -276,6 +277,15 @@ class Oml2Owl extends OmlVisitor<Void> {
 		val instanceIri = instance.iri
 		val individual = owl.addNamedIndividual(ontology, instanceIri)
 		instance.ownedPropertyValues.forEach[it.appliesTo(individual)]
+		instance.ownedLinks.forEach[it.appliesTo(individual)]
+		return null
+	}
+
+	override caseConceptInstanceReference(ConceptInstanceReference reference) {
+		val instanceIri = reference.resolve.iri
+		val individual = owl.getNamedIndividual(instanceIri)
+		reference.ownedPropertyValues.forEach[it.appliesTo(individual)]
+		reference.ownedLinks.forEach[it.appliesTo(individual)]
 		return null
 	}
 
@@ -283,6 +293,15 @@ class Oml2Owl extends OmlVisitor<Void> {
 		val instanceIri = instance.iri
 		val individual = owl.addNamedIndividual(ontology, instanceIri)
 		instance.ownedPropertyValues.forEach[it.appliesTo(individual)]
+		instance.ownedLinks.forEach[it.appliesTo(individual)]
+		return null
+	}
+
+	override caseRelationInstanceReference(RelationInstanceReference reference) {
+		val instanceIri = reference.resolve.iri
+		val individual = owl.getNamedIndividual(instanceIri)
+		reference.ownedPropertyValues.forEach[it.appliesTo(individual)]
+		reference.ownedLinks.forEach[it.appliesTo(individual)]
 		return null
 	}
 
