@@ -1,16 +1,11 @@
 package io.opencaesar.oml2owl;
 
-import io.opencaesar.oml.Aspect;
-import io.opencaesar.oml.Entity;
-import io.opencaesar.oml.Ontology;
-import io.opencaesar.oml.SpecializationAxiom;
+import io.opencaesar.closeworld.Axiom;
+import io.opencaesar.closeworld.ClassExpression;
+import io.opencaesar.closeworld.OwlApi;
+import io.opencaesar.closeworld.Taxonomy;
+import io.opencaesar.oml.*;
 import io.opencaesar.oml.util.OmlRead;
-import io.opencaesar.oml2owl.utils.Axiom;
-import io.opencaesar.oml2owl.utils.ClassExpression;
-import io.opencaesar.oml2owl.utils.ClassExpression.Singleton;
-import io.opencaesar.oml2owl.utils.ClassExpression.Universal;
-import io.opencaesar.oml2owl.utils.OwlApi;
-import io.opencaesar.oml2owl.utils.Taxonomy;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.semanticweb.owlapi.model.OWLOntology;
 
@@ -18,10 +13,10 @@ import java.util.*;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static io.opencaesar.closeworld.Axiom.AxiomType.DISJOINT_CLASSES;
+import static io.opencaesar.closeworld.Axiom.AxiomType.DISJOINT_UNION;
+import static io.opencaesar.closeworld.OwlAxiom.toOwlAxiom;
 import static io.opencaesar.oml.util.OmlRead.getImportedOntologies;
-import static io.opencaesar.oml2owl.utils.Axiom.AxiomType.DISJOINT_CLASSES;
-import static io.opencaesar.oml2owl.utils.Axiom.AxiomType.DISJOINT_UNION;
-import static io.opencaesar.oml2owl.utils.OwlAxiom.toOwlAxiom;
 
 @SuppressWarnings("all")
 public class CloseBundle {
@@ -37,13 +32,13 @@ public class CloseBundle {
 	}
 	
 	private Taxonomy omlTaxonomy(final Iterable<Ontology> allOntologies) {
-		final Map<Entity, Singleton> singletonMap = new HashMap<Entity, Singleton>();
+		final Map<Entity, ClassExpression.Singleton> singletonMap = new HashMap<Entity, ClassExpression.Singleton>();
 		final List<ClassExpression>  vertexList = new ArrayList<ClassExpression>();
 		final List<ClassExpression>  edgeList = new ArrayList<ClassExpression>();
 
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof Entity && !(e instanceof Aspect)).map(e -> (Entity)e).forEach(entity -> {
-				final Singleton s = new Singleton(entity);
+				final ClassExpression.Singleton s = new ClassExpression.Singleton(OmlRead.getIri((Entity) entity));
 				singletonMap.put(entity, s);
 				vertexList.add(s);
 			});
@@ -51,8 +46,8 @@ public class CloseBundle {
 
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof SpecializationAxiom).map(e -> (SpecializationAxiom)e).forEach(axiom -> {
-				final Singleton specializedSingleton = singletonMap.get(axiom.getSpecializedTerm());
-				final Singleton specializingSingleton = singletonMap.get(OmlRead.getSpecializingTerm(axiom));
+				final ClassExpression.Singleton specializedSingleton = singletonMap.get(axiom.getSpecializedTerm());
+				final ClassExpression.Singleton specializingSingleton = singletonMap.get(OmlRead.getSpecializingTerm(axiom));
 
 				if (specializedSingleton != null && specializingSingleton != null) {
 					edgeList.add(specializedSingleton);
@@ -61,13 +56,13 @@ public class CloseBundle {
 			});
 		});
 		
-		return new Taxonomy(vertexList, edgeList).transitiveReduction().rootAt(new Universal());
+		return new Taxonomy(vertexList, edgeList).transitiveReduction().rootAt(new ClassExpression.Universal());
 	}
 
 	public static class CloseBundleToOwl extends CloseBundle {
 		protected final OWLOntology ontology;
 		protected final boolean disjointUnions;
-		protected final io.opencaesar.oml2owl.utils.OwlApi owlApi;
+		protected final OwlApi owlApi;
 
 		public CloseBundleToOwl(final Resource resource, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
 			super(resource);

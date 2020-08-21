@@ -12,7 +12,7 @@ dependencies {
 	
     implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
 	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
-	implementation "org.jgrapht:jgrapht-core:1.1.0"
-	
+	implementation "io.opencaesar.owl:owl-close-world:${versions.owl_tools}"
+
     testImplementation 'junit:junit:4.12'
 }

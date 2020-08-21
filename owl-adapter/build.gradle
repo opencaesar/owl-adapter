@@ -16,7 +16,8 @@ subprojects {
 	
 	ext.versions = [
 	    oml: '0.7.+',
-		owl: '5.1.+'
+		owl: '5.1.+',
+		owl_tools: '0.5.+'
 	]
 
 	repositories {
@@ -35,8 +36,8 @@ subprojects {
 	apply from: "${rootDir}/gradle/source-layout.gradle"
 	apply from: "${rootDir}/gradle/maven-deployment.gradle"
 	
-	sourceCompatibility = '1.8'
-	targetCompatibility = '1.8'
+	sourceCompatibility = '11'
+	targetCompatibility = '11'
 	
 	configurations.all {
 		exclude group: 'asm'
