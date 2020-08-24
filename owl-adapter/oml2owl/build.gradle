@@ -11,8 +11,10 @@ dependencies {
 	implementation 'org.slf4j:slf4j-simple:1.7.30'
 	
     implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
-	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
 	implementation "io.opencaesar.owl:owl-close-world:${versions.owl_tools}"
+
+	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
+	implementation 'org.jgrapht:jgrapht-core:1.5.0'
 
     testImplementation 'junit:junit:4.12'
 }
