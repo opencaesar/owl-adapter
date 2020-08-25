@@ -16,7 +16,7 @@ import org.semanticweb.owlapi.model.OWLOntologyManager
 import org.semanticweb.owlapi.model.SWRLAtom
 import org.semanticweb.owlapi.vocab.OWLFacet
 
-class OwlApi extends io.opencaesar.oml2owl.utils.OwlApi {
+class OwlApi extends io.opencaesar.closeworld.OwlApi {
 	
 	val XSD = "http://www.w3.org/2001/XMLSchema#"
 	protected final boolean annotationsOnAxioms;

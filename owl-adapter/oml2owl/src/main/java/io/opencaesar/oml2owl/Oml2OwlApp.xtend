@@ -9,7 +9,7 @@ import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlCatalog
 import io.opencaesar.oml.util.OmlXMIResourceFactory
-import io.opencaesar.oml2owl.utils.CloseBundle.CloseBundleToOwl
+import io.opencaesar.oml2owl.CloseBundle.CloseBundleToOwl
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
