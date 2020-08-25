@@ -9,12 +9,7 @@ import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlCatalog
 import io.opencaesar.oml.util.OmlXMIResourceFactory
-<<<<<<< Upstream, based on origin/master
-import io.opencaesar.oml2owl.utils.CloseBundle.CloseBundleToOwl
-=======
 import io.opencaesar.oml2owl.CloseBundle.CloseBundleToOwl
-import java.io.BufferedWriter
->>>>>>> 346d3e5 CloseBundle hoisted from utils
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
