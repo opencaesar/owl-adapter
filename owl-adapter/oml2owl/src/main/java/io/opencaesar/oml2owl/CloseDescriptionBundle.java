@@ -18,7 +18,9 @@ import io.opencaesar.oml.IdentifiedElement;
 import io.opencaesar.oml.LinkAssertion;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
+import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
+import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 
@@ -53,20 +55,25 @@ public class CloseDescriptionBundle {
 	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(final Iterable<Ontology> allOntologies) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
 		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof StructuredPropertyValueAssertion || e instanceof LinkAssertion).forEach(assertion -> {
-				if (assertion instanceof StructuredPropertyValueAssertion) {
-					final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) assertion;
-					final HashMap<String, Integer> subj_map = map.getOrDefault(OmlRead.getIri((NamedInstance) spva.getOwningInstance()), new HashMap<String, Integer>());
-					final String prop_iri = OmlRead.getIri(spva.getProperty());
-					final Integer count = subj_map.getOrDefault(prop_iri, 0);
-					subj_map.put(prop_iri, count + 1);
-				} else if (assertion instanceof LinkAssertion) {
-					final LinkAssertion la = (LinkAssertion) assertion;
-					final HashMap<String, Integer> subj_map = map.getOrDefault(OmlRead.getIri(la.getOwningInstance()), new HashMap<String, Integer>());
-					final String prop_iri = OmlRead.getIri(la.getRelation());
-					final Integer count = subj_map.getOrDefault(prop_iri, 0);
-					subj_map.put(prop_iri, count + 1);
-				}			
+			toStream(g.eAllContents()).filter(e -> e instanceof NamedInstance).forEach(e -> {
+				final NamedInstance subj = (NamedInstance) e;
+				final String subj_iri = OmlRead.getIri(subj);
+				final HashMap<String, Integer> subj_map = map.getOrDefault(subj_iri, new HashMap<String, Integer>());
+				subj.getOwnedPropertyValues().forEach(pva -> {
+					if (pva instanceof ScalarPropertyValueAssertion) {
+						final ScalarPropertyValueAssertion spva = (ScalarPropertyValueAssertion) pva;
+						final ScalarProperty prop = spva.getProperty();
+						final String prop_iri = OmlRead.getIri(prop);
+						final Integer count = subj_map.getOrDefault(prop_iri, 0);
+						subj_map.put(prop_iri, count + 1);
+					} else if (pva instanceof StructuredPropertyValueAssertion) {
+						final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) pva;
+						final StructuredProperty prop = spva.getProperty();
+						final String prop_iri = OmlRead.getIri(prop);
+						final Integer count = subj_map.getOrDefault(prop_iri, 0);
+						subj_map.put(prop_iri, count + 1);
+					}
+				});
 			});
 		});
 		
