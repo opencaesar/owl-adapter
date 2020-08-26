@@ -14,8 +14,12 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 import io.opencaesar.closeworld.OwlApi;
-import io.opencaesar.closeworld.Taxonomy;
+import io.opencaesar.oml.IdentifiedElement;
+import io.opencaesar.oml.LinkAssertion;
+import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
+import io.opencaesar.oml.ScalarPropertyValueAssertion;
+import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 
 public class CloseDescriptionBundle {
@@ -26,17 +30,46 @@ public class CloseDescriptionBundle {
 		this.resource = resource;
 	}
 
-	private <T> Stream<T> toStream(Iterator<T> i) {
+	private static <T> Stream<T> toStream(Iterator<T> i) {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(i, Spliterator.ORDERED), false);
 	}
 	
-	private static HashMap<IRI, HashMap<IRI, Integer>> dataPropertyCounts(final Iterable<Ontology> allOntologies) {
-		final HashMap<IRI, HashMap<IRI, Integer>> map = new HashMap<>();
+	@SuppressWarnings("boxing")
+	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(final Iterable<Ontology> allOntologies) {
+		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof ScalarPropertyValueAssertion).map(a -> (ScalarPropertyValueAssertion) a).forEach(assertion -> {
+				final HashMap<String, Integer> subj_map = map.getOrDefault(OmlRead.getIri((IdentifiedElement) assertion.getOwningInstance()), new HashMap<String, Integer>());
+				final String prop_iri = OmlRead.getIri(assertion.getProperty());
+				final Integer count = subj_map.getOrDefault(prop_iri, 0);
+				subj_map.put(prop_iri, count + 1);
+			});
+		});
+
 		return map;
 	}
 	
-	private static HashMap<IRI, HashMap<IRI, Integer>> objectPropertyCounts(final Iterable<Ontology> allOntologies) {
-		final HashMap<IRI, HashMap<IRI, Integer>> map = new HashMap<>();
+	@SuppressWarnings("boxing")
+	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(final Iterable<Ontology> allOntologies) {
+		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof StructuredPropertyValueAssertion || e instanceof LinkAssertion).forEach(assertion -> {
+				if (assertion instanceof StructuredPropertyValueAssertion) {
+					final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) assertion;
+					final HashMap<String, Integer> subj_map = map.getOrDefault(OmlRead.getIri((NamedInstance) spva.getOwningInstance()), new HashMap<String, Integer>());
+					final String prop_iri = OmlRead.getIri(spva.getProperty());
+					final Integer count = subj_map.getOrDefault(prop_iri, 0);
+					subj_map.put(prop_iri, count + 1);
+				} else if (assertion instanceof LinkAssertion) {
+					final LinkAssertion la = (LinkAssertion) assertion;
+					final HashMap<String, Integer> subj_map = map.getOrDefault(OmlRead.getIri(la.getOwningInstance()), new HashMap<String, Integer>());
+					final String prop_iri = OmlRead.getIri(la.getRelation());
+					final Integer count = subj_map.getOrDefault(prop_iri, 0);
+					subj_map.put(prop_iri, count + 1);
+				}			
+			});
+		});
+		
 		return map;
 	}
 	
@@ -53,8 +86,15 @@ public class CloseDescriptionBundle {
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
 			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> getImportedOntologies(o));
-			final HashMap<IRI, HashMap<IRI, Integer>> dataPropertyCounts = dataPropertyCounts(allOntologies);
-			final HashMap<IRI, HashMap<IRI, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
+			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(allOntologies);
+			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
+			
+			dataPropertyCounts.forEach((subj, map) -> {
+				final IRI subj_iri = IRI.create(subj);
+				map.forEach((prop, count) -> {
+					final IRI prop_iri = IRI.create(prop);
+				});
+			});
 		}
 	}
 
