@@ -19,11 +19,11 @@ import static io.opencaesar.closeworld.OwlAxiom.toOwlAxiom;
 import static io.opencaesar.oml.util.OmlRead.getImportedOntologies;
 
 @SuppressWarnings("all")
-public class CloseBundle {
+public class CloseVocabularyBundle {
 
 	protected final Resource resource;
 
-	public CloseBundle(final Resource resource) {
+	public CloseVocabularyBundle(final Resource resource) {
 		this.resource = resource;
 	}
 
@@ -59,12 +59,12 @@ public class CloseBundle {
 		return new Taxonomy(vertexList, edgeList).transitiveReduction().rootAt(new ClassExpression.Universal());
 	}
 
-	public static class CloseBundleToOwl extends CloseBundle {
+	public static class CloseVocabularyBundleToOwl extends CloseVocabularyBundle {
 		protected final OWLOntology ontology;
 		protected final boolean disjointUnions;
 		protected final OwlApi owlApi;
 
-		public CloseBundleToOwl(final Resource resource, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
+		public CloseVocabularyBundleToOwl(final Resource resource, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
 			super(resource);
 			this.ontology = ontology;
 			this.disjointUnions = disjointUnions;
@@ -83,8 +83,8 @@ public class CloseBundle {
 		}
 	}
 
-	public static class CloseBundleToOml extends CloseBundle {
-		public CloseBundleToOml(final Resource resource) {
+	public static class CloseVocabularyBundleToOml extends CloseVocabularyBundle {
+		public CloseVocabularyBundleToOml(final Resource resource) {
 			super(resource);
 		}
 
