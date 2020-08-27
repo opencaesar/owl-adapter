@@ -13,6 +13,7 @@ import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLDataMaxCardinality;
 import org.semanticweb.owlapi.model.OWLDataProperty;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import org.semanticweb.owlapi.model.OWLObjectInverseOf;
 import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -93,6 +94,28 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 	
+	@SuppressWarnings("boxing")
+	private static HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts(final Iterable<Ontology> allOntologies) {
+		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof NamedInstance).forEach(e -> {
+				final NamedInstance subj = (NamedInstance) e;
+				subj.getOwnedLinks().forEach(la -> {
+					final Relation rel = la.getRelation();
+					final String rel_iri = OmlRead.getIri(rel);
+					final NamedInstance obj = la.getTarget();
+					final String obj_iri = OmlRead.getIri(obj);
+					final HashMap<String, Integer> obj_map = map.getOrDefault(obj_iri, new HashMap<String, Integer>());
+					map.put(obj_iri, obj_map);
+					final Integer count = obj_map.getOrDefault(rel_iri, 0);
+					obj_map.put(rel_iri, count + 1);
+				});
+			});
+		});
+
+		return map;
+	}
+
 	public static class CloseDescriptionBundleToOwl extends CloseDescriptionBundle {
 		protected final OWLOntology ontology;
 		protected final OwlApi owlApi;
@@ -109,6 +132,7 @@ public class CloseDescriptionBundle {
 			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
 			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
+			final HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts = inverseObjectPropertyCounts(allOntologies);
 			
 			dataPropertyCounts.forEach((subj, map) -> {
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
@@ -122,8 +146,18 @@ public class CloseDescriptionBundle {
 			objectPropertyCounts.forEach((subj, map) -> {
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
 				map.forEach((prop, c) -> {
-					final OWLObjectProperty dp = this.owlApi.getOWLObjectProperty(IRI.create(prop));
-					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, dp);
+					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
+					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, op);
+					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
+					this.ontology.add(ca);
+				});
+			});
+			inverseObjectPropertyCounts.forEach((subj, map) -> {
+				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
+				map.forEach((prop, c) -> {
+					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
+					final OWLObjectInverseOf ip = this.owlApi.getOWLObjectInverseOf(op);
+					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, ip);
 					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
 					this.ontology.add(ca);
 				});
