@@ -31,7 +31,13 @@ public class CloseVocabularyBundle {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(i, Spliterator.ORDERED), false);
 	}
 	
-	private Taxonomy omlTaxonomy(final Iterable<Ontology> allOntologies) {
+	/**
+	 * Returns a transitively-reduced concept taxonomy, rooted at Universal, from a collection of OML ontologies.
+	 * 
+	 * @param allOntologies
+	 * @return concept taxonomy
+	 */
+	private Taxonomy omlConceptTaxonomy(final Iterable<Ontology> allOntologies) {
 		final Map<Entity, ClassExpression.Singleton> singletonMap = new HashMap<Entity, ClassExpression.Singleton>();
 		final List<ClassExpression>  vertexList = new ArrayList<ClassExpression>();
 		final List<ClassExpression>  edgeList = new ArrayList<ClassExpression>();
@@ -74,10 +80,10 @@ public class CloseVocabularyBundle {
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(resource);
 			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> getImportedOntologies(o));
-			final Taxonomy taxonomy = super.omlTaxonomy(allOntologies);
+			final Taxonomy conceptTaxonomy = super.omlConceptTaxonomy(allOntologies);
 			final Axiom.AxiomType axiomType = disjointUnions ? DISJOINT_UNION : DISJOINT_CLASSES;
 
-			taxonomy.generateClosureAxioms(axiomType).forEach(a -> {
+			conceptTaxonomy.generateClosureAxioms(axiomType).forEach(a -> {
 				owlApi.addAxiom(ontology, toOwlAxiom(a, owlApi));
 			});
 		}

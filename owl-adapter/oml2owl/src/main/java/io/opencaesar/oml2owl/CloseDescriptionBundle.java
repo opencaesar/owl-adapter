@@ -28,6 +28,10 @@ import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 
+/**
+ * @author sjenkins
+ *
+ */
 public class CloseDescriptionBundle {
 
 	protected final Resource resource;
@@ -40,6 +44,14 @@ public class CloseDescriptionBundle {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(i, Spliterator.ORDERED), false);
 	}
 	
+	/**
+	 * 
+	 * Returns a map from subject IRI to a map from predicate IRI to usage count
+	 * for generating cardinality restrictions on data properties.
+	 * 
+	 * @param allOntologies
+	 * @return map from subject IRI to map from predicate IRI to usage count
+	 */
 	@SuppressWarnings("boxing")
 	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(final Iterable<Ontology> allOntologies) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
@@ -64,6 +76,14 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 	
+	/**
+	 * 
+	 * Returns a map from subject IRI to a map from predicate IRI to usage count
+	 * for generating cardinality restrictions on object properties.
+	 * 
+	 * @param allOntologies
+	 * @return map from subject IRI to map from predicate IRI to usage count
+	 */
 	@SuppressWarnings("boxing")
 	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(final Iterable<Ontology> allOntologies) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
@@ -94,6 +114,14 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 	
+	/**
+	 * 
+	 * Returns a map from object IRI to a map from predicate IRI to usage count
+	 * for generating cardinality restrictions on inverse object properties.
+	 * 
+	 * @param allOntologies
+	 * @return map from object IRI to map from predicate IRI to usage count
+	 */
 	@SuppressWarnings("boxing")
 	private static HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts(final Iterable<Ontology> allOntologies) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
@@ -134,6 +162,9 @@ public class CloseDescriptionBundle {
 			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts = inverseObjectPropertyCounts(allOntologies);
 			
+			/*
+			 * Generate data property cardinality restrictions.
+			 */
 			dataPropertyCounts.forEach((subj, map) -> {
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
 				map.forEach((prop, c) -> {
@@ -143,6 +174,10 @@ public class CloseDescriptionBundle {
 					this.ontology.add(ca);
 				});
 			});
+			
+			/*
+			 * Generate object property cardinality restrictions.
+			 */
 			objectPropertyCounts.forEach((subj, map) -> {
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
 				map.forEach((prop, c) -> {
@@ -152,6 +187,10 @@ public class CloseDescriptionBundle {
 					this.ontology.add(ca);
 				});
 			});
+
+			/*
+			 * Generate inverse object property cardinality restrictions.
+			 */
 			inverseObjectPropertyCounts.forEach((subj, map) -> {
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
 				map.forEach((prop, c) -> {
