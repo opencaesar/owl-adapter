@@ -55,12 +55,6 @@ public class CloseDescriptionBundle {
 						final String prop_iri = OmlRead.getIri(prop);
 						final Integer count = subj_map.getOrDefault(prop_iri, 0);
 						subj_map.put(prop_iri, count + 1);
-					} else if (pva instanceof StructuredPropertyValueAssertion) {
-						final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) pva;
-						final StructuredProperty prop = spva.getProperty();
-						final String prop_iri = OmlRead.getIri(prop);
-						final Integer count = subj_map.getOrDefault(prop_iri, 0);
-						subj_map.put(prop_iri, count + 1);
 					}
 				});
 			});
@@ -83,6 +77,15 @@ public class CloseDescriptionBundle {
 					final String rel_iri = OmlRead.getIri(rel);
 					final Integer count = subj_map.getOrDefault(rel_iri, 0);
 					subj_map.put(rel_iri, count + 1);
+				});
+				subj.getOwnedPropertyValues().forEach(pva -> {
+					if (pva instanceof StructuredPropertyValueAssertion) {
+						final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) pva;
+						final StructuredProperty prop = spva.getProperty();
+						final String prop_iri = OmlRead.getIri(prop);
+						final Integer count = subj_map.getOrDefault(prop_iri, 0);
+						subj_map.put(prop_iri, count + 1);
+					}
 				});
 			});
 		});
