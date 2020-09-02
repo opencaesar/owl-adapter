@@ -5,11 +5,13 @@ import com.beust.jcommander.JCommander
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
 import com.google.common.io.CharStreams
+import io.opencaesar.oml.DescriptionBundle
 import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlCatalog
 import io.opencaesar.oml.util.OmlXMIResourceFactory
-import io.opencaesar.oml2owl.CloseBundle.CloseBundleToOwl
+import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl
+import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
@@ -157,10 +159,16 @@ class Oml2OwlApp {
 		}
 		threads.forEach[join]
 		
-		// run the bundle closure algorithm
+		// run the vocabulary bundle closure algorithm
 		oml2owl.entrySet.filter[e|e.key.ontology instanceof VocabularyBundle].forEach[entry|
-			LOGGER.info("Closing bundle: "+entry.key.URI)
-			new CloseBundleToOwl(entry.key, entry.value, disjointUnions, owl2api).run
+			LOGGER.info("Closing vocabulary bundle: "+entry.key.URI)
+			new CloseVocabularyBundleToOwl(entry.key, entry.value, disjointUnions, owl2api).run
+		]
+		
+		// run the description bundle closure algorithm
+		oml2owl.entrySet.filter[e|e.key.ontology instanceof DescriptionBundle].forEach[entry|
+			LOGGER.info("Closing description bundle: "+entry.key.URI)
+			new CloseDescriptionBundleToOwl(entry.key, entry.value, owl2api).run
 		]
 		
 		// save the output resources
