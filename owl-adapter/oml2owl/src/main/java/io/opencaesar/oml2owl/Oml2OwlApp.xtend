@@ -5,10 +5,13 @@ import com.beust.jcommander.JCommander
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.ParameterException
 import com.google.common.io.CharStreams
+import io.opencaesar.oml.DescriptionBundle
 import io.opencaesar.oml.VocabularyBundle
 import io.opencaesar.oml.dsl.OmlStandaloneSetup
 import io.opencaesar.oml.util.OmlCatalog
 import io.opencaesar.oml.util.OmlXMIResourceFactory
+import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl
+import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
@@ -30,9 +33,6 @@ import org.semanticweb.owlapi.model.IRI
 import org.semanticweb.owlapi.model.OWLOntology
 
 import static extension io.opencaesar.oml.util.OmlRead.*
-import io.opencaesar.oml.DescriptionBundle
-import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl
-import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl
 
 class Oml2OwlApp {
 
