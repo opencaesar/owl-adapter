@@ -18,7 +18,6 @@ import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLDataMaxCardinality;
 import org.semanticweb.owlapi.model.OWLDataProperty;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
-import org.semanticweb.owlapi.model.OWLObjectInverseOf;
 import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -35,8 +34,6 @@ import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
 import io.opencaesar.oml.SpecializableTerm;
-import io.opencaesar.oml.StructuredProperty;
-import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -152,7 +149,6 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
-	@SuppressWarnings("boxing")
 	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties, final HashMap<Entity, HashSet<NamedInstance>> entityInstances) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
 		
@@ -191,66 +187,34 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
-	@SuppressWarnings("boxing")
-	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(final Iterable<Ontology> allOntologies) {
+	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations, final HashMap<Entity, HashSet<NamedInstance>> entityInstances) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof NamedInstance).forEach(e -> {
-				final NamedInstance subj = (NamedInstance) e;
+		
+		entitiesWithRestrictedRelations.forEach((entity, relations) -> {
+			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
+			instances.forEach(instance -> {
+				final NamedInstance subj = (NamedInstance) instance;
 				final String subj_iri = OmlRead.getIri(subj);
 				final HashMap<String, Integer> subj_map = map.getOrDefault(subj_iri, new HashMap<String, Integer>());
-				map.put(subj_iri,  subj_map);
-				subj.getOwnedLinks().forEach(la -> {
-					final Relation rel = la.getRelation();
-					final String rel_iri = OmlRead.getIri(rel);
-					final Integer count = subj_map.getOrDefault(rel_iri, 0);
-					subj_map.put(rel_iri, count + 1);
+				map.put(subj_iri, subj_map);
+				relations.forEach(relation -> {
+					final String relation_iri = OmlRead.getIri(relation);
+					if (!subj_map.containsKey(relation_iri)) subj_map.put(relation_iri, 0);
 				});
-				subj.getOwnedPropertyValues().forEach(pva -> {
-					if (pva instanceof StructuredPropertyValueAssertion) {
-						final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) pva;
-						final StructuredProperty prop = spva.getProperty();
-						final String prop_iri = OmlRead.getIri(prop);
-						final Integer count = subj_map.getOrDefault(prop_iri, 0);
-						subj_map.put(prop_iri, count + 1);
+				subj.getOwnedLinks().forEach(link -> {
+					final Relation rel = link.getRelation();
+					if (relations.contains(rel)) {
+						final String rel_iri = OmlRead.getIri(rel);
+						subj_map.put(rel_iri, subj_map.get(rel_iri) + 1);
 					}
-				});
-			});
-		});
 
+				});
+			});			
+		});
+		
 		return map;
 	}
 	
-	/**
-	 * 
-	 * Returns a map from object IRI to a map from predicate IRI to usage count
-	 * for generating cardinality restrictions on inverse object properties.
-	 * 
-	 * @param allOntologies
-	 * @return map from object IRI to map from predicate IRI to usage count
-	 */
-	@SuppressWarnings("boxing")
-	private static HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts(final Iterable<Ontology> allOntologies) {
-		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof NamedInstance).forEach(e -> {
-				final NamedInstance subj = (NamedInstance) e;
-				subj.getOwnedLinks().forEach(la -> {
-					final Relation rel = la.getRelation();
-					final String rel_iri = OmlRead.getIri(rel);
-					final NamedInstance obj = la.getTarget();
-					final String obj_iri = OmlRead.getIri(obj);
-					final HashMap<String, Integer> obj_map = map.getOrDefault(obj_iri, new HashMap<String, Integer>());
-					map.put(obj_iri, obj_map);
-					final Integer count = obj_map.getOrDefault(rel_iri, 0);
-					obj_map.put(rel_iri, count + 1);
-				});
-			});
-		});
-
-		return map;
-	}
-
 	public static class CloseDescriptionBundleToOwl extends CloseDescriptionBundle {
 		protected final OWLOntology ontology;
 		protected final OwlApi owlApi;
@@ -261,7 +225,6 @@ public class CloseDescriptionBundle {
 			this.owlApi = owlApi;
 		}
 
-		@SuppressWarnings("boxing")
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
 			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
@@ -275,8 +238,7 @@ public class CloseDescriptionBundle {
 			
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, specializations);
 			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances);
-			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
-			final HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts = inverseObjectPropertyCounts(allOntologies);
+			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(entitiesWithRestrictedRelations, entityInstances);
 			
 			/*
 			 * Generate data property cardinality restrictions.
@@ -294,29 +256,16 @@ public class CloseDescriptionBundle {
 			/*
 			 * Generate object property cardinality restrictions.
 			 */
-//			objectPropertyCounts.forEach((subj, map) -> {
-//				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
-//				map.forEach((prop, c) -> {
-//					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
-//					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, op);
-//					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
-//					this.ontology.add(ca);
-//				});
-//			});
+			objectPropertyCounts.forEach((subj, map) -> {
+				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
+				map.forEach((prop, c) -> {
+					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
+					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, op);
+					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
+					this.ontology.add(ca);
+				});
+			});
 
-			/*
-			 * Generate inverse object property cardinality restrictions.
-			 */
-//			inverseObjectPropertyCounts.forEach((subj, map) -> {
-//				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
-//				map.forEach((prop, c) -> {
-//					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
-//					final OWLObjectInverseOf ip = this.owlApi.getOWLObjectInverseOf(op);
-//					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, ip);
-//					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
-//					this.ontology.add(ca);
-//				});
-//			});
 		}
 	}
 
