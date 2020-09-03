@@ -1,6 +1,7 @@
 package io.opencaesar.oml2owl;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -19,10 +20,16 @@ import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 import io.opencaesar.closeworld.OwlApi;
+import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
+import io.opencaesar.oml.Property;
 import io.opencaesar.oml.Relation;
+import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
+import io.opencaesar.oml.RelationRestrictionAxiom;
+import io.opencaesar.oml.RestrictionAxiom;
 import io.opencaesar.oml.ScalarProperty;
+import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
 import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
@@ -44,6 +51,58 @@ public class CloseDescriptionBundle {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(i, Spliterator.ORDERED), false);
 	}
 	
+	private final static HashMap<Entity, HashSet<Property>> getEntitiesWithRestrictedProperties(final Iterable<Ontology> allOntologies) {
+		final HashMap<Entity, HashSet<Property>> map = new HashMap<>();
+		
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
+				final Entity entity = (Entity) e;
+				entity.getOwnedPropertyRestrictions().forEach(r -> {
+					if (r instanceof ScalarPropertyCardinalityRestrictionAxiom) {
+						final ScalarPropertyCardinalityRestrictionAxiom restriction = (ScalarPropertyCardinalityRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case MIN:
+						case EXACTLY:
+							final ScalarProperty property = restriction.getProperty();
+							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(property);
+							break;
+						default:
+						}
+					}
+				});
+			});
+		});
+		return map;
+	}
+	
+	private final static HashMap<Entity, HashSet<Relation>> getEntitiesWithRestrictedRelations(final Iterable<Ontology> allOntologies) {
+		final HashMap<Entity, HashSet<Relation>> map = new HashMap<>();
+		
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
+				final Entity entity = (Entity) e;
+				entity.getOwnedRelationRestrictions().forEach(r -> {
+					if (r instanceof RelationCardinalityRestrictionAxiom) {
+						final RelationCardinalityRestrictionAxiom restriction = (RelationCardinalityRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case MIN:
+						case EXACTLY:
+							final Relation relation = restriction.getRelation();
+							final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(relation);
+							break;
+						default:
+						}
+					}
+				});
+			});
+		});
+		return map;
+	}
+
 	/**
 	 * 
 	 * Returns a map from subject IRI to a map from predicate IRI to usage count
@@ -158,6 +217,10 @@ public class CloseDescriptionBundle {
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
 			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
+
+			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
+			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
+
 			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts = inverseObjectPropertyCounts(allOntologies);
