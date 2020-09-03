@@ -130,16 +130,16 @@ public class CloseDescriptionBundle {
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
 		final HashMap<Entity, HashSet<NamedInstance>> map = new HashMap<>();
 
-		entities.stream().flatMap(e -> {
-			final HashSet<SpecializableTerm> specializations = new HashSet<>(neighborCache.successorsOf(e));
-			specializations.add(e);
-			return specializations.stream();
-		}).filter(e -> e instanceof Concept).map(e -> (Concept) e).forEach(concept -> {
-			System.out.println("searching for instances of " + concept.getName());
-			final Iterable<NamedInstance> instances = OmlSearch.findConceptInstancesWithType(concept);
-			final HashSet<NamedInstance> set = map.getOrDefault(concept, new HashSet<NamedInstance>());
-			instances.forEach(instance -> set.add(instance));
-			map.put(concept, set);
+		entities.forEach(entity -> {
+			final HashSet<SpecializableTerm> specializations = new HashSet<>(neighborCache.successorsOf(entity));
+			specializations.add(entity);
+			final HashSet<NamedInstance> instances = new HashSet<>();
+			specializations.stream().filter(s -> s instanceof Concept).map(s -> (Concept) s).forEach(concept -> {
+				OmlSearch.findConceptInstancesWithType(concept).forEach(instance -> {
+					instances.add(instance);
+				});
+			});
+			map.put(entity, instances);
 		});
 		return map;
 	}
@@ -153,24 +153,31 @@ public class CloseDescriptionBundle {
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
 	@SuppressWarnings("boxing")
-	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(final Iterable<Ontology> allOntologies) {
+	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties, final HashMap<Entity, HashSet<NamedInstance>> entityInstances) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof NamedInstance).forEach(e -> {
-				final NamedInstance subj = (NamedInstance) e;
+		
+		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
+			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
+			instances.forEach(instance -> {
+				final NamedInstance subj = (NamedInstance) instance;
 				final String subj_iri = OmlRead.getIri(subj);
 				final HashMap<String, Integer> subj_map = map.getOrDefault(subj_iri, new HashMap<String, Integer>());
 				map.put(subj_iri, subj_map);
+				properties.forEach(property -> {
+					final String property_iri = OmlRead.getIri(property);
+					if (!subj_map.containsKey(property_iri)) subj_map.put(property_iri, 0);
+				});
 				subj.getOwnedPropertyValues().forEach(pva -> {
 					if (pva instanceof ScalarPropertyValueAssertion) {
 						final ScalarPropertyValueAssertion spva = (ScalarPropertyValueAssertion) pva;
 						final ScalarProperty prop = spva.getProperty();
-						final String prop_iri = OmlRead.getIri(prop);
-						final Integer count = subj_map.getOrDefault(prop_iri, 0);
-						subj_map.put(prop_iri, count + 1);
+						if (properties.contains(prop)) {
+							final String prop_iri = OmlRead.getIri(prop);
+							subj_map.put(prop_iri, subj_map.get(prop_iri) + 1);
+						}
 					}
 				});
-			});
+			});			
 		});
 		
 		return map;
@@ -267,7 +274,7 @@ public class CloseDescriptionBundle {
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
 			
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, specializations);
-			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(allOntologies);
+			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances);
 			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts = inverseObjectPropertyCounts(allOntologies);
 			
@@ -287,29 +294,29 @@ public class CloseDescriptionBundle {
 			/*
 			 * Generate object property cardinality restrictions.
 			 */
-			objectPropertyCounts.forEach((subj, map) -> {
-				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
-				map.forEach((prop, c) -> {
-					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
-					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, op);
-					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
-					this.ontology.add(ca);
-				});
-			});
+//			objectPropertyCounts.forEach((subj, map) -> {
+//				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
+//				map.forEach((prop, c) -> {
+//					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
+//					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, op);
+//					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
+//					this.ontology.add(ca);
+//				});
+//			});
 
 			/*
 			 * Generate inverse object property cardinality restrictions.
 			 */
-			inverseObjectPropertyCounts.forEach((subj, map) -> {
-				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
-				map.forEach((prop, c) -> {
-					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
-					final OWLObjectInverseOf ip = this.owlApi.getOWLObjectInverseOf(op);
-					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, ip);
-					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
-					this.ontology.add(ca);
-				});
-			});
+//			inverseObjectPropertyCounts.forEach((subj, map) -> {
+//				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(IRI.create(subj));
+//				map.forEach((prop, c) -> {
+//					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(IRI.create(prop));
+//					final OWLObjectInverseOf ip = this.owlApi.getOWLObjectInverseOf(op);
+//					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, ip);
+//					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
+//					this.ontology.add(ca);
+//				});
+//			});
 		}
 	}
 
