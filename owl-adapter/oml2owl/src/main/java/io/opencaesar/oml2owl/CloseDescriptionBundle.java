@@ -9,6 +9,10 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.ecore.resource.Resource;
+import org.jgrapht.alg.TransitiveClosure;
+import org.jgrapht.alg.util.NeighborCache;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLDataMaxCardinality;
@@ -20,20 +24,21 @@ import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 import io.opencaesar.closeworld.OwlApi;
+import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.Property;
 import io.opencaesar.oml.Relation;
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
-import io.opencaesar.oml.RelationRestrictionAxiom;
-import io.opencaesar.oml.RestrictionAxiom;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
+import io.opencaesar.oml.SpecializableTerm;
 import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
+import io.opencaesar.oml.util.OmlSearch;
 
 /**
  * @author sjenkins
@@ -103,6 +108,42 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
+	private final static NeighborCache<SpecializableTerm, DefaultEdge> getSpecializations(final Iterable<Ontology> allOntologies) {
+		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(DefaultEdge.class);
+		
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof Entity).map(e -> (Entity) e).forEach(entity -> {
+				taxonomy.addVertex(entity);
+				OmlRead.getSpecializedTerms(entity).forEach(specialized -> {
+					taxonomy.addVertex(specialized);
+					taxonomy.addEdge(specialized, entity);
+				});
+			});
+		});
+
+		TransitiveClosure.INSTANCE.closeDirectedAcyclicGraph(taxonomy);
+		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
+	}
+
+	private final static HashMap<Entity, HashSet<NamedInstance>> getEntityInstances(
+			final Iterable<Ontology> allOntologies, final HashSet<Entity> entities,
+			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
+		final HashMap<Entity, HashSet<NamedInstance>> map = new HashMap<>();
+
+		entities.stream().flatMap(e -> {
+			final HashSet<SpecializableTerm> specializations = new HashSet<>(neighborCache.successorsOf(e));
+			specializations.add(e);
+			return specializations.stream();
+		}).filter(e -> e instanceof Concept).map(e -> (Concept) e).forEach(concept -> {
+			System.out.println("searching for instances of " + concept.getName());
+			final Iterable<NamedInstance> instances = OmlSearch.findConceptInstancesWithType(concept);
+			final HashSet<NamedInstance> set = map.getOrDefault(concept, new HashSet<NamedInstance>());
+			instances.forEach(instance -> set.add(instance));
+			map.put(concept, set);
+		});
+		return map;
+	}
+	
 	/**
 	 * 
 	 * Returns a map from subject IRI to a map from predicate IRI to usage count
@@ -220,7 +261,12 @@ public class CloseDescriptionBundle {
 
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
+			final NeighborCache<SpecializableTerm, DefaultEdge> specializations = getSpecializations(allOntologies);
 
+			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
+			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
+			
+			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, specializations);
 			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(allOntologies);
 			final HashMap<String, HashMap<String, Integer>> inverseObjectPropertyCounts = inverseObjectPropertyCounts(allOntologies);
