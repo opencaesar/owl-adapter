@@ -3,6 +3,7 @@ package io.opencaesar.oml2owl;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
@@ -125,6 +126,34 @@ public class CloseDescriptionBundle {
 		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
 	}
 
+	private final static DirectedAcyclicGraph<Relation, DefaultEdge> getRelationTree(final Iterable<Ontology> allOntologies) {
+		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
+		
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof RelationEntity).map(e -> (RelationEntity) e).forEach(re -> {
+				final Relation f = re.getForward();
+				final Relation r = re.getReverse();
+				graph.addVertex(f);
+				if (Objects.nonNull(r))
+					graph.addVertex(r);
+				OmlRead.getSpecializedTerms(re).forEach(s -> {
+						if (s instanceof RelationEntity) {
+						final RelationEntity sre = (RelationEntity) s;
+						final Relation sf = sre.getForward();
+						final Relation sr = sre.getReverse();
+						graph.addVertex(sf);
+						graph.addEdge(sf, f);
+						if (Objects.nonNull(r) && Objects.nonNull(sr)) {
+							graph.addVertex(sr);
+							graph.addEdge(sr, r);
+						}
+					}
+				});
+			});
+		});
+		return graph;
+	}
+	
 	private final static HashMap<Entity, HashSet<NamedInstance>> getEntityInstances(
 			final Iterable<Ontology> allOntologies, final HashSet<Entity> entities,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
@@ -141,6 +170,7 @@ public class CloseDescriptionBundle {
 			});
 			map.put(entity, instances);
 		});
+		
 		return map;
 	}
 	
@@ -259,6 +289,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
+			final DirectedAcyclicGraph<Relation, DefaultEdge> relationTree = getRelationTree(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
