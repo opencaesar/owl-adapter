@@ -132,41 +132,77 @@ public class CloseDescriptionBundle {
 		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
 	}
 
-	private final static HashMap<Relation, Graph<Relation, DefaultEdge>> getRelationTrees(final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
-		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
-		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
+	private final static HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> getPropertyTrees(
+			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
+		final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> map = new HashMap<>();
+		final DirectedAcyclicGraph<ScalarProperty, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof RelationEntity).map(e -> (RelationEntity) e).forEach(re -> {
-				final Relation f = re.getForward();
-				final Relation r = re.getReverse();
-				graph.addVertex(f);
-				if (Objects.nonNull(r))
-					graph.addVertex(r);
-				OmlRead.getSpecializedTerms(re).forEach(s -> {
-						if (s instanceof RelationEntity) {
-						final RelationEntity sre = (RelationEntity) s;
-						final Relation sf = sre.getForward();
-						final Relation sr = sre.getReverse();
-						graph.addVertex(sf);
-						graph.addEdge(sf, f);
-						if (Objects.nonNull(r) && Objects.nonNull(sr)) {
-							graph.addVertex(sr);
-							graph.addEdge(sr, r);
-						}
-					}
+			toStream(g.eAllContents()).filter(e -> e instanceof ScalarProperty).map(e -> (ScalarProperty) e)
+			.forEach(sp -> {
+				graph.addVertex(sp);
+				OmlRead.getSpecializedTerms(sp).forEach(s -> {
+					final ScalarProperty ssp = (ScalarProperty) s;
+					graph.addVertex(ssp);
+					graph.addEdge(ssp,  sp);
 				});
 			});
 		});
 		
-		final Set<Graph<Relation, DefaultEdge>> components = new BiconnectivityInspector<>(graph).getConnectedComponents();
+		final Set<Graph<ScalarProperty, DefaultEdge>> components = new BiconnectivityInspector<>(graph)
+				.getConnectedComponents();
+		components.forEach(component -> {
+			final AsSubgraph<ScalarProperty, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
+			final List<ScalarProperty> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
+					.collect(Collectors.toList());
+			if (roots.size() > 1)
+				throw new UnsupportedOperationException("multiply-rooted relation tree");
+			map.put((ScalarProperty) roots.get(0), subgraph);
+		});
+
+		return map;
+	}
+	
+	private final static HashMap<Relation, Graph<Relation, DefaultEdge>> getRelationTrees(
+			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
+		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
+		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
+
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof RelationEntity).map(e -> (RelationEntity) e)
+					.forEach(re -> {
+						final Relation f = re.getForward();
+						final Relation r = re.getReverse();
+						graph.addVertex(f);
+						if (Objects.nonNull(r))
+							graph.addVertex(r);
+						OmlRead.getSpecializedTerms(re).forEach(s -> {
+							if (s instanceof RelationEntity) {
+								final RelationEntity sre = (RelationEntity) s;
+								final Relation sf = sre.getForward();
+								final Relation sr = sre.getReverse();
+								graph.addVertex(sf);
+								graph.addEdge(sf, f);
+								if (Objects.nonNull(r) && Objects.nonNull(sr)) {
+									graph.addVertex(sr);
+									graph.addEdge(sr, r);
+								}
+							}
+						});
+					});
+		});
+
+		final Set<Graph<Relation, DefaultEdge>> components = new BiconnectivityInspector<>(graph)
+				.getConnectedComponents();
 		components.forEach(component -> {
 			final AsSubgraph<Relation, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
-			final List<Relation> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0).collect(Collectors.toList());
-			if (roots.size() > 1) throw new UnsupportedOperationException("multiply-rooted relation tree");
-			map.put((Relation) roots.get(0),  subgraph);
+			final List<Relation> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
+					.collect(Collectors.toList());
+			if (roots.size() > 1)
+				throw new UnsupportedOperationException("multiply-rooted relation tree");
+			map.put((Relation) roots.get(0), subgraph);
 		});
-		
+
 		return map;
 	}
 	
@@ -306,6 +342,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
 			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
+			final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
