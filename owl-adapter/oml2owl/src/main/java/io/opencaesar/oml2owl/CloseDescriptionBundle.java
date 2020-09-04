@@ -218,9 +218,9 @@ public class CloseDescriptionBundle {
 					all_relations.add(relation);
 					neighborCache.successorsOf(OmlRead.getEntity(relation)).forEach(st -> {
 						final RelationEntity re = (RelationEntity) st;
-						if (re instanceof ForwardRelation)
+						if (relation instanceof ForwardRelation)
 							all_relations.add(re.getForward());
-						else if (re instanceof ReverseRelation)
+						else if (relation instanceof ReverseRelation)
 							all_relations.add(re.getReverse());
 					});
 				});
