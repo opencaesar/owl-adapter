@@ -25,11 +25,14 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.Entity;
+import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.Property;
 import io.opencaesar.oml.Relation;
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
+import io.opencaesar.oml.RelationEntity;
+import io.opencaesar.oml.ReverseRelation;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
@@ -105,15 +108,15 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
-	private final static NeighborCache<SpecializableTerm, DefaultEdge> getSpecializations(final Iterable<Ontology> allOntologies) {
+	private final static NeighborCache<SpecializableTerm, DefaultEdge> getTermSpecializations(final Iterable<Ontology> allOntologies) {
 		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(DefaultEdge.class);
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof Entity).map(e -> (Entity) e).forEach(entity -> {
-				taxonomy.addVertex(entity);
-				OmlRead.getSpecializedTerms(entity).forEach(specialized -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof SpecializableTerm).map(e -> (SpecializableTerm) e).forEach(term -> {
+				taxonomy.addVertex(term);
+				OmlRead.getSpecializedTerms(term).forEach(specialized -> {
 					taxonomy.addVertex(specialized);
-					taxonomy.addEdge(specialized, entity);
+					taxonomy.addEdge(specialized, term);
 				});
 			});
 		});
@@ -149,7 +152,10 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
-	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties, final HashMap<Entity, HashSet<NamedInstance>> entityInstances) {
+	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(
+			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
+			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
+			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
@@ -159,7 +165,14 @@ public class CloseDescriptionBundle {
 				final String subj_iri = OmlRead.getIri(subj);
 				final HashMap<String, Integer> subj_map = map.getOrDefault(subj_iri, new HashMap<String, Integer>());
 				map.put(subj_iri, subj_map);
+				final HashSet<Property> all_properties = new HashSet<>();
 				properties.forEach(property -> {
+					all_properties.add(property);
+					neighborCache.successorsOf(property).forEach(subproperty -> {
+						all_properties.add((Property) subproperty);
+					});
+				});
+				all_properties.forEach(property -> {
 					final String property_iri = OmlRead.getIri(property);
 					if (!subj_map.containsKey(property_iri)) subj_map.put(property_iri, 0);
 				});
@@ -167,7 +180,7 @@ public class CloseDescriptionBundle {
 					if (pva instanceof ScalarPropertyValueAssertion) {
 						final ScalarPropertyValueAssertion spva = (ScalarPropertyValueAssertion) pva;
 						final ScalarProperty prop = spva.getProperty();
-						if (properties.contains(prop)) {
+						if (all_properties.contains(prop)) {
 							final String prop_iri = OmlRead.getIri(prop);
 							subj_map.put(prop_iri, subj_map.get(prop_iri) + 1);
 						}
@@ -187,7 +200,10 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
-	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations, final HashMap<Entity, HashSet<NamedInstance>> entityInstances) {
+	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(
+			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations,
+			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
+			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedRelations.forEach((entity, relations) -> {
@@ -197,13 +213,24 @@ public class CloseDescriptionBundle {
 				final String subj_iri = OmlRead.getIri(subj);
 				final HashMap<String, Integer> subj_map = map.getOrDefault(subj_iri, new HashMap<String, Integer>());
 				map.put(subj_iri, subj_map);
+				final HashSet<Relation> all_relations = new HashSet<>();
 				relations.forEach(relation -> {
+					all_relations.add(relation);
+					neighborCache.successorsOf(OmlRead.getEntity(relation)).forEach(st -> {
+						final RelationEntity re = (RelationEntity) st;
+						if (re instanceof ForwardRelation)
+							all_relations.add(re.getForward());
+						else if (re instanceof ReverseRelation)
+							all_relations.add(re.getReverse());
+					});
+				});
+				all_relations.forEach(relation -> {
 					final String relation_iri = OmlRead.getIri(relation);
 					if (!subj_map.containsKey(relation_iri)) subj_map.put(relation_iri, 0);
 				});
 				subj.getOwnedLinks().forEach(link -> {
 					final Relation rel = link.getRelation();
-					if (relations.contains(rel)) {
+					if (all_relations.contains(rel)) {
 						final String rel_iri = OmlRead.getIri(rel);
 						subj_map.put(rel_iri, subj_map.get(rel_iri) + 1);
 					}
@@ -231,14 +258,14 @@ public class CloseDescriptionBundle {
 
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
-			final NeighborCache<SpecializableTerm, DefaultEdge> specializations = getSpecializations(allOntologies);
+			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
 			
-			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, specializations);
-			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances);
-			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(entitiesWithRestrictedRelations, entityInstances);
+			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, termSpecializations);
+			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations);
+			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations);
 			
 			/*
 			 * Generate data property cardinality restrictions.
