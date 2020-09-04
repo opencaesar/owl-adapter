@@ -1,19 +1,25 @@
 package io.opencaesar.oml2owl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.ecore.resource.Resource;
+import org.jgrapht.Graph;
 import org.jgrapht.alg.TransitiveClosure;
 import org.jgrapht.alg.util.NeighborCache;
+import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
+import org.jgrapht.alg.connectivity.BiconnectivityInspector;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLDataMaxCardinality;
@@ -126,7 +132,8 @@ public class CloseDescriptionBundle {
 		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
 	}
 
-	private final static DirectedAcyclicGraph<Relation, DefaultEdge> getRelationTree(final Iterable<Ontology> allOntologies) {
+	private final static HashMap<Relation, Graph<Relation, DefaultEdge>> getRelationTrees(final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
+		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
@@ -151,7 +158,16 @@ public class CloseDescriptionBundle {
 				});
 			});
 		});
-		return graph;
+		
+		final Set<Graph<Relation, DefaultEdge>> components = new BiconnectivityInspector<>(graph).getConnectedComponents();
+		components.forEach(component -> {
+			final AsSubgraph<Relation, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
+			final List<Relation> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0).collect(Collectors.toList());
+			if (roots.size() > 1) throw new UnsupportedOperationException("multiply-rooted relation tree");
+			map.put((Relation) roots.get(0),  subgraph);
+		});
+		
+		return map;
 	}
 	
 	private final static HashMap<Entity, HashSet<NamedInstance>> getEntityInstances(
@@ -289,7 +305,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
-			final DirectedAcyclicGraph<Relation, DefaultEdge> relationTree = getRelationTree(allOntologies);
+			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
