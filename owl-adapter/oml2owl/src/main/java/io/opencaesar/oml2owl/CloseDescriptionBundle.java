@@ -261,17 +261,22 @@ public class CloseDescriptionBundle {
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
 			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
+			
+			final HashSet<Property> all_properties = new HashSet<>();
+			properties.forEach(property -> {
+//				all_properties.add(property);
+//				neighborCache.successorsOf(property).forEach(subproperty -> {
+//					all_properties.add((Property) subproperty);
+//				});
+				final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+				if (Objects.nonNull(propertyTree))
+					propertyTree.vertexSet().forEach(p -> all_properties.add(p));
+			});
+			
 			instances.forEach(instance -> {
 				final NamedInstance subj = (NamedInstance) instance;
 				final HashMap<Property, Integer> subj_map = map.getOrDefault(subj, new HashMap<>());
 				map.put(subj, subj_map);
-				final HashSet<Property> all_properties = new HashSet<>();
-				properties.forEach(property -> {
-					all_properties.add(property);
-					neighborCache.successorsOf(property).forEach(subproperty -> {
-						all_properties.add((Property) subproperty);
-					});
-				});
 				all_properties.forEach(property -> {
 					if (!subj_map.containsKey(property)) subj_map.put(property, 0);
 				});
