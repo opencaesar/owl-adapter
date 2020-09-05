@@ -19,6 +19,7 @@ import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
+import org.jgrapht.traverse.DepthFirstIterator;
 import org.jgrapht.alg.connectivity.BiconnectivityInspector;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
@@ -175,7 +176,7 @@ public class CloseDescriptionBundle {
 			final List<Property> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
 					.collect(Collectors.toList());
 			if (roots.size() > 1)
-				throw new UnsupportedOperationException("multiply-rooted relation tree");
+				throw new UnsupportedOperationException("multiply-rooted property tree");
 			map.put((Property) roots.get(0), subgraph);
 		});
 
@@ -247,7 +248,7 @@ public class CloseDescriptionBundle {
 	
 	/**
 	 * 
-	 * Returns a map from subject IRI to a map from predicate IRI to usage count
+	 * Returns a map from subject to a map from predicate to usage count
 	 * for generating cardinality restrictions on data properties.
 	 * 
 	 * @param allOntologies
@@ -275,19 +276,34 @@ public class CloseDescriptionBundle {
 				final HashMap<Property, HashSet<Literal>> subj_vals_map = new HashMap<>();
 				final HashMap<Property, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
 				map.put(subj, subj_count_map);
+				
 				all_properties.forEach(property -> {
-					if (!subj_count_map.containsKey(property)) subj_count_map.put(property, 0);
 					if (!subj_vals_map.containsKey(property)) subj_vals_map.put(property, new HashSet<Literal>());
 				});
+				
 				subj.getOwnedPropertyValues().forEach(pva -> {
 					if (pva instanceof ScalarPropertyValueAssertion) {
 						final ScalarPropertyValueAssertion spva = (ScalarPropertyValueAssertion) pva;
 						final ScalarProperty prop = spva.getProperty();
 						if (all_properties.contains(prop)) {
 							subj_vals_map.get(prop).add(spva.getValue());
-							subj_count_map.put(prop, subj_vals_map.get(prop).size());
 						}
 					}
+				});
+				
+				properties.forEach(property -> {
+					final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+					if (Objects.nonNull(propertyTree)) {
+						final DepthFirstIterator<Property, DefaultEdge> dfs = new DepthFirstIterator<>(propertyTree, property);
+						while (dfs.hasNext()) {
+							final Property prop = dfs.next();
+							final HashSet<Literal> vals = subj_vals_map.get(prop);
+							propertyTree.outgoingEdgesOf(prop).forEach(edge -> {
+								vals.addAll(subj_vals_map.get(propertyTree.getEdgeTarget(edge)));
+							});
+							subj_count_map.put(prop, vals.size());
+						}
+					}					
 				});
 			});			
 		});
@@ -312,30 +328,45 @@ public class CloseDescriptionBundle {
 		
 		entitiesWithRestrictedRelations.forEach((entity, relations) -> {
 			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
+
+			final HashSet<Relation> all_relations = new HashSet<>();
+			relations.forEach(relation -> {
+				final Graph<Relation, DefaultEdge> relationTree = relationTrees.get(relation);
+				if (Objects.nonNull(relationTree))
+					relationTree.vertexSet().forEach(p -> all_relations.add(p));
+			});
+			
 			instances.forEach(instance -> {
 				final NamedInstance subj = (NamedInstance) instance;
-				final HashMap<Relation, Integer> subj_map = map.getOrDefault(subj, new HashMap<>());
-				map.put(subj, subj_map);
-				final HashSet<Relation> all_relations = new HashSet<>();
-				relations.forEach(relation -> {
-					all_relations.add(relation);
-					neighborCache.successorsOf(OmlRead.getEntity(relation)).forEach(st -> {
-						final RelationEntity re = (RelationEntity) st;
-						if (relation instanceof ForwardRelation)
-							all_relations.add(re.getForward());
-						else if (relation instanceof ReverseRelation)
-							all_relations.add(re.getReverse());
-					});
-				});
+				final HashMap<Relation, HashSet<NamedInstance>> subj_vals_map = new HashMap<>();
+				final HashMap<Relation, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
+				map.put(subj, subj_count_map);
+
 				all_relations.forEach(relation -> {
-					if (!subj_map.containsKey(relation)) subj_map.put(relation, 0);
+					if (!subj_vals_map.containsKey(relation)) subj_vals_map.put(relation, new HashSet<NamedInstance>());
 				});
+				
 				subj.getOwnedLinks().forEach(link -> {
 					final Relation rel = link.getRelation();
 					if (all_relations.contains(rel)) {
-						subj_map.put(rel, subj_map.get(rel) + 1);
+						subj_vals_map.get(rel).add(link.getTarget());
 					}
 
+				});
+				
+				relations.forEach(relation -> {
+					final Graph<Relation, DefaultEdge> relationTree = relationTrees.get(relation);
+					if (Objects.nonNull(relationTree)) {
+						final DepthFirstIterator<Relation, DefaultEdge> dfs = new DepthFirstIterator<>(relationTree, relation);
+						while (dfs.hasNext()) {
+							final Relation rel = dfs.next();
+							final HashSet<NamedInstance> vals = subj_vals_map.get(rel);
+							relationTree.outgoingEdgesOf(rel).forEach(edge -> {
+								vals.addAll(subj_vals_map.get(relationTree.getEdgeTarget(edge)));
+							});
+							subj_count_map.put(rel, vals.size());
+						}
+					}					
 				});
 			});			
 		});
