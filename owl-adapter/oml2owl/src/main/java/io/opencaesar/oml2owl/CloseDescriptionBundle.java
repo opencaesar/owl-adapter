@@ -33,6 +33,7 @@ import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.ForwardRelation;
+import io.opencaesar.oml.Literal;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.Property;
@@ -264,10 +265,6 @@ public class CloseDescriptionBundle {
 			
 			final HashSet<Property> all_properties = new HashSet<>();
 			properties.forEach(property -> {
-//				all_properties.add(property);
-//				neighborCache.successorsOf(property).forEach(subproperty -> {
-//					all_properties.add((Property) subproperty);
-//				});
 				final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
 				if (Objects.nonNull(propertyTree))
 					propertyTree.vertexSet().forEach(p -> all_properties.add(p));
@@ -275,17 +272,20 @@ public class CloseDescriptionBundle {
 			
 			instances.forEach(instance -> {
 				final NamedInstance subj = (NamedInstance) instance;
-				final HashMap<Property, Integer> subj_map = map.getOrDefault(subj, new HashMap<>());
-				map.put(subj, subj_map);
+				final HashMap<Property, HashSet<Literal>> subj_vals_map = new HashMap<>();
+				final HashMap<Property, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
+				map.put(subj, subj_count_map);
 				all_properties.forEach(property -> {
-					if (!subj_map.containsKey(property)) subj_map.put(property, 0);
+					if (!subj_count_map.containsKey(property)) subj_count_map.put(property, 0);
+					if (!subj_vals_map.containsKey(property)) subj_vals_map.put(property, new HashSet<Literal>());
 				});
 				subj.getOwnedPropertyValues().forEach(pva -> {
 					if (pva instanceof ScalarPropertyValueAssertion) {
 						final ScalarPropertyValueAssertion spva = (ScalarPropertyValueAssertion) pva;
 						final ScalarProperty prop = spva.getProperty();
 						if (all_properties.contains(prop)) {
-							subj_map.put(prop, subj_map.get(prop) + 1);
+							subj_vals_map.get(prop).add(spva.getValue());
+							subj_count_map.put(prop, subj_vals_map.get(prop).size());
 						}
 					}
 				});
