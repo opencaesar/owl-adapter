@@ -44,6 +44,8 @@ import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
 import io.opencaesar.oml.SpecializableTerm;
+import io.opencaesar.oml.StructuredProperty;
+import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -82,7 +84,21 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
+					} else 
+						if (r instanceof StructuredPropertyCardinalityRestrictionAxiom) {
+						final StructuredPropertyCardinalityRestrictionAxiom restriction = (StructuredPropertyCardinalityRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case MIN:
+						case EXACTLY:
+							final StructuredProperty property = restriction.getProperty();
+							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(property);
+							break;
+						default:
+						}
 					}
+
 				});
 			});
 		});
