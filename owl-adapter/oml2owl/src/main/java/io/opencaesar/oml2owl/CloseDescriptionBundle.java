@@ -131,49 +131,51 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
-	private final static NeighborCache<SpecializableTerm, DefaultEdge> getTermSpecializations(final Iterable<Ontology> allOntologies) {
-		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(DefaultEdge.class);
-		
+	private final static NeighborCache<SpecializableTerm, DefaultEdge> getTermSpecializations(
+			final Iterable<Ontology> allOntologies) {
+		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(
+				DefaultEdge.class);
+
 		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof SpecializableTerm).map(e -> (SpecializableTerm) e).forEach(term -> {
-				taxonomy.addVertex(term);
-				OmlRead.getSpecializedTerms(term).forEach(specialized -> {
-					taxonomy.addVertex(specialized);
-					taxonomy.addEdge(specialized, term);
-				});
-			});
+			toStream(g.eAllContents()).filter(e -> e instanceof SpecializableTerm).map(e -> (SpecializableTerm) e)
+					.forEach(term -> {
+						taxonomy.addVertex(term);
+						OmlRead.getSpecializedTerms(term).forEach(specialized -> {
+							taxonomy.addVertex(specialized);
+							taxonomy.addEdge(specialized, term);
+						});
+					});
 		});
 
 		TransitiveClosure.INSTANCE.closeDirectedAcyclicGraph(taxonomy);
 		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
 	}
 
-	private final static HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> getPropertyTrees(
+	private final static HashMap<Property, Graph<Property, DefaultEdge>> getPropertyTrees(
 			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
-		final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> map = new HashMap<>();
-		final DirectedAcyclicGraph<ScalarProperty, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
-		
+		final HashMap<Property, Graph<Property, DefaultEdge>> map = new HashMap<>();
+		final DirectedAcyclicGraph<Property, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
+
 		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof ScalarProperty).map(e -> (ScalarProperty) e)
-			.forEach(sp -> {
-				graph.addVertex(sp);
-				OmlRead.getSpecializedTerms(sp).forEach(s -> {
-					final ScalarProperty ssp = (ScalarProperty) s;
-					graph.addVertex(ssp);
-					graph.addEdge(ssp,  sp);
+			toStream(g.eAllContents()).filter(e -> e instanceof Property).map(e -> (Property) e).forEach(p -> {
+				graph.addVertex(p);
+				OmlRead.getSpecializedTerms(p).forEach(s -> {
+					final Property sp = (Property) s;
+					graph.addVertex(sp);
+					graph.addEdge(sp, p);
 				});
 			});
 		});
-		
-		final Set<Graph<ScalarProperty, DefaultEdge>> components = new BiconnectivityInspector<>(graph)
+
+		final Set<Graph<Property, DefaultEdge>> components = new BiconnectivityInspector<>(graph)
 				.getConnectedComponents();
 		components.forEach(component -> {
-			final AsSubgraph<ScalarProperty, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
-			final List<ScalarProperty> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
+			final AsSubgraph<Property, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
+			final List<Property> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
 					.collect(Collectors.toList());
 			if (roots.size() > 1)
 				throw new UnsupportedOperationException("multiply-rooted relation tree");
-			map.put((ScalarProperty) roots.get(0), subgraph);
+			map.put((Property) roots.get(0), subgraph);
 		});
 
 		return map;
@@ -254,7 +256,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
-			final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> propertyTrees) {
+			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees) {
 		final HashMap<NamedInstance, HashMap<String, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
@@ -358,7 +360,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
-			final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
+			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
 			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
