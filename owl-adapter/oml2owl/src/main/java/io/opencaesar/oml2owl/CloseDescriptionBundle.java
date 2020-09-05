@@ -237,7 +237,8 @@ public class CloseDescriptionBundle {
 	private static HashMap<String, HashMap<String, Integer>> dataPropertyCounts(
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
-			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
+			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
+			final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> propertyTrees) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
@@ -285,7 +286,8 @@ public class CloseDescriptionBundle {
 	private static HashMap<String, HashMap<String, Integer>> objectPropertyCounts(
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
-			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
+			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
+			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees) {
 		final HashMap<String, HashMap<String, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedRelations.forEach((entity, relations) -> {
@@ -341,15 +343,15 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
-			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
 			final HashMap<ScalarProperty, Graph<ScalarProperty, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
+			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
 			
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, termSpecializations);
-			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations);
-			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations);
+			final HashMap<String, HashMap<String, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
+			final HashMap<String, HashMap<String, Integer>> objectPropertyCounts = objectPropertyCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations, relationTrees);
 			
 			/*
 			 * Generate data property cardinality restrictions.
