@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.checkerframework.checker.units.qual.A;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.TransitiveClosure;
@@ -268,7 +269,7 @@ public class CloseDescriptionBundle {
 			properties.forEach(property -> {
 				final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
 				if (Objects.nonNull(propertyTree))
-					propertyTree.vertexSet().forEach(p -> all_properties.add(p));
+					all_properties.addAll(propertyTree.vertexSet());
 			});
 			
 			instances.forEach(instance -> {
@@ -333,7 +334,7 @@ public class CloseDescriptionBundle {
 			relations.forEach(relation -> {
 				final Graph<Relation, DefaultEdge> relationTree = relationTrees.get(relation);
 				if (Objects.nonNull(relationTree))
-					relationTree.vertexSet().forEach(p -> all_relations.add(p));
+					all_relations.addAll(relationTree.vertexSet());
 			});
 			
 			instances.forEach(instance -> {
