@@ -255,7 +255,7 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
-	private static HashMap<NamedInstance, HashMap<Property, Integer>> dataPropertyCounts(
+	private static HashMap<NamedInstance, HashMap<Property, Integer>> getScalarPropertyCounts(
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
@@ -320,7 +320,7 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from subject IRI to map from predicate IRI to usage count
 	 */
-	private static HashMap<NamedInstance, HashMap<Relation, Integer>> objectPropertyCounts(
+	private static HashMap<NamedInstance, HashMap<Relation, Integer>> getRelationCounts(
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
@@ -399,13 +399,13 @@ public class CloseDescriptionBundle {
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
 			
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, termSpecializations);
-			final HashMap<NamedInstance, HashMap<Property, Integer>> dataPropertyCounts = dataPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
-			final HashMap<NamedInstance, HashMap<Relation, Integer>> objectPropertyCounts = objectPropertyCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations, relationTrees);
+			final HashMap<NamedInstance, HashMap<Property, Integer>> scalarPropertyCounts = getScalarPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
+			final HashMap<NamedInstance, HashMap<Relation, Integer>> relationCounts = getRelationCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations, relationTrees);
 			
 			/*
 			 * Generate data property cardinality restrictions.
 			 */
-			dataPropertyCounts.forEach((subj, map) -> {
+			scalarPropertyCounts.forEach((subj, map) -> {
 				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
 				map.forEach((prop, c) -> {
@@ -420,7 +420,7 @@ public class CloseDescriptionBundle {
 			/*
 			 * Generate object property cardinality restrictions.
 			 */
-			objectPropertyCounts.forEach((subj, map) -> {
+			relationCounts.forEach((subj, map) -> {
 				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
 				map.forEach((prop, c) -> {
