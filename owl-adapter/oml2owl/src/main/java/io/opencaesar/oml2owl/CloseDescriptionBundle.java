@@ -49,6 +49,8 @@ import io.opencaesar.oml.ScalarPropertyValueAssertion;
 import io.opencaesar.oml.SpecializableTerm;
 import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
+import io.opencaesar.oml.StructuredPropertyValueAssertion;
+import io.opencaesar.oml.StructureInstance;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -314,6 +316,71 @@ public class CloseDescriptionBundle {
 	
 	/**
 	 * 
+	 * Returns a map from subject to a map from predicate to usage count
+	 * for generating cardinality restrictions on data properties.
+	 * 
+	 * @param allOntologies
+	 * @return map from subject IRI to map from predicate IRI to usage count
+	 */
+	private static HashMap<NamedInstance, HashMap<Property, Integer>> getStructuredPropertyCounts(
+			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
+			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
+			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
+			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees) {
+		final HashMap<NamedInstance, HashMap<Property, Integer>> map = new HashMap<>();
+		
+		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
+			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
+			
+			final HashSet<Property> all_properties = new HashSet<>();
+			properties.forEach(property -> {
+				final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+				if (Objects.nonNull(propertyTree))
+					all_properties.addAll(propertyTree.vertexSet());
+			});
+			
+			instances.forEach(instance -> {
+				final NamedInstance subj = (NamedInstance) instance;
+				final HashMap<Property, HashSet<StructureInstance>> subj_vals_map = new HashMap<>();
+				final HashMap<Property, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
+				map.put(subj, subj_count_map);
+				
+				all_properties.forEach(property -> {
+					if (!subj_vals_map.containsKey(property)) subj_vals_map.put(property, new HashSet<StructureInstance>());
+				});
+				
+				subj.getOwnedPropertyValues().forEach(pva -> {
+					if (pva instanceof StructuredPropertyValueAssertion) {
+						final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) pva;
+						final StructuredProperty prop = spva.getProperty();
+						if (all_properties.contains(prop)) {
+							subj_vals_map.get(prop).add(spva.getValue());
+						}
+					}
+				});
+				
+				properties.forEach(property -> {
+					final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+					if (Objects.nonNull(propertyTree)) {
+						final DepthFirstIterator<Property, DefaultEdge> dfs = new DepthFirstIterator<>(propertyTree, property);
+						while (dfs.hasNext()) {
+							final Property prop = dfs.next();
+							final HashSet<StructureInstance> vals = subj_vals_map.get(prop);
+							propertyTree.outgoingEdgesOf(prop).forEach(edge -> {
+								vals.addAll(subj_vals_map.get(propertyTree.getEdgeTarget(edge)));
+							});
+							subj_count_map.put(prop, vals.size());
+						}
+					}					
+				});
+			});			
+		});
+		
+		return map;
+	}
+	
+	/**
+	 * 
 	 * Returns a map from subject IRI to a map from predicate IRI to usage count
 	 * for generating cardinality restrictions on object properties.
 	 * 
@@ -400,6 +467,7 @@ public class CloseDescriptionBundle {
 			
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, termSpecializations);
 			final HashMap<NamedInstance, HashMap<Property, Integer>> scalarPropertyCounts = getScalarPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
+			final HashMap<NamedInstance, HashMap<Property, Integer>> structuredPropertyCounts = getStructuredPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
 			final HashMap<NamedInstance, HashMap<Relation, Integer>> relationCounts = getRelationCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations, relationTrees);
 			
 			/*
@@ -420,6 +488,17 @@ public class CloseDescriptionBundle {
 			/*
 			 * Generate object property cardinality restrictions.
 			 */
+			structuredPropertyCounts.forEach((subj, map) -> {
+				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
+				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
+				map.forEach((prop, c) -> {
+					final IRI prop_iri = IRI.create(OmlRead.getIri(prop));
+					final OWLDataProperty dp = this.owlApi.getOWLDataProperty(prop_iri);
+					final OWLDataMaxCardinality mc = this.owlApi.getOWLDataMaxCardinality(c, dp);
+					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
+					this.ontology.add(ca);
+				});
+			});
 			relationCounts.forEach((subj, map) -> {
 				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
