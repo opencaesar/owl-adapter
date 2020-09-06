@@ -1,9 +1,9 @@
 package io.opencaesar.oml2owl;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
@@ -12,16 +12,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.checkerframework.checker.units.qual.A;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.TransitiveClosure;
+import org.jgrapht.alg.connectivity.BiconnectivityInspector;
 import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.jgrapht.traverse.DepthFirstIterator;
-import org.jgrapht.alg.connectivity.BiconnectivityInspector;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLDataMaxCardinality;
@@ -34,7 +33,6 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.Entity;
-import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.Literal;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
@@ -42,15 +40,14 @@ import io.opencaesar.oml.Property;
 import io.opencaesar.oml.Relation;
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
 import io.opencaesar.oml.RelationEntity;
-import io.opencaesar.oml.ReverseRelation;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
 import io.opencaesar.oml.SpecializableTerm;
+import io.opencaesar.oml.StructureInstance;
 import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
-import io.opencaesar.oml.StructureInstance;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -493,8 +490,8 @@ public class CloseDescriptionBundle {
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
 				map.forEach((prop, c) -> {
 					final IRI prop_iri = IRI.create(OmlRead.getIri(prop));
-					final OWLDataProperty dp = this.owlApi.getOWLDataProperty(prop_iri);
-					final OWLDataMaxCardinality mc = this.owlApi.getOWLDataMaxCardinality(c, dp);
+					final OWLObjectProperty dp = this.owlApi.getOWLObjectProperty(prop_iri);
+					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, dp);
 					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
 					this.ontology.add(ca);
 				});
