@@ -40,16 +40,21 @@ import io.opencaesar.oml.Property;
 import io.opencaesar.oml.Relation;
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
 import io.opencaesar.oml.RelationEntity;
+import io.opencaesar.oml.RelationRangeRestrictionAxiom;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
+import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
 import io.opencaesar.oml.SpecializableTerm;
 import io.opencaesar.oml.StructureInstance;
 import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
+import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
+import io.opencaesar.oml.RangeRestrictionKind;
+import io.opencaesar.oml.CardinalityRestrictionKind;
 
 /**
  * @author sjenkins
@@ -86,8 +91,18 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
-					} else 
-						if (r instanceof StructuredPropertyCardinalityRestrictionAxiom) {
+					} else if (r instanceof ScalarPropertyRangeRestrictionAxiom) {
+						final ScalarPropertyRangeRestrictionAxiom restriction = (ScalarPropertyRangeRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case SOME:
+							final ScalarProperty property = restriction.getProperty();
+							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(property);
+							break;
+						default:
+						}
+					} else if (r instanceof StructuredPropertyCardinalityRestrictionAxiom) {
 						final StructuredPropertyCardinalityRestrictionAxiom restriction = (StructuredPropertyCardinalityRestrictionAxiom) r;
 						switch (restriction.getKind()) {
 						case MIN:
@@ -99,8 +114,18 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
+					} else if (r instanceof StructuredPropertyRangeRestrictionAxiom) {
+						final StructuredPropertyRangeRestrictionAxiom restriction = (StructuredPropertyRangeRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case SOME:
+							final StructuredProperty property = restriction.getProperty();
+							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(property);
+							break;
+						default:
+						}
 					}
-
 				});
 			});
 		});
@@ -126,7 +151,19 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
+					} else if (r instanceof RelationRangeRestrictionAxiom) {
+						final RelationRangeRestrictionAxiom restriction = (RelationRangeRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case SOME:
+							final Relation relation = restriction.getRelation();
+							final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(relation);
+							break;
+						default:
+						}
 					}
+					
 				});
 			});
 		});
