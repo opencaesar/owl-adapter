@@ -64,6 +64,9 @@ public class CloseDescriptionBundle {
 
 	protected final Resource resource;
 
+	/**
+	 * @param resource
+	 */
 	public CloseDescriptionBundle(final Resource resource) {
 		this.resource = resource;
 	}
@@ -72,6 +75,13 @@ public class CloseDescriptionBundle {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(i, Spliterator.ORDERED), false);
 	}
 	
+	/**
+	 * Gets all entities with restrictions on properties that require closure axioms. Such axioms are minimum and
+	 * exact cardinality restrictions and some-values-from range restrictions.
+	 * 
+	 * @param allOntologies
+	 * @return map from entity to set of restricted properties
+	 */
 	private final static HashMap<Entity, HashSet<Property>> getEntitiesWithRestrictedProperties(final Iterable<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<Property>> map = new HashMap<>();
 		
@@ -132,6 +142,13 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 	
+	/**
+	 * Gets all entities with restrictions on relations that require closure axioms. Such axioms are minimum and
+	 * exact cardinality restrictions and some-values-from range restrictions.
+	 * 
+	 * @param allOntologies
+	 * @return map from entity to set of restricted relations
+	 */
 	private final static HashMap<Entity, HashSet<Relation>> getEntitiesWithRestrictedRelations(final Iterable<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<Relation>> map = new HashMap<>();
 		
@@ -170,6 +187,13 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
+	/**
+	 * Creates a {@link org.jgrapht.alg.util.NeighborCache} of specialized terms and their specializations. For each specialized term, its
+	 * successors in the cache are its specializations (direct and indirect).
+	 * 
+	 * @param allOntologies
+	 * @return NeighborCache of terms and their specializations
+	 */
 	private final static NeighborCache<SpecializableTerm, DefaultEdge> getTermSpecializations(
 			final Iterable<Ontology> allOntologies) {
 		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(
@@ -190,6 +214,13 @@ public class CloseDescriptionBundle {
 		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
 	}
 
+	/**
+	 * Creates a map from from each property to the tree of its specializations.
+	 * 
+	 * @param allOntologies
+	 * @return map from property to property graph
+	 * @throws UnsupportedOperationException
+	 */
 	private final static HashMap<Property, Graph<Property, DefaultEdge>> getPropertyTrees(
 			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
 		final HashMap<Property, Graph<Property, DefaultEdge>> map = new HashMap<>();
@@ -220,6 +251,13 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 	
+	/**
+	 * Creates a map from from each relation to the tree of its specializations.
+	 * 
+	 * @param allOntologies
+	 * @return map from relation to relation graph
+	 * @throws UnsupportedOperationException
+	 */
 	private final static HashMap<Relation, Graph<Relation, DefaultEdge>> getRelationTrees(
 			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
 		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
@@ -263,6 +301,14 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 	
+	/**
+	 * Creates a map from entity to all instances of that entity or its specializations.
+	 * 
+	 * @param allOntologies
+	 * @param entities
+	 * @param neighborCache
+	 * @return map from entity to instances
+	 */
 	private final static HashMap<Entity, HashSet<NamedInstance>> getEntityInstances(
 			final Iterable<Ontology> allOntologies, final HashSet<Entity> entities,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
@@ -284,12 +330,14 @@ public class CloseDescriptionBundle {
 	}
 	
 	/**
-	 * 
-	 * Returns a map from subject to a map from predicate to usage count
+	 * Returns a map from subject to a map from scalar property to usage count
 	 * for generating cardinality restrictions on data properties.
 	 * 
-	 * @param allOntologies
-	 * @return map from subject IRI to map from predicate IRI to usage count
+	 * @param entitiesWithRestrictedProperties
+	 * @param entityInstances
+	 * @param neighborCache
+	 * @param propertyTrees
+	 * @return map from subject to map from scalar property to usage count
 	 */
 	private static HashMap<NamedInstance, HashMap<Property, Integer>> getScalarPropertyCounts(
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
@@ -349,12 +397,14 @@ public class CloseDescriptionBundle {
 	}
 	
 	/**
-	 * 
-	 * Returns a map from subject to a map from predicate to usage count
+	 * Returns a map from subject to a map from structured property to usage count
 	 * for generating cardinality restrictions on data properties.
 	 * 
-	 * @param allOntologies
-	 * @return map from subject IRI to map from predicate IRI to usage count
+	 * @param entitiesWithRestrictedProperties
+	 * @param entityInstances
+	 * @param neighborCache
+	 * @param propertyTrees
+	 * @return map from subject to structured property to usage count
 	 */
 	private static HashMap<NamedInstance, HashMap<Property, Integer>> getStructuredPropertyCounts(
 			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
@@ -414,12 +464,14 @@ public class CloseDescriptionBundle {
 	}
 	
 	/**
+	 * Returns a map from subject to a map from relation to usage count
+	 * for generating cardinality restrictions on data properties.
 	 * 
-	 * Returns a map from subject IRI to a map from predicate IRI to usage count
-	 * for generating cardinality restrictions on object properties.
-	 * 
-	 * @param allOntologies
-	 * @return map from subject IRI to map from predicate IRI to usage count
+	 * @param entitiesWithRestrictedRelations
+	 * @param entityInstances
+	 * @param neighborCache
+	 * @param relationTrees
+	 * @return map from subject to relation to usage count
 	 */
 	private static HashMap<NamedInstance, HashMap<Relation, Integer>> getRelationCounts(
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations,
