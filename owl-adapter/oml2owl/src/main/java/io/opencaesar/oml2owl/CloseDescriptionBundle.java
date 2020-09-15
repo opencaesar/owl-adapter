@@ -53,8 +53,6 @@ import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
-import io.opencaesar.oml.RangeRestrictionKind;
-import io.opencaesar.oml.CardinalityRestrictionKind;
 
 /**
  * @author sjenkins
