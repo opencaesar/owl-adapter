@@ -9,5 +9,5 @@ dependencies {
 	implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
 	implementation "io.opencaesar.owl:owl-close-world:${versions.owl_tools}"
 	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
-	implementation "org.jgrapht:jgrapht-core:1.5.0"
+	implementation "org.jgrapht:jgrapht-core:${versions.jgrapht}"
 }

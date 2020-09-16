@@ -14,8 +14,8 @@ import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.ecore.resource.Resource;
 import org.jgrapht.Graph;
+import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.TransitiveClosure;
-import org.jgrapht.alg.connectivity.BiconnectivityInspector;
 import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
@@ -80,20 +80,20 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from entity to set of restricted properties
 	 */
-	private final static HashMap<Entity, HashSet<Property>> getEntitiesWithRestrictedProperties(final Iterable<Ontology> allOntologies) {
-		final HashMap<Entity, HashSet<Property>> map = new HashMap<>();
+	private final static HashMap<Entity, HashSet<ScalarProperty>> getEntitiesWithRestrictedScalarProperties(final Iterable<Ontology> allOntologies) {
+		final HashMap<Entity, HashSet<ScalarProperty>> map = new HashMap<>();
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
 				final Entity entity = (Entity) e;
-				entity.getOwnedPropertyRestrictions().forEach(r -> {
+				OmlSearch.findPropertyRestrictions(entity).forEach(r -> {
 					if (r instanceof ScalarPropertyCardinalityRestrictionAxiom) {
 						final ScalarPropertyCardinalityRestrictionAxiom restriction = (ScalarPropertyCardinalityRestrictionAxiom) r;
 						switch (restriction.getKind()) {
 						case MIN:
 						case EXACTLY:
 							final ScalarProperty property = restriction.getProperty();
-							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
+							final HashSet<ScalarProperty> set = map.getOrDefault(entity, new HashSet<>());
 							map.put(entity, set);
 							set.add(property);
 							break;
@@ -104,30 +104,7 @@ public class CloseDescriptionBundle {
 						switch (restriction.getKind()) {
 						case SOME:
 							final ScalarProperty property = restriction.getProperty();
-							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
-							map.put(entity, set);
-							set.add(property);
-							break;
-						default:
-						}
-					} else if (r instanceof StructuredPropertyCardinalityRestrictionAxiom) {
-						final StructuredPropertyCardinalityRestrictionAxiom restriction = (StructuredPropertyCardinalityRestrictionAxiom) r;
-						switch (restriction.getKind()) {
-						case MIN:
-						case EXACTLY:
-							final StructuredProperty property = restriction.getProperty();
-							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
-							map.put(entity, set);
-							set.add(property);
-							break;
-						default:
-						}
-					} else if (r instanceof StructuredPropertyRangeRestrictionAxiom) {
-						final StructuredPropertyRangeRestrictionAxiom restriction = (StructuredPropertyRangeRestrictionAxiom) r;
-						switch (restriction.getKind()) {
-						case SOME:
-							final StructuredProperty property = restriction.getProperty();
-							final HashSet<Property> set = map.getOrDefault(entity, new HashSet<>());
+							final HashSet<ScalarProperty> set = map.getOrDefault(entity, new HashSet<>());
 							map.put(entity, set);
 							set.add(property);
 							break;
@@ -141,6 +118,50 @@ public class CloseDescriptionBundle {
 	}
 	
 	/**
+	 * Gets all entities with restrictions on properties that require closure axioms. Such axioms are minimum and
+	 * exact cardinality restrictions and some-values-from range restrictions.
+	 * 
+	 * @param allOntologies
+	 * @return map from entity to set of restricted properties
+	 */
+	private final static HashMap<Entity, HashSet<StructuredProperty>> getEntitiesWithRestrictedStructuredProperties(final Iterable<Ontology> allOntologies) {
+		final HashMap<Entity, HashSet<StructuredProperty>> map = new HashMap<>();
+		
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
+				final Entity entity = (Entity) e;
+				OmlSearch.findPropertyRestrictions(entity).forEach(r -> {
+					if (r instanceof StructuredPropertyCardinalityRestrictionAxiom) {
+						final StructuredPropertyCardinalityRestrictionAxiom restriction = (StructuredPropertyCardinalityRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case MIN:
+						case EXACTLY:
+							final StructuredProperty property = restriction.getProperty();
+							final HashSet<StructuredProperty> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(property);
+							break;
+						default:
+						}
+					} else if (r instanceof StructuredPropertyRangeRestrictionAxiom) {
+						final StructuredPropertyRangeRestrictionAxiom restriction = (StructuredPropertyRangeRestrictionAxiom) r;
+						switch (restriction.getKind()) {
+						case SOME:
+							final StructuredProperty property = restriction.getProperty();
+							final HashSet<StructuredProperty> set = map.getOrDefault(entity, new HashSet<>());
+							map.put(entity, set);
+							set.add(property);
+							break;
+						default:
+						}
+					}
+				});
+			});
+		});
+		return map;
+	}
+
+	/**
 	 * Gets all entities with restrictions on relations that require closure axioms. Such axioms are minimum and
 	 * exact cardinality restrictions and some-values-from range restrictions.
 	 * 
@@ -153,7 +174,7 @@ public class CloseDescriptionBundle {
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
 				final Entity entity = (Entity) e;
-				entity.getOwnedRelationRestrictions().forEach(r -> {
+				OmlSearch.findRelationRestrictions(entity).forEach(r -> {
 					if (r instanceof RelationCardinalityRestrictionAxiom) {
 						final RelationCardinalityRestrictionAxiom restriction = (RelationCardinalityRestrictionAxiom) r;
 						switch (restriction.getKind()) {
@@ -213,7 +234,7 @@ public class CloseDescriptionBundle {
 	}
 
 	/**
-	 * Creates a map from from each property to the tree of its specializations.
+	 * Creates a map from each property to the tree of its specializations.
 	 * 
 	 * @param allOntologies
 	 * @return map from property to property graph
@@ -235,10 +256,10 @@ public class CloseDescriptionBundle {
 			});
 		});
 
-		final Set<Graph<Property, DefaultEdge>> components = new BiconnectivityInspector<>(graph)
-				.getConnectedComponents();
+		final List<Set<Property>> components = new ConnectivityInspector<>(graph)
+				.connectedSets();
 		components.forEach(component -> {
-			final AsSubgraph<Property, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
+			final AsSubgraph<Property, DefaultEdge> subgraph = new AsSubgraph<>(graph, component);
 			final List<Property> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
 					.collect(Collectors.toList());
 			if (roots.size() > 1)
@@ -285,10 +306,10 @@ public class CloseDescriptionBundle {
 					});
 		});
 
-		final Set<Graph<Relation, DefaultEdge>> components = new BiconnectivityInspector<>(graph)
-				.getConnectedComponents();
+		final List<Set<Relation>> components = new ConnectivityInspector<>(graph)
+				.connectedSets();
 		components.forEach(component -> {
-			final AsSubgraph<Relation, DefaultEdge> subgraph = new AsSubgraph<>(graph, component.vertexSet());
+			final AsSubgraph<Relation, DefaultEdge> subgraph = new AsSubgraph<>(graph, component);
 			final List<Relation> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
 					.collect(Collectors.toList());
 			if (roots.size() > 1)
@@ -337,19 +358,19 @@ public class CloseDescriptionBundle {
 	 * @param propertyTrees
 	 * @return map from subject to map from scalar property to usage count
 	 */
-	private static HashMap<NamedInstance, HashMap<Property, Integer>> getScalarPropertyCounts(
-			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
+	private static HashMap<NamedInstance, HashMap<ScalarProperty, Integer>> getScalarPropertyCounts(
+			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
 			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees) {
-		final HashMap<NamedInstance, HashMap<Property, Integer>> map = new HashMap<>();
+		final HashMap<NamedInstance, HashMap<ScalarProperty, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
 			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
 			
 			final HashSet<Property> all_properties = new HashSet<>();
 			properties.forEach(property -> {
-				final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+				final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
 				if (Objects.nonNull(propertyTree))
 					all_properties.addAll(propertyTree.vertexSet());
 			});
@@ -357,14 +378,14 @@ public class CloseDescriptionBundle {
 			instances.forEach(instance -> {
 				final NamedInstance subj = (NamedInstance) instance;
 				final HashMap<Property, HashSet<Literal>> subj_vals_map = new HashMap<>();
-				final HashMap<Property, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
+				final HashMap<ScalarProperty, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
 				map.put(subj, subj_count_map);
 				
 				all_properties.forEach(property -> {
 					if (!subj_vals_map.containsKey(property)) subj_vals_map.put(property, new HashSet<Literal>());
 				});
 				
-				subj.getOwnedPropertyValues().forEach(pva -> {
+				OmlSearch.findPropertyValueAssertions(subj).forEach(pva -> {
 					if (pva instanceof ScalarPropertyValueAssertion) {
 						final ScalarPropertyValueAssertion spva = (ScalarPropertyValueAssertion) pva;
 						final ScalarProperty prop = spva.getProperty();
@@ -375,11 +396,11 @@ public class CloseDescriptionBundle {
 				});
 				
 				properties.forEach(property -> {
-					final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+					final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
 					if (Objects.nonNull(propertyTree)) {
 						final DepthFirstIterator<Property, DefaultEdge> dfs = new DepthFirstIterator<>(propertyTree, property);
 						while (dfs.hasNext()) {
-							final Property prop = dfs.next();
+							final ScalarProperty prop = (ScalarProperty) dfs.next();
 							final HashSet<Literal> vals = subj_vals_map.get(prop);
 							propertyTree.outgoingEdgesOf(prop).forEach(edge -> {
 								vals.addAll(subj_vals_map.get(propertyTree.getEdgeTarget(edge)));
@@ -404,19 +425,19 @@ public class CloseDescriptionBundle {
 	 * @param propertyTrees
 	 * @return map from subject to structured property to usage count
 	 */
-	private static HashMap<NamedInstance, HashMap<Property, Integer>> getStructuredPropertyCounts(
-			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties,
+	private static HashMap<NamedInstance, HashMap<StructuredProperty, Integer>> getStructuredPropertyCounts(
+			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
 			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees) {
-		final HashMap<NamedInstance, HashMap<Property, Integer>> map = new HashMap<>();
+		final HashMap<NamedInstance, HashMap<StructuredProperty, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
 			final HashSet<NamedInstance> instances = entityInstances.getOrDefault(entity, new HashSet<>());
 			
 			final HashSet<Property> all_properties = new HashSet<>();
 			properties.forEach(property -> {
-				final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+				final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
 				if (Objects.nonNull(propertyTree))
 					all_properties.addAll(propertyTree.vertexSet());
 			});
@@ -424,14 +445,14 @@ public class CloseDescriptionBundle {
 			instances.forEach(instance -> {
 				final NamedInstance subj = (NamedInstance) instance;
 				final HashMap<Property, HashSet<StructureInstance>> subj_vals_map = new HashMap<>();
-				final HashMap<Property, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
+				final HashMap<StructuredProperty, Integer> subj_count_map = map.getOrDefault(subj, new HashMap<>());
 				map.put(subj, subj_count_map);
 				
 				all_properties.forEach(property -> {
 					if (!subj_vals_map.containsKey(property)) subj_vals_map.put(property, new HashSet<StructureInstance>());
 				});
 				
-				subj.getOwnedPropertyValues().forEach(pva -> {
+				OmlSearch.findPropertyValueAssertions(subj).forEach(pva -> {
 					if (pva instanceof StructuredPropertyValueAssertion) {
 						final StructuredPropertyValueAssertion spva = (StructuredPropertyValueAssertion) pva;
 						final StructuredProperty prop = spva.getProperty();
@@ -442,11 +463,11 @@ public class CloseDescriptionBundle {
 				});
 				
 				properties.forEach(property -> {
-					final Graph<Property, DefaultEdge> propertyTree = propertyTrees.get(property);
+					final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
 					if (Objects.nonNull(propertyTree)) {
 						final DepthFirstIterator<Property, DefaultEdge> dfs = new DepthFirstIterator<>(propertyTree, property);
 						while (dfs.hasNext()) {
-							final Property prop = dfs.next();
+							final StructuredProperty prop = (StructuredProperty) dfs.next();
 							final HashSet<StructureInstance> vals = subj_vals_map.get(prop);
 							propertyTree.outgoingEdgesOf(prop).forEach(edge -> {
 								vals.addAll(subj_vals_map.get(propertyTree.getEdgeTarget(edge)));
@@ -483,7 +504,7 @@ public class CloseDescriptionBundle {
 
 			final HashSet<Relation> all_relations = new HashSet<>();
 			relations.forEach(relation -> {
-				final Graph<Relation, DefaultEdge> relationTree = relationTrees.get(relation);
+				final Graph<Relation, DefaultEdge> relationTree = getRelationTree(relationTrees, relation);
 				if (Objects.nonNull(relationTree))
 					all_relations.addAll(relationTree.vertexSet());
 			});
@@ -498,7 +519,7 @@ public class CloseDescriptionBundle {
 					if (!subj_vals_map.containsKey(relation)) subj_vals_map.put(relation, new HashSet<NamedInstance>());
 				});
 				
-				subj.getOwnedLinks().forEach(link -> {
+				OmlSearch.findLinkAssertionsWithSource(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
 					if (all_relations.contains(rel)) {
 						subj_vals_map.get(rel).add(link.getTarget());
@@ -507,7 +528,7 @@ public class CloseDescriptionBundle {
 				});
 				
 				relations.forEach(relation -> {
-					final Graph<Relation, DefaultEdge> relationTree = relationTrees.get(relation);
+					final Graph<Relation, DefaultEdge> relationTree = getRelationTree(relationTrees, relation);
 					if (Objects.nonNull(relationTree)) {
 						final DepthFirstIterator<Relation, DefaultEdge> dfs = new DepthFirstIterator<>(relationTree, relation);
 						while (dfs.hasNext()) {
@@ -540,18 +561,20 @@ public class CloseDescriptionBundle {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
 			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
 
-			final HashMap<Entity, HashSet<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allOntologies);
+			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedScalarProperties = getEntitiesWithRestrictedScalarProperties(allOntologies);
+			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedStructuredProperties = getEntitiesWithRestrictedStructuredProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
 			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
 			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
 
-			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedProperties.keySet());
+			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedScalarProperties.keySet());
+			allRestrictedEntities.addAll(entitiesWithRestrictedStructuredProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
 			
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances = getEntityInstances(allOntologies, allRestrictedEntities, termSpecializations);
-			final HashMap<NamedInstance, HashMap<Property, Integer>> scalarPropertyCounts = getScalarPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
-			final HashMap<NamedInstance, HashMap<Property, Integer>> structuredPropertyCounts = getStructuredPropertyCounts(entitiesWithRestrictedProperties, entityInstances, termSpecializations, propertyTrees);
+			final HashMap<NamedInstance, HashMap<ScalarProperty, Integer>> scalarPropertyCounts = getScalarPropertyCounts(entitiesWithRestrictedScalarProperties, entityInstances, termSpecializations, propertyTrees);
+			final HashMap<NamedInstance, HashMap<StructuredProperty, Integer>> structuredPropertyCounts = getStructuredPropertyCounts(entitiesWithRestrictedStructuredProperties, entityInstances, termSpecializations, propertyTrees);
 			final HashMap<NamedInstance, HashMap<Relation, Integer>> relationCounts = getRelationCounts(entitiesWithRestrictedRelations, entityInstances, termSpecializations, relationTrees);
 			
 			/*
@@ -596,6 +619,44 @@ public class CloseDescriptionBundle {
 			});
 
 		}
+	}
+
+	/**
+	 * Returns the Property Tree for a given Property
+	 * 
+	 * @param propertyTrees
+	 * @param property
+	 * @return
+	 */
+	private static Graph<Property, DefaultEdge> getPropertyTree(HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees, Property property) {
+		final Graph<Property, DefaultEdge> thePropertyTree = propertyTrees.get(property);
+		if (thePropertyTree == null) {
+			for (Graph<Property, DefaultEdge> aPropertyTree : propertyTrees.values()) {
+				if (aPropertyTree.vertexSet().contains(property)) {
+					return aPropertyTree;
+				}
+			}
+		}
+		return thePropertyTree;
+	}
+
+	/**
+	 * Returns the Relation Tree for a given Relation
+	 * 
+	 * @param relationTrees
+	 * @param relation
+	 * @return
+	 */
+	private static Graph<Relation, DefaultEdge> getRelationTree(HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees, Relation relation) {
+		final Graph<Relation, DefaultEdge> theRelationTree = relationTrees.get(relation);
+		if (theRelationTree == null) {
+			for (Graph<Relation, DefaultEdge> aRelationTree : relationTrees.values()) {
+				if (aRelationTree.vertexSet().contains(relation)) {
+					return aRelationTree;
+				}
+			}
+		}
+		return theRelationTree;
 	}
 
 }
