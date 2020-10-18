@@ -12,7 +12,7 @@ buildscript {
 
 subprojects {
 	group = 'io.opencaesar.owl'
-	version = '0.7.8'
+	version = '0.7.9'
 	
 	ext.versions = [
 	    oml: '0.7.+',
@@ -51,10 +51,6 @@ subprojects {
 		implementation "org.slf4j:slf4j-simple:${versions.slf4j}"
 	
 	    testImplementation "junit:junit:${versions.junit}"
-	}
-
-	configurations.all {
-		exclude group: 'asm'
 	}
 
 	task createVersion {

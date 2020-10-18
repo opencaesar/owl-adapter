@@ -452,16 +452,13 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLAnnotation(property, value)
 	}
 
-	def addOntologyAnnotation(OWLOntology ontology, String propertyIri, OWLAnnotationValue value) {
-		val property = factory.getOWLAnnotationProperty(propertyIri)
-		val annotation = factory.getOWLAnnotation(property, value)
+	def addOntologyAnnotation(OWLOntology ontology, OWLAnnotation annotation) {
 		manager.applyChange(new AddOntologyAnnotation(ontology, annotation))
 		return annotation
 	}
 
-	def addAnnotationAssertion(OWLOntology ontology, String subjectIri, String propertyIri, OWLAnnotationValue value) {
-		val property = factory.getOWLAnnotationProperty(propertyIri)
-		val axiom = factory.getOWLAnnotationAssertionAxiom(property, IRI.create(subjectIri), value)
+	def addAnnotationAssertion(OWLOntology ontology, String subjectIri, OWLAnnotation annotation) {
+		val axiom = factory.getOWLAnnotationAssertionAxiom(IRI.create(subjectIri), annotation)
 		manager.addAxiom(ontology, axiom)
 		return axiom
 	}

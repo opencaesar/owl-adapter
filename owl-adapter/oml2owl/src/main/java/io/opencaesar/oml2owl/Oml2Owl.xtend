@@ -99,25 +99,25 @@ class Oml2Owl extends OmlVisitor<Void> {
 
 	override caseVocabulary(Vocabulary vocabulary) {
 		ontology = owl.createOntology(vocabulary.iri)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Vocabulary))
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.ontologyType, owl.createIri(OmlConstants.Vocabulary)))
 		return null
 	}
 
 	override caseVocabularyBundle(VocabularyBundle bundle) {
 		ontology = owl.createOntology(bundle.iri)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.VocabularyBundle))
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.ontologyType, owl.createIri(OmlConstants.VocabularyBundle)))
 		return null
 	}
 
 	override caseDescription(Description description) {
 		ontology = owl.createOntology(description.iri)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.Description))
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.ontologyType, owl.createIri(OmlConstants.Description)))
 		return null
 	}
 
 	override caseDescriptionBundle(DescriptionBundle bundle) {
 		ontology = owl.createOntology(bundle.iri)
-		owl.addOntologyAnnotation(ontology, OmlConstants.ontologyType, owl.createIri(OmlConstants.DescriptionBundle))
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.ontologyType, owl.createIri(OmlConstants.DescriptionBundle)))
 		return null
 	}
 
@@ -258,7 +258,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	override caseRule(Rule rule) {
-		var annotations = rule.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		var annotations = rule.ownedAnnotations.map[createAnnotation(it)]
 		if (annotations.filter[property.getIRI == RDFS.LABEL].isEmpty) {
 			annotations = new ArrayList(annotations)
 			annotations += owl.getAnnotation(RDFS.LABEL.toString, owl.getLiteral(rule.name))
@@ -322,13 +322,13 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	override caseSpecializationAxiom(SpecializationAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		axiom.specializingTerm.specializes(axiom.specializedTerm, axiom.owningReference, annotations)
 		return null
 	}
 
 	override caseScalarPropertyRangeRestrictionAxiom(ScalarPropertyRangeRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		if (axiom.kind == RangeRestrictionKind.ALL) {
 			owl.addDataAllValuesFrom(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.range.iri, annotations)
 		} else {
@@ -338,13 +338,13 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	override caseScalarPropertyValueRestrictionAxiom(ScalarPropertyValueRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		owl.addDataHasValue(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.value.literal, annotations)
 		return null
 	}
 
 	override caseScalarPropertyCardinalityRestrictionAxiom(ScalarPropertyCardinalityRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
 			owl.addDataMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
@@ -356,7 +356,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	override caseStructuredPropertyRangeRestrictionAxiom(StructuredPropertyRangeRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		if (axiom.kind == RangeRestrictionKind.ALL) {
 			owl.addObjectAllValuesFrom(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.range.iri, annotations)
 		} else {
@@ -366,13 +366,13 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	override caseStructuredPropertyValueRestrictionAxiom(StructuredPropertyValueRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		owl.addObjectHasValue(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.value.createIndividual, annotations)
 		return null
 	}
 
 	override caseStructuredPropertyCardinalityRestrictionAxiom(StructuredPropertyCardinalityRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
 			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.property.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
@@ -384,7 +384,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	override caseRelationRangeRestrictionAxiom(RelationRangeRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		if (axiom.kind == RangeRestrictionKind.ALL) {
 			owl.addObjectAllValuesFrom(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.range.iri, annotations)
 		} else {
@@ -394,13 +394,13 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 	
 	override caseRelationTargetRestrictionAxiom(RelationTargetRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		owl.addObjectHasValue(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.target.iri, annotations)
 		return null
 	}
 
 	override caseRelationCardinalityRestrictionAxiom(RelationCardinalityRestrictionAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		if (axiom.kind == CardinalityRestrictionKind.MIN) {
 			owl.addObjectMinCardinality(ontology, axiom.restrictingType.iri, axiom.relation.iri, axiom.cardinality as int, axiom.range?.iri, annotations)
 		} else if (axiom.kind == CardinalityRestrictionKind.MAX) { 
@@ -412,13 +412,13 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 	
 	override caseKeyAxiom(KeyAxiom axiom) {
-		val annotations = axiom.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = axiom.ownedAnnotations.map[createAnnotation(it)]
 		owl.addHasKey(ontology, axiom.restrictingType.iri, axiom.properties.map[iri], annotations)
 		return null
 	}
 
 	override caseConceptTypeAssertion(ConceptTypeAssertion assertion) {
-		val annotations = assertion.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = assertion.ownedAnnotations.map[createAnnotation(it)]
 		owl.addClassAssertion(ontology, assertion.conceptInstance.iri, assertion.type.iri, annotations)
 		return null
 	}
@@ -426,7 +426,7 @@ class Oml2Owl extends OmlVisitor<Void> {
 	override caseRelationTypeAssertion(RelationTypeAssertion assertion) {
 		val instance = assertion.relationInstance
 		val instanceIri = instance.iri
-		val annotations = assertion.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = assertion.ownedAnnotations.map[createAnnotation(it)]
 		owl.addClassAssertion(ontology, instanceIri, assertion.type.iri, annotations)
 		owl.addObjectPropertyAssertion(ontology, instanceIri, assertion.type.sourceIri, instance.source.iri)
 		owl.addObjectPropertyAssertion(ontology, instanceIri, assertion.type.targetIri, instance.target.iri)
@@ -435,16 +435,20 @@ class Oml2Owl extends OmlVisitor<Void> {
 
 /* ------------------------- */
 
+	protected def OWLAnnotation createAnnotation(Annotation annotation) {
+		owl.getAnnotation(annotation.property.iri, annotation.value?.literal ?: owl.getLiteral("true"))
+	}
+
 	protected dispatch def void addsAnnotation(AnnotatedElement element, Annotation annotation) {
 		// all other cases are not mapped or mapped differently
 	}
 
 	protected dispatch def void addsAnnotation(Ontology omlOntology, Annotation annotation) {
-		owl.addOntologyAnnotation(ontology, annotation.property.iri, annotation.value.literal)
+		owl.addOntologyAnnotation(ontology, createAnnotation(annotation))
 	}
 
 	protected dispatch def void addsAnnotation(Member member, Annotation annotation) {
-		owl.addAnnotationAssertion(ontology, member.iri, annotation.property.iri, annotation.value.literal)
+		owl.addAnnotationAssertion(ontology, member.iri, createAnnotation(annotation))
 	}
 	
 	protected dispatch def void addsAnnotation(Reference reference, Annotation annotation) {
@@ -540,17 +544,17 @@ class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected dispatch def void appliesTo(ScalarPropertyValueAssertion assertion, OWLIndividual individual) {
-		val annotations = assertion.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = assertion.ownedAnnotations.map[createAnnotation(it)]
 		owl.addDataPropertyAssertion(ontology, individual, assertion.property.iri, assertion.value.literal, annotations)
 	}
 
 	protected dispatch def void appliesTo(StructuredPropertyValueAssertion assertion, OWLIndividual individual) {
-		val annotations = assertion.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = assertion.ownedAnnotations.map[createAnnotation(it)]
 		owl.addObjectPropertyAssertion(ontology, individual, assertion.property.iri, assertion.value.createIndividual, annotations)
 	}
 
 	protected dispatch def void appliesTo(LinkAssertion assertion, OWLNamedIndividual individual) {
-		val annotations = assertion.ownedAnnotations.map[owl.getAnnotation(property.iri, value.literal)]
+		val annotations = assertion.ownedAnnotations.map[createAnnotation(it)]
 		owl.addObjectPropertyAssertion(ontology, individual.getIRI.IRIString, assertion.relation.iri, assertion.target.iri, annotations)
 	}
 
