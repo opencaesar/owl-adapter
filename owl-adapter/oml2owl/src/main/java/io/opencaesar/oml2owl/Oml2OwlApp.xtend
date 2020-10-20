@@ -136,6 +136,7 @@ class Oml2OwlApp {
 		val outputFolderPath = outputCatalogFile.parent
 
 		// create the equivalent OWL ontologies
+		val throwables = new ArrayList<Throwable>
 		val threads = new ArrayList<Thread>
 		for (inputFile : inputFiles) {
 			val inputURI = URI.createFileURI(inputFile.absolutePath)
@@ -154,10 +155,17 @@ class Oml2OwlApp {
 					}
 				}
 				threads.add(thread)
+				thread.uncaughtExceptionHandler = [th, ex |
+					System.out.println(ex)
+					throwables.add(ex)
+				]
 				thread.start
 			}
 		}
 		threads.forEach[join]
+		if (!throwables.isEmpty) {
+			throw new RuntimeException("Exception(s) thrown by one or more threads")
+		}
 		
 		// run the vocabulary bundle closure algorithm
 		oml2owl.entrySet.filter[e|e.key.ontology instanceof VocabularyBundle].forEach[entry|
