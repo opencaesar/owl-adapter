@@ -6,6 +6,7 @@ import static io.opencaesar.closeworld.OwlAxiom.toOwlAxiom;
 import static io.opencaesar.oml.util.OmlRead.getImportedOntologies;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -47,7 +48,7 @@ public class CloseVocabularyBundle {
 	 * @param allOntologies
 	 * @return concept taxonomy
 	 */
-	private Taxonomy omlConceptTaxonomy(final Iterable<Ontology> allOntologies) {
+	private Taxonomy omlConceptTaxonomy(final Collection<Ontology> allOntologies) {
 		final Map<Entity, ClassExpression.Singleton> singletonMap = new HashMap<Entity, ClassExpression.Singleton>();
 		final List<ClassExpression>  vertexList = new ArrayList<ClassExpression>();
 		final List<ClassExpression>  edgeList = new ArrayList<ClassExpression>();
@@ -89,7 +90,7 @@ public class CloseVocabularyBundle {
 
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(resource);
-			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> getImportedOntologies(o));
+			final Collection<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> getImportedOntologies(o));
 			final Taxonomy conceptTaxonomy = super.omlConceptTaxonomy(allOntologies);
 			final Axiom.AxiomType axiomType = disjointUnions ? DISJOINT_UNION : DISJOINT_CLASSES;
 

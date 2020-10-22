@@ -1,5 +1,6 @@
 package io.opencaesar.oml2owl;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -80,7 +81,7 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from entity to set of restricted properties
 	 */
-	private final static HashMap<Entity, HashSet<ScalarProperty>> getEntitiesWithRestrictedScalarProperties(final Iterable<Ontology> allOntologies) {
+	private final static HashMap<Entity, HashSet<ScalarProperty>> getEntitiesWithRestrictedScalarProperties(final Collection<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<ScalarProperty>> map = new HashMap<>();
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
@@ -124,7 +125,7 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from entity to set of restricted properties
 	 */
-	private final static HashMap<Entity, HashSet<StructuredProperty>> getEntitiesWithRestrictedStructuredProperties(final Iterable<Ontology> allOntologies) {
+	private final static HashMap<Entity, HashSet<StructuredProperty>> getEntitiesWithRestrictedStructuredProperties(final Collection<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<StructuredProperty>> map = new HashMap<>();
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
@@ -168,7 +169,7 @@ public class CloseDescriptionBundle {
 	 * @param allOntologies
 	 * @return map from entity to set of restricted relations
 	 */
-	private final static HashMap<Entity, HashSet<Relation>> getEntitiesWithRestrictedRelations(final Iterable<Ontology> allOntologies) {
+	private final static HashMap<Entity, HashSet<Relation>> getEntitiesWithRestrictedRelations(final Collection<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<Relation>> map = new HashMap<>();
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
@@ -214,7 +215,7 @@ public class CloseDescriptionBundle {
 	 * @return NeighborCache of terms and their specializations
 	 */
 	private final static NeighborCache<SpecializableTerm, DefaultEdge> getTermSpecializations(
-			final Iterable<Ontology> allOntologies) {
+			final Collection<Ontology> allOntologies) {
 		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(
 				DefaultEdge.class);
 
@@ -241,7 +242,7 @@ public class CloseDescriptionBundle {
 	 * @throws UnsupportedOperationException
 	 */
 	private final static HashMap<Property, Graph<Property, DefaultEdge>> getPropertyTrees(
-			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
+			final Collection<Ontology> allOntologies) throws UnsupportedOperationException {
 		final HashMap<Property, Graph<Property, DefaultEdge>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Property, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
@@ -278,7 +279,7 @@ public class CloseDescriptionBundle {
 	 * @throws UnsupportedOperationException
 	 */
 	private final static HashMap<Relation, Graph<Relation, DefaultEdge>> getRelationTrees(
-			final Iterable<Ontology> allOntologies) throws UnsupportedOperationException {
+			final Collection<Ontology> allOntologies) throws UnsupportedOperationException {
 		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
@@ -329,7 +330,7 @@ public class CloseDescriptionBundle {
 	 * @return map from entity to instances
 	 */
 	private final static HashMap<Entity, HashSet<NamedInstance>> getEntityInstances(
-			final Iterable<Ontology> allOntologies, final HashSet<Entity> entities,
+			final Collection<Ontology> allOntologies, final HashSet<Entity> entities,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache) {
 		final HashMap<Entity, HashSet<NamedInstance>> map = new HashMap<>();
 
@@ -559,7 +560,7 @@ public class CloseDescriptionBundle {
 
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
-			final Iterable<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
+			final Collection<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
 
 			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedScalarProperties = getEntitiesWithRestrictedScalarProperties(allOntologies);
 			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedStructuredProperties = getEntitiesWithRestrictedStructuredProperties(allOntologies);

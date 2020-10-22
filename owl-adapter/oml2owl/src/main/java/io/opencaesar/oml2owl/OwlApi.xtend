@@ -2,6 +2,7 @@ package io.opencaesar.oml2owl
 
 import java.math.BigDecimal
 import java.util.Arrays
+import java.util.Collection
 import java.util.Collections
 import org.semanticweb.owlapi.model.AddImport
 import org.semanticweb.owlapi.model.AddOntologyAnnotation
@@ -210,7 +211,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom
 	}
 	
-	def addHasKey(OWLOntology ontology, String classIri, Iterable<String> keyPropertyIris, OWLAnnotation...annotations) {
+	def addHasKey(OWLOntology ontology, String classIri, Collection<String> keyPropertyIris, OWLAnnotation...annotations) {
 		val aClass = factory.getOWLClass(classIri)
 		val keyProperties = keyPropertyIris.map[iri|factory.getOWLDataProperty(iri)].toList
 		val axiom = factory.getOWLHasKeyAxiom(aClass, keyProperties, annotations.checkIfNeeded)
