@@ -34,6 +34,10 @@ public interface OmlConstants {
 
 	static final String targetRelation = OmlConstants.omlNS + "targetRelation";
 
+	static final String inverseSourceRelation = OmlConstants.omlNS + "inverseSourceRelation";
+
+	static final String inverseTargetRelation = OmlConstants.omlNS + "inverseTargetRelation";
+
 	static final String structuredProperty = OmlConstants.omlNS + "structuredProperty";
 
 	static final String scalarProperty = OmlConstants.omlNS + "scalarProperty";

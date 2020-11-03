@@ -160,27 +160,49 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addSubClassOf(ontology, OmlRead.getIri(entity), OmlConstants.RelationEntity);
 		
 		// source relation
-		final String sourceIri = getSourceIri(entity);
-		owl.addObjectProperty(ontology, sourceIri);
-		owl.addSubObjectPropertyOf(ontology, sourceIri, OmlConstants.sourceRelation);
-		owl.addObjectPropertyDomain(ontology, sourceIri, OmlRead.getIri(entity));
-		owl.addObjectPropertyRange(ontology, sourceIri, OmlRead.getIri(entity.getSource()));
-		owl.addFunctionalObjectProperty(ontology, sourceIri);
+		final String sourceRelationIri = getSourceIri(entity);
+		owl.addObjectProperty(ontology, sourceRelationIri);
+		owl.addSubObjectPropertyOf(ontology, sourceRelationIri, OmlConstants.sourceRelation);
+		owl.addObjectPropertyDomain(ontology, sourceRelationIri, OmlRead.getIri(entity));
+		owl.addObjectPropertyRange(ontology, sourceRelationIri, OmlRead.getIri(entity.getSource()));
+		owl.addFunctionalObjectProperty(ontology, sourceRelationIri);
 		if (entity.isFunctional()) {
-			owl.addInverseFunctionalObjectProperty(ontology, sourceIri);
+			owl.addInverseFunctionalObjectProperty(ontology, sourceRelationIri);
+		}
+		if (entity.isInverseFunctional()) {
+			owl.addFunctionalObjectProperty(ontology, sourceRelationIri);
+		}
+		
+		// inverse source relation
+		final String inverseSourceRelationIri = getInverseSourceIri(entity);
+		if (inverseSourceRelationIri != null) {
+			owl.addObjectProperty(ontology, inverseSourceRelationIri);
+			owl.addSubObjectPropertyOf(ontology, inverseSourceRelationIri, OmlConstants.inverseSourceRelation);
+			owl.addInverseProperties(ontology, inverseSourceRelationIri, sourceRelationIri);
 		}
 		
 		// target relation
-		final String targetIri = getTargetIri(entity);
-		owl.addObjectProperty(ontology, targetIri);
-		owl.addSubObjectPropertyOf(ontology, targetIri, OmlConstants.targetRelation);
-		owl.addObjectPropertyDomain(ontology, targetIri, OmlRead.getIri(entity));
-		owl.addObjectPropertyRange(ontology, targetIri, OmlRead.getIri(entity.getTarget()));
-		owl.addFunctionalObjectProperty(ontology, targetIri);
+		final String targetRelationIri = getTargetIri(entity);
+		owl.addObjectProperty(ontology, targetRelationIri);
+		owl.addSubObjectPropertyOf(ontology, targetRelationIri, OmlConstants.targetRelation);
+		owl.addObjectPropertyDomain(ontology, targetRelationIri, OmlRead.getIri(entity));
+		owl.addObjectPropertyRange(ontology, targetRelationIri, OmlRead.getIri(entity.getTarget()));
+		owl.addFunctionalObjectProperty(ontology, targetRelationIri);
+		if (entity.isFunctional()) {
+			owl.addFunctionalObjectProperty(ontology, targetRelationIri);
+		}
 		if (entity.isInverseFunctional()) {
-			owl.addInverseFunctionalObjectProperty(ontology, targetIri);
+			owl.addInverseFunctionalObjectProperty(ontology, targetRelationIri);
 		}
 		
+		// inverse target relation
+		final String inverseTargetRelationIri = getInverseTargetIri(entity);
+		if (inverseTargetRelationIri != null) {
+			owl.addObjectProperty(ontology, inverseTargetRelationIri);
+			owl.addSubObjectPropertyOf(ontology, inverseTargetRelationIri, OmlConstants.inverseTargetRelation);
+			owl.addInverseProperties(ontology, inverseTargetRelationIri, targetRelationIri);
+		}
+
 		return null;
 	}
 
@@ -237,7 +259,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 
 	@Override
 	public Void caseForwardRelation(final ForwardRelation forward) {
-		final RelationEntity entity = forward.getEntity();
+		final RelationEntity entity = forward.getRelationEntity();
 		
 		// forward relation
 		final String forwardIri = OmlRead.getIri(forward);
@@ -296,7 +318,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addRule(ontology, 
 			rule.getConsequent().stream().flatMap(p -> getAtom(p).stream()).collect(Collectors.toList()),
 			rule.getAntecedent().stream().flatMap(p -> getAtom(p).stream()).collect(Collectors.toList()), 
-			annotations.toArray(new OWLAnnotation[0]));
+			toArray(annotations));
 		return null;
 	}
 
@@ -361,7 +383,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 	@Override
 	public Void caseSpecializationAxiom(final SpecializationAxiom axiom) {
 		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
-		specializes(OmlRead.getSpecializingTerm(axiom), axiom.getSpecializedTerm(), axiom.getOwningReference(), annotations.toArray(new OWLAnnotation[0]));
+		specializes(OmlRead.getSpecializingTerm(axiom), axiom.getSpecializedTerm(), axiom.getOwningReference(), toArray(annotations));
 		return null;
 	}
 
@@ -371,11 +393,11 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		if (axiom.getKind() == RangeRestrictionKind.ALL) {
 			owl.addDataAllValuesFrom(ontology, OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getProperty()), OmlRead.getIri(axiom.getRange()),
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else {
 			owl.addDataSomeValuesFrom(ontology, OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getProperty()), OmlRead.getIri(axiom.getRange()),
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		}
 		return null;
 	}
@@ -385,7 +407,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addDataHasValue(ontology, OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 				OmlRead.getIri(axiom.getProperty()), getLiteral(axiom.getValue()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 		return null;
 	}
 
@@ -397,19 +419,19 @@ public class Oml2Owl extends OmlVisitor<Void> {
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 					OmlRead.getIri(axiom.getProperty()), (int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 			owl.addDataMaxCardinality(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getProperty()), (int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else {
 			owl.addDataExactCardinality(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getProperty()), (int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		}
 		return null;
 	}
@@ -422,13 +444,13 @@ public class Oml2Owl extends OmlVisitor<Void> {
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getProperty()), 
 					OmlRead.getIri(axiom.getRange()),
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else {
 			owl.addObjectSomeValuesFrom(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getProperty()), 
 					OmlRead.getIri(axiom.getRange()),
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		}
 		return null;
 	}
@@ -440,7 +462,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 				OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 				OmlRead.getIri(axiom.getProperty()), 
 				createIndividual(axiom.getValue()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 		return null;
 	}
 
@@ -452,19 +474,19 @@ public class Oml2Owl extends OmlVisitor<Void> {
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 					OmlRead.getIri(axiom.getProperty()), (int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 			owl.addObjectMaxCardinality(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 					OmlRead.getIri(axiom.getProperty()), (int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else {
 			owl.addObjectExactCardinality(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 					OmlRead.getIri(axiom.getProperty()), (int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		}
 		return null;
 	}
@@ -477,13 +499,13 @@ public class Oml2Owl extends OmlVisitor<Void> {
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getRelation()), 
 					OmlRead.getIri(axiom.getRange()),
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else {
 			owl.addObjectSomeValuesFrom(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 					OmlRead.getIri(axiom.getRelation()), 
 					OmlRead.getIri(axiom.getRange()),
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		}
 		return null;
 	}
@@ -495,7 +517,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 				OmlRead.getIri(OmlRead.getRestrictingType(axiom)),
 				OmlRead.getIri(axiom.getRelation()), 
 				OmlRead.getIri(axiom.getTarget()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 		return null;
 	}
 
@@ -508,21 +530,21 @@ public class Oml2Owl extends OmlVisitor<Void> {
 					OmlRead.getIri(axiom.getRelation()), 
 					(int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 			owl.addObjectMaxCardinality(ontology,
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 					OmlRead.getIri(axiom.getRelation()), 
 					(int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		} else {
 			owl.addObjectExactCardinality(ontology, 
 					OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 					OmlRead.getIri(axiom.getRelation()), 
 					(int) axiom.getCardinality(), 
 					(axiom.getRange() != null) ? OmlRead.getIri(axiom.getRange()) : null,
-					annotations.toArray(new OWLAnnotation[0]));
+					toArray(annotations));
 		}
 		return null;
 	}
@@ -533,7 +555,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addHasKey(ontology, 
 				OmlRead.getIri(OmlRead.getRestrictingType(axiom)), 
 				axiom.getProperties().stream().map(i -> OmlRead.getIri(i)).collect(Collectors.toList()), 
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 		return null;
 	}
 
@@ -543,7 +565,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addClassAssertion(ontology, 
 				OmlRead.getIri(OmlRead.getConceptInstance(assertion)),
 				OmlRead.getIri(assertion.getType()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 		return null;
 	}
 
@@ -555,15 +577,17 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addClassAssertion(ontology, 
 				instanceIri, 
 				OmlRead.getIri(assertion.getType()),
-				annotations.toArray(new OWLAnnotation[0]));
-		owl.addObjectPropertyAssertion(ontology, 
-				instanceIri, 
-				getSourceIri(assertion.getType()),
-				OmlRead.getIri(instance.getSource()));
-		owl.addObjectPropertyAssertion(ontology, 
-				instanceIri, 
-				getTargetIri(assertion.getType()),
-				OmlRead.getIri(instance.getTarget()));
+				toArray(annotations));
+		instance.getSources().forEach(s ->
+			owl.addObjectPropertyAssertion(ontology, 
+					instanceIri, 
+					getSourceIri(assertion.getType()),
+					OmlRead.getIri(s)));
+		instance.getTargets().forEach(t ->
+			owl.addObjectPropertyAssertion(ontology, 
+					instanceIri, 
+					getTargetIri(assertion.getType()),
+					OmlRead.getIri(t)));
 		return null;
 	}
 
@@ -637,15 +661,6 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addSubClassOf(ontology, OmlRead.getIri(specific), OmlRead.getIri(general), annotations);
 		owl.addSubObjectPropertyOf(ontology, getSourceIri(specific), getSourceIri(general), annotations);
 		owl.addSubObjectPropertyOf(ontology, getTargetIri(specific), getTargetIri(general), annotations);
-		owl.addSubObjectPropertyOf(ontology, OmlRead.getIri(specific.getForward()), OmlRead.getIri(general.getForward()), annotations);
-		if (((specific.getReverse() != null) && (general.getReverse() != null))) {
-			owl.addSubObjectPropertyOf(ontology, 
-					OmlRead.getIri(specific.getReverse()), 
-					OmlRead.getIri(general.getReverse()), 
-					annotations);
-		} else {
-			// it's not obvious yet how to handle the other reverse relation cases
-		}
 	}
 
 	protected void specializes(final RelationEntity specific, final Aspect general, final Reference owningReference, final OWLAnnotation... annotations) {
@@ -731,7 +746,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 				individual, 
 				OmlRead.getIri(assertion.getProperty()),
 				getLiteral(assertion.getValue()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 	}
 
 	protected void appliesTo(final StructuredPropertyValueAssertion assertion, final OWLIndividual individual) {
@@ -740,7 +755,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 				individual, 
 				OmlRead.getIri(assertion.getProperty()),
 				createIndividual(assertion.getValue()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 	}
 
 	protected void appliesTo(final LinkAssertion assertion, final OWLNamedIndividual individual) {
@@ -749,7 +764,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 				individual.getIRI().getIRIString(),
 				OmlRead.getIri(assertion.getRelation()), 
 				OmlRead.getIri(assertion.getTarget()),
-				annotations.toArray(new OWLAnnotation[0]));
+				toArray(annotations));
 	}
 
 	protected List<SWRLAtom> getAtom(final Predicate predicate) {
@@ -862,15 +877,37 @@ public class Oml2Owl extends OmlVisitor<Void> {
 	}
 
 	protected String getSourceIri(final RelationEntity entity) {
-		String namespace = OmlRead.getNamespace(OmlRead.getOntology(entity));
-		String name = toFirstUpper(entity.getName());
-		return namespace+"has"+name+"Source";
+		if (entity.getSourceRelation() != null) {
+			return OmlRead.getIri(entity.getSourceRelation());
+		} else {
+			String namespace = OmlRead.getNamespace(OmlRead.getOntology(entity));
+			String name = toFirstUpper(entity.getName());
+			return namespace+"has"+name+"Source";
+		}
 	}
 
 	protected String getTargetIri(final RelationEntity entity) {
-		String namespace = OmlRead.getNamespace(OmlRead.getOntology(entity));
-		String name = toFirstUpper(entity.getName());
-		return namespace+"has"+name+"Target";
+		if (entity.getTargetRelation() != null) {
+			return OmlRead.getIri(entity.getTargetRelation());
+		} else {
+			String namespace = OmlRead.getNamespace(OmlRead.getOntology(entity));
+			String name = toFirstUpper(entity.getName());
+			return namespace+"has"+name+"Target";
+		}
+	}
+
+	protected String getInverseSourceIri(final RelationEntity entity) {
+		if (entity.getInverseSourceRelation() != null) {
+			return OmlRead.getIri(entity.getInverseSourceRelation());
+		}
+		return null;
+	}
+		
+	protected String getInverseTargetIri(final RelationEntity entity) {
+		if (entity.getInverseTargetRelation() != null) {
+			return OmlRead.getIri(entity.getInverseTargetRelation());
+		}
+		return null;
 	}
 
 	protected String getSwrlIri(final String variableName) {
@@ -889,6 +926,10 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		if (s.length() == 1)
 			return s.toUpperCase();
 		return s.substring(0, 1).toUpperCase() + s.substring(1);
+	}
+	
+	private OWLAnnotation[] toArray(List<OWLAnnotation> annotations) {
+		return annotations.toArray(new OWLAnnotation[0]);
 	}
 
 }

@@ -41,6 +41,7 @@ import io.opencaesar.oml.dsl.OmlStandaloneSetup;
 import io.opencaesar.oml.util.OmlCatalog;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlXMIResourceFactory;
+import io.opencaesar.oml.validate.OmlValidator;
 import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl;
 import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl;
 
@@ -128,7 +129,8 @@ public class Oml2OwlApp {
 		for (final File inputFile : inputFiles) {
 			final URI inputURI = URI.createFileURI(inputFile.getAbsolutePath());
 			LOGGER.info(("Reading: " + inputURI));
-			inputResourceSet.getResource(inputURI, true);
+			Resource r = inputResourceSet.getResource(inputURI, true);
+			OmlValidator.validate(OmlRead.getOntology(r));
 		}
 		
 		// create OWL manager
