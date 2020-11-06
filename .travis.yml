@@ -4,9 +4,6 @@ install: true
 jdk:
 - openjdk11
 
-before_script:
-- cd owl-adapter
-
 script:
   - ./gradlew build
 

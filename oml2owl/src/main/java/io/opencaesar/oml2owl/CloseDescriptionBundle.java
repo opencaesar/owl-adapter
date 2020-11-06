@@ -286,18 +286,21 @@ public class CloseDescriptionBundle {
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof RelationEntity).map(e -> (RelationEntity) e)
 					.forEach(re -> {
-						final Relation f = re.getForward();
-						final Relation r = re.getReverse();
-						graph.addVertex(f);
+						final Relation f = re.getForwardRelation();
+						final Relation r = re.getReverseRelation();
+						if (Objects.nonNull(f))
+							graph.addVertex(f);
 						if (Objects.nonNull(r))
 							graph.addVertex(r);
 						OmlRead.getSpecializedTerms(re).forEach(s -> {
 							if (s instanceof RelationEntity) {
 								final RelationEntity sre = (RelationEntity) s;
-								final Relation sf = sre.getForward();
-								final Relation sr = sre.getReverse();
-								graph.addVertex(sf);
-								graph.addEdge(sf, f);
+								final Relation sf = sre.getForwardRelation();
+								final Relation sr = sre.getReverseRelation();
+								if (Objects.nonNull(f) && Objects.nonNull(sf)) {
+									graph.addVertex(sf);
+									graph.addEdge(sf, f);
+								}
 								if (Objects.nonNull(r) && Objects.nonNull(sr)) {
 									graph.addVertex(sr);
 									graph.addEdge(sr, r);

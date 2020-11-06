@@ -2,17 +2,11 @@ sourceSets {
 	main {
 		java.srcDirs = ['src/main/java']
 		resources.srcDirs = ['src/main/resources']
-		xtendOutputDir = 'src/main/xtend-gen'
 	}
 	test {
 		java.srcDirs = ['src/test/java']
 		resources.srcDirs = ['src/test/resources']
-		xtendOutputDir = 'src/test/xtend-gen'
 	}
-}
-
-sourceSets.all {
-	resources.exclude '**/*.xtend', '**/*._trace'
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
