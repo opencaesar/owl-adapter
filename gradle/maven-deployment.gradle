@@ -4,7 +4,8 @@ apply plugin: 'maven-publish'
 ext.gh = [
 	dep: 'https://github.com',
 	org: 'opencaesar',
-	rep: 'owl-adapter'
+	rep: 'owl-adapter',
+	bintray: 'adapters'
 ]
 
 def pomConfig = {
@@ -66,7 +67,7 @@ bintray {
 	override = true
 	pkg {
 		name = project.name
-		repo = gh.rep
+		repo = gh.bintray
 		userOrg = gh.org
 		desc = project.description
 		licenses = ['Apache-2.0']
