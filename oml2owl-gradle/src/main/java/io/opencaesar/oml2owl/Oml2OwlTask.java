@@ -11,6 +11,8 @@ public class Oml2OwlTask extends DefaultTask {
 	
 	public String inputCatalogPath;
 
+	public String rootOntologyIri;
+
 	public String outputCatalogPath;
 
 	public boolean disjointUnions;
@@ -25,6 +27,10 @@ public class Oml2OwlTask extends DefaultTask {
         if (inputCatalogPath != null) {
 		    args.add("-i");
 		    args.add(inputCatalogPath);
+        }
+        if (rootOntologyIri != null) {
+		    args.add("-r");
+		    args.add(rootOntologyIri);
         }
         if (outputCatalogPath != null) {
 		    args.add("-o");

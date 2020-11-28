@@ -13,8 +13,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ForkJoinPool;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -28,6 +26,7 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLOntologyStorageException;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
@@ -36,6 +35,7 @@ import com.beust.jcommander.ParameterException;
 import com.google.common.io.CharStreams;
 
 import io.opencaesar.oml.DescriptionBundle;
+import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.dsl.OmlStandaloneSetup;
 import io.opencaesar.oml.util.OmlCatalog;
@@ -59,36 +59,43 @@ public class Oml2OwlApp {
 	private String inputCatalogPath;
 
 	@Parameter(
+			names= { "--root-ontology-iri", "-r" }, 
+			description="Root OML ontology IRI (Required)",
+			required=false, 
+			order=2)
+	private String rootOntologyIri = null;
+
+	@Parameter(
 			names = { "--output-catalog-path", "-o" }, 
 			description = "Path of the output OWL catalog (Required)", 
 			validateWith = Oml2OwlApp.OutputCatalogPath.class, 
 			required = true, 
-			order = 2)
+			order = 3)
 	private String outputCatalogPath;
 
 	@Parameter(
 			names = { "--disjoint-unions", "-u" },
 			description = "Create disjoint union axioms",
-			order = 3)
+			order = 4)
 	private boolean disjointUnions = false;
 
 	@Parameter(
 			names = { "--annotations-on-axioms", "-a" },
 			description = "Emit annotations on axioms",
-			order = 4)
+			order = 5)
 	private boolean annotationsOnAxioms = false;
 
 	@Parameter(
 			names = { "--debug", "-d" },
 			description = "Shows debug logging statements",
-			order = 5)
+			order = 6)
 	private boolean debug;
 
 	@Parameter(
 			names = { "--help", "-h" },
 			description = "Displays summary of options",
 			help = true,
-			order = 6)
+			order = 7)
 	private boolean help;
 
 	private final Logger LOGGER = LogManager.getLogger(Oml2OwlApp.class);
@@ -120,17 +127,30 @@ public class Oml2OwlApp {
 		OmlXMIResourceFactory.register();
 		final XtextResourceSet inputResourceSet = new XtextResourceSet();
 		
-		// collect OML files
 		final File inputCatalogFile = new File(inputCatalogPath);
 		final File inputFolder = inputCatalogFile.getParentFile();
-		final Collection<File> inputFiles = collectOMLFiles(inputFolder);
-		
+		final OmlCatalog inputCatalog = OmlCatalog.create(inputCatalogFile.toURI().toURL());
+
 		// load the OML otologies
-		for (final File inputFile : inputFiles) {
-			final URI inputURI = URI.createFileURI(inputFile.getAbsolutePath());
-			LOGGER.info(("Reading: " + inputURI));
-			Resource r = inputResourceSet.getResource(inputURI, true);
-			OmlValidator.validate(OmlRead.getOntology(r));
+		List<Ontology> inputOntologies = new ArrayList<>(); 
+		if (rootOntologyIri != null) {
+			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalog);
+			LOGGER.info(("Reading: " + rootUri));
+			Ontology rootOntology = OmlRead.getOntology(inputResourceSet.getResource(rootUri, true));
+			inputOntologies.addAll(OmlRead.getAllImportedOntologiesInclusive(rootOntology));
+		} else {
+			final Collection<File> inputFiles = collectOMLFiles(inputFolder);
+			for (File inputFile : inputFiles) {
+				final URI ontologyUri = URI.createFileURI(inputFile.getAbsolutePath());
+				LOGGER.info(("Reading: " + ontologyUri));
+				Ontology ontology = OmlRead.getOntology(inputResourceSet.getResource(ontologyUri, true));
+				inputOntologies.add(ontology);  
+			}
+		}
+		
+		// validate ontologies
+		for (Ontology ontology : inputOntologies) {
+			OmlValidator.validate(ontology);
 		}
 		
 		// create OWL manager
@@ -144,30 +164,20 @@ public class Oml2OwlApp {
 		final String outputFolderPath = outputCatalogFile.getParent();
 		
 		// create the equivalent OWL ontologies
-		final ArrayList<Callable<Void>> callables = new ArrayList<>();
-		for (final File inputFile : inputFiles) {
-			final URI inputURI = URI.createFileURI(inputFile.getAbsolutePath());
-			final Resource inputResource = inputResourceSet.getResource(inputURI, true);
-			final boolean builtin = Oml2Owl.isBuiltInOntology(OmlRead.getOntology(inputResource).getIri());
-			if (inputResource != null && !builtin) {
-				String relativePath = outputFolderPath+File.separator+inputFolder.toURI().relativize(inputFile.toURI()).getPath();
+		
+		for (final Resource inputResource : inputResourceSet.getResources()) {
+			final Ontology ontology = OmlRead.getOntology(inputResource);
+			if (ontology != null && !Oml2Owl.isBuiltInOntology(ontology.getIri())) {
+				java.net.URI uri = new java.net.URI(inputResource.getURI().toString());
+				String relativePath = outputFolderPath+File.separator+inputFolder.toURI().relativize(uri).getPath();
 				final File outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+"owl");
-				callables.add(new Callable<Void>() {
-					@Override
-					public Void call() throws Exception {
-						LOGGER.info(("Creating: " + outputFile));
-						final OWLOntology owlOntology = new Oml2Owl(inputResource, owl2api).run();
-						outputFiles.put(outputFile, owlOntology);
-						oml2owl.put(inputResource, owlOntology);
-						LOGGER.info(("Created: " + outputFile));
-						return null;
-					}
-				});
+				LOGGER.info(("Creating: " + outputFile));
+				final OWLOntology owlOntology = new Oml2Owl(inputResource, owl2api).run();
+				outputFiles.put(outputFile, owlOntology);
+				oml2owl.put(inputResource, owlOntology);
+				LOGGER.info(("Created: " + outputFile));
 			}
 		}
-		
-		ForkJoinPool forkJoinPool = new ForkJoinPool();
-		forkJoinPool.invokeAll(callables);
 		
 		// run the vocabulary bundle closure algorithm
 		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof VocabularyBundle).forEach(entry -> {
@@ -182,18 +192,14 @@ public class Oml2OwlApp {
 		});
 		
 		// save the output resources
-		final ArrayList<Callable<Void>> callables2 = new ArrayList<>();
 		outputFiles.forEach((file, owlOntology) -> {
-			callables2.add(new Callable<Void>() {
-				@Override
-				public Void call() throws Exception {
-					LOGGER.info("Saving: "+file);
-					ontologyManager.saveOntology(owlOntology, /*new TurtleDocumentFormat,*/ IRI.create(file));
-					return null;
-				}
-			});
+			LOGGER.info("Saving: "+file);
+			try {
+				ontologyManager.saveOntology(owlOntology, /*new TurtleDocumentFormat,*/ IRI.create(file));
+			} catch (OWLOntologyStorageException e) {
+				e.printStackTrace();
+			}
 		});
-		forkJoinPool.invokeAll(callables2);
 		
 		// create the equivalent OWL catalog
 		copyCatalog(inputCatalogFile, outputCatalogFile);
@@ -201,6 +207,25 @@ public class Oml2OwlApp {
 		LOGGER.info("=================================================================");
 		LOGGER.info("                          E N D");
 		LOGGER.info("=================================================================");
+	}
+
+	private URI resolveRootOntologyIri(String rootOntologyIri, OmlCatalog catalog) throws IOException {
+		final URI resolved = URI.createURI(catalog.resolveURI(rootOntologyIri));
+		
+		if (resolved.isFile()) {
+			final String filename = resolved.toFileString();
+			if (new File(filename).isFile()) {
+				return resolved;
+			}
+			if (new File(filename+'.'+OML).isFile()) {
+				return URI.createFileURI(filename+'.'+OML);
+			}
+			if (new File(filename+'.'+OMLXMI).isFile()) {
+				return URI.createFileURI(filename+'.'+OMLXMI);
+			}
+		}
+		
+		return resolved;
 	}
 
 	private Collection<File> collectOMLFiles(final File directory) {
