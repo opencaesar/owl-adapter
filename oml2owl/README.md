@@ -24,4 +24,22 @@ Args:
 --annotations-on-axioms | -a [Optional]
 ```
 
-## [Run as Gradle Task](../oml2owl-gradle/README.md)
+## Run as Gradle Task
+```
+buildscript {
+    repositories {
+        maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'io.opencaesar.owl:oml2owl-gradle:+'
+    }
+}
+task oml2owl(type:io.opencaesar.oml2owl.Oml2OwlTask) {
+    inputCatalogPath = file('path/to/input/oml/catalog.xml') [Required]
+    outputCatalogPath = file('path/to/output/owl/catalog.xml') [Required]
+    disjointUnions = true [Optional, false by default]
+    annotationsOnAxioms = true [Optional, false by default]
+}               
+```
