@@ -223,7 +223,7 @@ public class CloseDescriptionBundle {
 			toStream(g.eAllContents()).filter(e -> e instanceof SpecializableTerm).map(e -> (SpecializableTerm) e)
 					.forEach(term -> {
 						taxonomy.addVertex(term);
-						OmlRead.getSpecializedTerms(term).forEach(specialized -> {
+						OmlRead.getGeneralTerms(term).forEach(specialized -> {
 							taxonomy.addVertex(specialized);
 							taxonomy.addEdge(specialized, term);
 						});
@@ -249,7 +249,7 @@ public class CloseDescriptionBundle {
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof Property).map(e -> (Property) e).forEach(p -> {
 				graph.addVertex(p);
-				OmlRead.getSpecializedTerms(p).forEach(s -> {
+				OmlRead.getGeneralTerms(p).forEach(s -> {
 					final Property sp = (Property) s;
 					graph.addVertex(sp);
 					graph.addEdge(sp, p);
@@ -292,7 +292,7 @@ public class CloseDescriptionBundle {
 							graph.addVertex(f);
 						if (Objects.nonNull(r))
 							graph.addVertex(r);
-						OmlRead.getSpecializedTerms(re).forEach(s -> {
+						OmlRead.getGeneralTerms(re).forEach(s -> {
 							if (s instanceof RelationEntity) {
 								final RelationEntity sre = (RelationEntity) s;
 								final Relation sf = sre.getForwardRelation();

@@ -73,8 +73,6 @@ import org.semanticweb.owlapi.vocab.OWLFacet;
 
 public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 
-	private final String XSD = "http://www.w3.org/2001/XMLSchema#";
-
 	protected final boolean annotationsOnAxioms;
 
 	public OwlApi(final OWLOntologyManager manager, final boolean annotationsOnAxioms) {
@@ -558,7 +556,7 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 	}
 
 	public OWLLiteral getLiteral(final BigDecimal value) {
-		return getLiteralWithDatatype(value.toString(), (XSD + "decimal"));
+		return getLiteralWithDatatype(value.toString(), (OmlConstants.XSD_NS + "decimal"));
 	}
 
 	public OWLLiteral getLiteralWithDatatype(final String value, final String datatypeIri) {
