@@ -21,6 +21,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -126,6 +127,7 @@ public class Oml2OwlApp {
 		OmlStandaloneSetup.doSetup();
 		OmlXMIResourceFactory.register();
 		final XtextResourceSet inputResourceSet = new XtextResourceSet();
+		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
 		
 		final File inputCatalogFile = new File(inputCatalogPath);
 		final File inputFolder = inputCatalogFile.getParentFile();

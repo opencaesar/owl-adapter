@@ -64,7 +64,7 @@ public class CloseVocabularyBundle {
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof SpecializationAxiom).map(e -> (SpecializationAxiom)e).forEach(axiom -> {
 				final ClassExpression.Singleton specializedSingleton = singletonMap.get(axiom.getSpecializedTerm());
-				final ClassExpression.Singleton specializingSingleton = singletonMap.get(OmlRead.getSpecializingTerm(axiom));
+				final ClassExpression.Singleton specializingSingleton = singletonMap.get(OmlRead.getSpecificTerm(axiom));
 
 				if (specializedSingleton != null && specializingSingleton != null) {
 					edgeList.add(specializedSingleton);
