@@ -17,6 +17,6 @@ Requirements: JDK 8
     ./gradlew build
 ```
 
-## [OML to OWL](oml2owl) [ ![Download](https://api.bintray.com/packages/opencaesar/owl-adapter/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/owl-adapter/oml2owl/_latestVersion)
+## [OML to OWL](oml2owl) [ ![Download](https://api.bintray.com/packages/opencaesar/adapters/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/adapters/oml2owl/_latestVersion)
 
 A tool to translate ontologies from an OML to an OWL representation
