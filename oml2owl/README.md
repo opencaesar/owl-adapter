@@ -28,7 +28,7 @@ Args:
 ```
 buildscript {
     repositories {
-        maven { url 'https://dl.bintray.com/opencaesar/owl-adapter' }
+        maven { url 'https://dl.bintray.com/opencaesar/adapters' }
         mavenCentral()
         jcenter()
     }
