@@ -40,7 +40,6 @@ import io.opencaesar.oml.Element;
 import io.opencaesar.oml.EntityPredicate;
 import io.opencaesar.oml.EnumeratedScalar;
 import io.opencaesar.oml.FacetedScalar;
-import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.Import;
 import io.opencaesar.oml.IntegerLiteral;
 import io.opencaesar.oml.KeyAxiom;
@@ -203,6 +202,12 @@ public class Oml2Owl extends OmlVisitor<Void> {
 			owl.addInverseProperties(ontology, inverseTargetRelationIri, targetRelationIri);
 		}
 
+		// forward relation
+		handleForwardRelation(entity);
+
+		// reverse relation
+		handleReverseRelation(entity);
+		
 		return null;
 	}
 
@@ -257,16 +262,14 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		return null;
 	}
 
-	@Override
-	public Void caseForwardRelation(final ForwardRelation forward) {
-		final RelationEntity entity = forward.getRelationEntity();
-		
+	protected void handleForwardRelation(final RelationEntity entity) {
 		// forward relation
-		final String forwardIri = OmlRead.getIri(forward);
+		final String forwardName = getForwardName(entity);
+		final String forwardIri = getForwardIri(entity);
 		owl.addObjectProperty(ontology, forwardIri);
 		owl.addSubObjectPropertyOf(ontology, forwardIri, OmlConstants.forwardRelation);
-		owl.addObjectPropertyDomain(ontology, forwardIri, OmlRead.getIri(forward.getDomain()));
-		owl.addObjectPropertyRange(ontology, forwardIri, OmlRead.getIri(forward.getRange()));
+		owl.addObjectPropertyDomain(ontology, forwardIri, OmlRead.getIri(entity.getSource()));
+		owl.addObjectPropertyRange(ontology, forwardIri, OmlRead.getIri(entity.getTarget()));
 		if (entity.isFunctional()) {
 			owl.addFunctionalObjectProperty(ontology, forwardIri);
 		}
@@ -294,19 +297,19 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		antedecents.add(owl.getObjectPropertyAtom(getSourceIri(entity), getSwrlIri("r"), getSwrlIri("s")));
 		antedecents.add(owl.getObjectPropertyAtom(getTargetIri(entity), getSwrlIri("r"), getSwrlIri("t")));
 		final SWRLObjectPropertyAtom consequent = owl.getObjectPropertyAtom(forwardIri, getSwrlIri("s"), getSwrlIri("t"));
-		final OWLAnnotation annotation = owl.getAnnotation(RDFS.LABEL.toString(), owl.getLiteral(forward.getName()+" derivation"));
+		final OWLAnnotation annotation = owl.getAnnotation(RDFS.LABEL.toString(), owl.getLiteral(forwardName+" derivation"));
 		owl.addRule(ontology, Collections.singletonList(consequent), antedecents, annotation);
-		return null;
 	}
 
-	@Override
-	public Void caseReverseRelation(final ReverseRelation reverse) {
+	protected void handleReverseRelation(final RelationEntity entity) {
 		// reverse relation
-		final String reverseIri = OmlRead.getIri(reverse);
-		owl.addObjectProperty(ontology, reverseIri);
-		owl.addSubObjectPropertyOf(ontology, reverseIri, OmlConstants.reverseRelation);
-		owl.addInverseProperties(ontology, reverseIri, OmlRead.getIri(reverse.getInverse()));
-		return null;
+		if (entity.getReverseRelation() != null) {
+			ReverseRelation reverse = entity.getReverseRelation();
+			final String reverseIri = OmlRead.getIri(reverse);
+			owl.addObjectProperty(ontology, reverseIri);
+			owl.addSubObjectPropertyOf(ontology, reverseIri, OmlConstants.reverseRelation);
+			owl.addInverseProperties(ontology, reverseIri, OmlRead.getIri(reverse.getInverse()));
+		}
 	}
 
 	@Override
@@ -661,6 +664,7 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		owl.addSubClassOf(ontology, OmlRead.getIri(specific), OmlRead.getIri(general), annotations);
 		owl.addSubObjectPropertyOf(ontology, getSourceIri(specific), getSourceIri(general), annotations);
 		owl.addSubObjectPropertyOf(ontology, getTargetIri(specific), getTargetIri(general), annotations);
+		owl.addSubObjectPropertyOf(ontology, getForwardIri(specific), getForwardIri(general), annotations);
 	}
 
 	protected void specializes(final RelationEntity specific, final Aspect general, final Reference owningReference, final OWLAnnotation... annotations) {
@@ -858,6 +862,21 @@ public class Oml2Owl extends OmlVisitor<Void> {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual(OmlRead.getId(instance));
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
 		return individual;
+	}
+
+	protected String getForwardName(final RelationEntity entity) {
+		if (entity.getForwardRelation() != null) {
+			return entity.getForwardRelation().getName();
+		} else {
+			String name = toFirstUpper(entity.getName());
+			return "has"+name+"Forward";
+		}
+	}
+
+	protected String getForwardIri(final RelationEntity entity) {
+		String namespace = OmlRead.getNamespace(OmlRead.getOntology(entity));
+		String name = getForwardName(entity);
+		return namespace+name;
 	}
 
 	protected String getSourceIri(final RelationEntity entity) {
