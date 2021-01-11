@@ -520,9 +520,18 @@ public class CloseDescriptionBundle {
 				map.put(subj, subj_count_map);
 
 				all_relations.forEach(relation -> {
-					if (!subj_vals_map.containsKey(relation)) subj_vals_map.put(relation, new HashSet<NamedInstance>());
+					if (!subj_vals_map.containsKey(relation))
+						subj_vals_map.put(relation, new HashSet<NamedInstance>());
 				});
-				
+
+				OmlSearch.findRelationInstancesWithSource(subj).forEach(ri -> {
+					ri.getOwnedTypes().forEach(rta ->{
+						final Relation rel = rta.getType().getForwardRelation();
+						if (all_relations.contains(rel)) {
+							subj_vals_map.get(rel).addAll(ri.getTargets());
+						}
+					});
+				});
 				OmlSearch.findLinkAssertionsWithSource(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
 					if (all_relations.contains(rel)) {
