@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import io.opencaesar.oml.*;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.ConnectivityInspector;
@@ -32,26 +33,6 @@ import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 import io.opencaesar.closeworld.OwlApi;
-import io.opencaesar.oml.Concept;
-import io.opencaesar.oml.Entity;
-import io.opencaesar.oml.Literal;
-import io.opencaesar.oml.NamedInstance;
-import io.opencaesar.oml.Ontology;
-import io.opencaesar.oml.Property;
-import io.opencaesar.oml.Relation;
-import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
-import io.opencaesar.oml.RelationEntity;
-import io.opencaesar.oml.RelationRangeRestrictionAxiom;
-import io.opencaesar.oml.ScalarProperty;
-import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
-import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom;
-import io.opencaesar.oml.ScalarPropertyValueAssertion;
-import io.opencaesar.oml.SpecializableTerm;
-import io.opencaesar.oml.StructureInstance;
-import io.opencaesar.oml.StructuredProperty;
-import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
-import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
-import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -162,14 +143,59 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
+	private static void addDerivedRelationViaRule(final HashMap<Relation, HashSet<Rule>> derivedRelations, final Relation r, final Rule rule) {
+		final HashSet<Rule> rs = derivedRelations.getOrDefault(r, new HashSet<>());
+		rs.add(rule);
+		derivedRelations.put(r, rs);
+	}
+
 	/**
-	 * Gets all entities with restrictions on relations that require closure axioms. Such axioms are minimum and
+	 * Gets all entities with restrictions on non-derived relations that require closure axioms. Such axioms are minimum and
 	 * exact cardinality restrictions and some-values-from range restrictions.
+	 *
+	 * Derived relations are those that appear in a consequent of a SWRL rule.
 	 * 
 	 * @param allOntologies
 	 * @return map from entity to set of restricted relations
 	 */
 	private final static HashMap<Entity, HashSet<Relation>> getEntitiesWithRestrictedRelations(final Collection<Ontology> allOntologies) {
+
+		/**
+		 * This map indicates whether a relation is derived via SWRL rules.
+		 */
+		final HashMap<Relation, HashSet<Rule>> derivedRelations = new HashMap<>();
+		toStream(allOntologies.iterator()).forEach(g -> {
+			toStream(g.eAllContents()).filter(e -> e instanceof Rule).forEach(o -> {
+				final Rule rule = (Rule) o;
+				rule.getConsequent().forEach(p -> {
+					if (p instanceof EntityPredicate) {
+						final Entity e = ((EntityPredicate) p).getEntity();
+						if (e instanceof RelationEntity) {
+							final RelationEntity re = (RelationEntity) e;
+							final ForwardRelation fr = re.getForwardRelation();
+							if (null != fr)
+								addDerivedRelationViaRule(derivedRelations, fr, rule);
+							final ReverseRelation rr = re.getReverseRelation();
+							if (null != rr)
+								addDerivedRelationViaRule(derivedRelations, rr, rule);
+						}
+					} else if (p instanceof RelationPredicate) {
+						final Relation r = ((RelationPredicate) p).getRelation();
+						if (null != r)
+							addDerivedRelationViaRule(derivedRelations, r, rule);
+					} else if (p instanceof RelationEntityPredicate) {
+						final RelationEntity re = ((RelationEntityPredicate) p).getEntity();
+						final ForwardRelation fr = re.getForwardRelation();
+						if (null != fr)
+							addDerivedRelationViaRule(derivedRelations, fr, rule);
+						final ReverseRelation rr = re.getReverseRelation();
+						if (null != rr)
+							addDerivedRelationViaRule(derivedRelations, rr, rule);
+					}
+				});
+			});
+		});
+
 		final HashMap<Entity, HashSet<Relation>> map = new HashMap<>();
 		
 		toStream(allOntologies.iterator()).forEach(g -> {
@@ -184,7 +210,9 @@ public class CloseDescriptionBundle {
 							final Relation relation = restriction.getRelation();
 							final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
 							map.put(entity, set);
-							set.add(relation);
+							if (derivedRelations.getOrDefault(relation, new HashSet<>()).isEmpty()) {
+								set.add(relation);
+							}
 							break;
 						default:
 						}
@@ -195,7 +223,9 @@ public class CloseDescriptionBundle {
 							final Relation relation = restriction.getRelation();
 							final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
 							map.put(entity, set);
-							set.add(relation);
+							if (derivedRelations.getOrDefault(relation, new HashSet<>()).isEmpty()) {
+								set.add(relation);
+							}
 							break;
 						default:
 						}
