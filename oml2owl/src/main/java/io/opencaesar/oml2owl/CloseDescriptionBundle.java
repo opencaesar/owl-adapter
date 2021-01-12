@@ -3,15 +3,10 @@ package io.opencaesar.oml2owl;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.ecore.resource.Resource;
 import org.jgrapht.Graph;
@@ -34,6 +29,8 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.Entity;
+import io.opencaesar.oml.EntityPredicate;
+import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.Literal;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
@@ -41,7 +38,11 @@ import io.opencaesar.oml.Property;
 import io.opencaesar.oml.Relation;
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
 import io.opencaesar.oml.RelationEntity;
+import io.opencaesar.oml.RelationEntityPredicate;
+import io.opencaesar.oml.RelationPredicate;
 import io.opencaesar.oml.RelationRangeRestrictionAxiom;
+import io.opencaesar.oml.ReverseRelation;
+import io.opencaesar.oml.Rule;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom;
@@ -52,6 +53,7 @@ import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
+import io.opencaesar.oml.Vocabulary;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -70,10 +72,6 @@ public class CloseDescriptionBundle {
 		this.resource = resource;
 	}
 
-	private static <T> Stream<T> toStream(Iterator<T> i) {
-		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(i, Spliterator.ORDERED), false);
-	}
-	
 	/**
 	 * Gets all entities with restrictions on properties that require closure axioms. Such axioms are minimum and
 	 * exact cardinality restrictions and some-values-from range restrictions.
@@ -84,9 +82,12 @@ public class CloseDescriptionBundle {
 	private final static HashMap<Entity, HashSet<ScalarProperty>> getEntitiesWithRestrictedScalarProperties(final Collection<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<ScalarProperty>> map = new HashMap<>();
 		
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
-				final Entity entity = (Entity) e;
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof Entity)
+			.map(s -> (Entity)s)
+			.forEach(entity -> {
 				OmlSearch.findPropertyRestrictions(entity).forEach(r -> {
 					if (r instanceof ScalarPropertyCardinalityRestrictionAxiom) {
 						final ScalarPropertyCardinalityRestrictionAxiom restriction = (ScalarPropertyCardinalityRestrictionAxiom) r;
@@ -114,7 +115,6 @@ public class CloseDescriptionBundle {
 					}
 				});
 			});
-		});
 		return map;
 	}
 	
@@ -128,9 +128,12 @@ public class CloseDescriptionBundle {
 	private final static HashMap<Entity, HashSet<StructuredProperty>> getEntitiesWithRestrictedStructuredProperties(final Collection<Ontology> allOntologies) {
 		final HashMap<Entity, HashSet<StructuredProperty>> map = new HashMap<>();
 		
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
-				final Entity entity = (Entity) e;
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof Entity)
+			.map(s -> (Entity)s)
+			.forEach(entity -> {
 				OmlSearch.findPropertyRestrictions(entity).forEach(r -> {
 					if (r instanceof StructuredPropertyCardinalityRestrictionAxiom) {
 						final StructuredPropertyCardinalityRestrictionAxiom restriction = (StructuredPropertyCardinalityRestrictionAxiom) r;
@@ -158,23 +161,73 @@ public class CloseDescriptionBundle {
 					}
 				});
 			});
-		});
 		return map;
 	}
 
+	private static void addDerivedRelationViaRule(final HashMap<Relation, HashSet<Rule>> derivedRelations, final Relation r, final Rule rule) {
+		final HashSet<Rule> rs = derivedRelations.getOrDefault(r, new HashSet<>());
+		rs.add(rule);
+		derivedRelations.put(r, rs);
+	}
+
 	/**
-	 * Gets all entities with restrictions on relations that require closure axioms. Such axioms are minimum and
+	 * Gets all entities with restrictions on non-derived relations that require closure axioms. Such axioms are minimum and
 	 * exact cardinality restrictions and some-values-from range restrictions.
+	 *
+	 * Derived relations are those that appear in a consequent of a SWRL rule.
 	 * 
 	 * @param allOntologies
 	 * @return map from entity to set of restricted relations
 	 */
 	private final static HashMap<Entity, HashSet<Relation>> getEntitiesWithRestrictedRelations(final Collection<Ontology> allOntologies) {
+
+		/**
+		 * This map indicates whether a relation is derived via SWRL rules.
+		 */
+		final HashMap<Relation, HashSet<Rule>> derivedRelations = new HashMap<>();
+		
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof Rule)
+			.map(s -> (Rule)s)
+			.forEach(rule -> {
+				rule.getConsequent().forEach(p -> {
+					if (p instanceof EntityPredicate) {
+						final Entity e = ((EntityPredicate) p).getEntity();
+						if (e instanceof RelationEntity) {
+							final RelationEntity re = (RelationEntity) e;
+							final ForwardRelation fr = re.getForwardRelation();
+							if (null != fr)
+								addDerivedRelationViaRule(derivedRelations, fr, rule);
+							final ReverseRelation rr = re.getReverseRelation();
+							if (null != rr)
+								addDerivedRelationViaRule(derivedRelations, rr, rule);
+						}
+					} else if (p instanceof RelationPredicate) {
+						final Relation r = ((RelationPredicate) p).getRelation();
+						if (null != r)
+							addDerivedRelationViaRule(derivedRelations, r, rule);
+					} else if (p instanceof RelationEntityPredicate) {
+						final RelationEntity re = ((RelationEntityPredicate) p).getEntity();
+						final ForwardRelation fr = re.getForwardRelation();
+						if (null != fr)
+							addDerivedRelationViaRule(derivedRelations, fr, rule);
+						final ReverseRelation rr = re.getReverseRelation();
+						if (null != rr)
+							addDerivedRelationViaRule(derivedRelations, rr, rule);
+					}
+				});
+			});
+
 		final HashMap<Entity, HashSet<Relation>> map = new HashMap<>();
 		
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof Entity).forEach(e -> {
-				final Entity entity = (Entity) e;
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof Entity)
+			.map(s -> (Entity)s)
+			.forEach(entity -> {
 				OmlSearch.findRelationRestrictions(entity).forEach(r -> {
 					if (r instanceof RelationCardinalityRestrictionAxiom) {
 						final RelationCardinalityRestrictionAxiom restriction = (RelationCardinalityRestrictionAxiom) r;
@@ -184,7 +237,9 @@ public class CloseDescriptionBundle {
 							final Relation relation = restriction.getRelation();
 							final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
 							map.put(entity, set);
-							set.add(relation);
+							if (derivedRelations.getOrDefault(relation, new HashSet<>()).isEmpty()) {
+								set.add(relation);
+							}
 							break;
 						default:
 						}
@@ -195,15 +250,15 @@ public class CloseDescriptionBundle {
 							final Relation relation = restriction.getRelation();
 							final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
 							map.put(entity, set);
-							set.add(relation);
+							if (derivedRelations.getOrDefault(relation, new HashSet<>()).isEmpty()) {
+								set.add(relation);
+							}
 							break;
 						default:
 						}
 					}
-					
 				});
 			});
-		});
 		return map;
 	}
 
@@ -219,16 +274,18 @@ public class CloseDescriptionBundle {
 		final DirectedAcyclicGraph<SpecializableTerm, DefaultEdge> taxonomy = new DirectedAcyclicGraph<SpecializableTerm, DefaultEdge>(
 				DefaultEdge.class);
 
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof SpecializableTerm).map(e -> (SpecializableTerm) e)
-					.forEach(term -> {
-						taxonomy.addVertex(term);
-						OmlRead.getGeneralTerms(term).forEach(specialized -> {
-							taxonomy.addVertex(specialized);
-							taxonomy.addEdge(specialized, term);
-						});
-					});
-		});
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof SpecializableTerm)
+			.map(s -> (SpecializableTerm)s)
+			.forEach(term -> {
+				taxonomy.addVertex(term);
+				OmlRead.getGeneralTerms(term).forEach(specialized -> {
+					taxonomy.addVertex(specialized);
+					taxonomy.addEdge(specialized, term);
+				});
+			});
 
 		TransitiveClosure.INSTANCE.closeDirectedAcyclicGraph(taxonomy);
 		return new NeighborCache<SpecializableTerm, DefaultEdge>(taxonomy);
@@ -246,16 +303,19 @@ public class CloseDescriptionBundle {
 		final HashMap<Property, Graph<Property, DefaultEdge>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Property, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof Property).map(e -> (Property) e).forEach(p -> {
-				graph.addVertex(p);
-				OmlRead.getGeneralTerms(p).forEach(s -> {
-					final Property sp = (Property) s;
-					graph.addVertex(sp);
-					graph.addEdge(sp, p);
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof Property)
+			.map(s -> (Property)s)
+			.forEach(p -> {
+					graph.addVertex(p);
+					OmlRead.getGeneralTerms(p).forEach(s -> {
+						final Property sp = (Property) s;
+						graph.addVertex(sp);
+						graph.addEdge(sp, p);
+					});
 				});
-			});
-		});
 
 		final List<Set<Property>> components = new ConnectivityInspector<>(graph)
 				.connectedSets();
@@ -283,32 +343,34 @@ public class CloseDescriptionBundle {
 		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof RelationEntity).map(e -> (RelationEntity) e)
-					.forEach(re -> {
-						final Relation f = re.getForwardRelation();
-						final Relation r = re.getReverseRelation();
-						if (Objects.nonNull(f))
-							graph.addVertex(f);
-						if (Objects.nonNull(r))
-							graph.addVertex(r);
-						OmlRead.getGeneralTerms(re).forEach(s -> {
-							if (s instanceof RelationEntity) {
-								final RelationEntity sre = (RelationEntity) s;
-								final Relation sf = sre.getForwardRelation();
-								final Relation sr = sre.getReverseRelation();
-								if (Objects.nonNull(f) && Objects.nonNull(sf)) {
-									graph.addVertex(sf);
-									graph.addEdge(sf, f);
-								}
-								if (Objects.nonNull(r) && Objects.nonNull(sr)) {
-									graph.addVertex(sr);
-									graph.addEdge(sr, r);
-								}
-							}
-						});
-					});
-		});
+		allOntologies.stream()
+			.filter(o -> o instanceof Vocabulary)
+			.map(o -> OmlRead.getStatements(o))
+			.filter(s -> s instanceof RelationEntity)
+			.map(s -> (RelationEntity)s)
+			.forEach(re -> {
+				final Relation f = re.getForwardRelation();
+				final Relation r = re.getReverseRelation();
+				if (Objects.nonNull(f))
+					graph.addVertex(f);
+				if (Objects.nonNull(r))
+					graph.addVertex(r);
+				OmlRead.getGeneralTerms(re).forEach(s -> {
+					if (s instanceof RelationEntity) {
+						final RelationEntity sre = (RelationEntity) s;
+						final Relation sf = sre.getForwardRelation();
+						final Relation sr = sre.getReverseRelation();
+						if (Objects.nonNull(f) && Objects.nonNull(sf)) {
+							graph.addVertex(sf);
+							graph.addEdge(sf, f);
+						}
+						if (Objects.nonNull(r) && Objects.nonNull(sr)) {
+							graph.addVertex(sr);
+							graph.addEdge(sr, r);
+						}
+					}
+				});
+			});
 
 		final List<Set<Relation>> components = new ConnectivityInspector<>(graph)
 				.connectedSets();
