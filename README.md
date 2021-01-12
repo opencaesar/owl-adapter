@@ -19,4 +19,4 @@ Requirements: JDK 8
 
 ## [OML to OWL](oml2owl) [ ![Download](https://api.bintray.com/packages/opencaesar/adapters/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/adapters/oml2owl/_latestVersion)
 
-A tool to translate ontologies from an OML to an OWL representation
+A tool to translate ontologies from OML to OWL representation
