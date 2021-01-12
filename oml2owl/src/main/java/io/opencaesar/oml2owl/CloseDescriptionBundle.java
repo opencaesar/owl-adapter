@@ -164,8 +164,9 @@ public class CloseDescriptionBundle {
 		 * This map indicates whether a relation is derived via SWRL rules.
 		 */
 		final HashMap<Relation, HashSet<Rule>> derivedRelations = new HashMap<>();
-		toStream(allOntologies.iterator()).forEach(g -> {
-			toStream(g.eAllContents()).filter(e -> e instanceof Rule).forEach(o -> {
+		toStream(allOntologies.iterator()).filter(o -> o instanceof Vocabulary).forEach(ont -> {
+			final Vocabulary v = (Vocabulary) ont;
+			v.getOwnedStatements().stream().filter(e -> e instanceof Rule).forEach(o -> {
 				final Rule rule = (Rule) o;
 				rule.getConsequent().forEach(p -> {
 					if (p instanceof EntityPredicate) {
