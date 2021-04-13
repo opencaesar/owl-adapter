@@ -1,15 +1,3 @@
-buildscript {
-	repositories {
-	    mavenLocal()
-  		mavenCentral()
-		jcenter()
-	}
-	dependencies {
-		classpath 'org.xtext:xtext-gradle-plugin:2.0.8'
-		classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.+'
-	}
-}
-
 subprojects {
 	group = 'io.opencaesar.adapters'
 	version = '0.8.8'
@@ -28,42 +16,27 @@ subprojects {
 
 	repositories {
     	mavenLocal()
-		maven { url 'https://dl.bintray.com/opencaesar/oml-tools' }
-		maven { url 'https://dl.bintray.com/opencaesar/owl-tools' }
-		maven { url 'https://dl.bintray.com/opencaesar/oml' }
   		mavenCentral()
-		jcenter()
 	}
 	
-	apply plugin: 'java-library'
+	apply plugin: 'java'
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
-	apply plugin: 'com.jfrog.bintray'
-	apply plugin: 'org.xtext.xtend'
-	
-	apply from: "${rootDir}/gradle/source-layout.gradle"
 	apply from: "${rootDir}/gradle/maven-deployment.gradle"
 	
 	sourceCompatibility = '11'
-	targetCompatibility = '11'
 	
-	dependencies {
-	 	implementation "com.beust:jcommander:${versions.jcommander}"
-		implementation "log4j:log4j:${versions.log4j}"
-		implementation "org.slf4j:slf4j-simple:${versions.slf4j}"
-	
-	    testImplementation "junit:junit:${versions.junit}"
+	java {
+	    withJavadocJar()
+	    withSourcesJar()
 	}
 
-	task createVersion {
+	classes {
 	    doLast {
 	        def version = project.version.toString()
 	        def file = new File("$projectDir/src/main/resources/version.txt")
 	        file.write(version)
 	    }
 	}
-	
-	classes {
-	    dependsOn createVersion
-	}
+
 }

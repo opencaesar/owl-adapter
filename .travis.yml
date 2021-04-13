@@ -2,17 +2,20 @@ language: java
 install: true
 
 jdk:
-- openjdk11
+  - openjdk11
+
+cache:
+  directories:
+    - $HOME/.m2
+    - $HOME/.gradle
 
 script:
   - ./gradlew build
 
 deploy:
   - provider: script
-    script: ./gradlew bintrayUpload
+    script: ./gradlew publish
     skip_cleanup: true
-    dry-run: false
     on:
       tags: true
-      repo: opencaesar/owl-adapter
       branch: master

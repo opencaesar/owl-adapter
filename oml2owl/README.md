@@ -1,6 +1,6 @@
 # OML to OWL
 
-[ ![Download](https://api.bintray.com/packages/opencaesar/adapters/oml2owl/images/download.svg) ](https://bintray.com/opencaesar/adapters/oml2owl/_latestVersion)
+[![Release](https://img.shields.io/github/v/tag/opencaesar/owl-adapter?label=release)](https://github.com/opencaesar/owl-adapter/releases/latest)
 
 A tool to translate ontologies from an OML to an OWL representation
 
@@ -8,12 +8,10 @@ A tool to translate ontologies from an OML to an OWL representation
 
 MacOS/Linux:
 ```
-cd owl-adapter
 ./gradlew oml2owl:run --args="..."
 ```
 Windows:
 ```
-cd owl-adapter
 gradlew.bat oml2owl:run --args="..."
 ```
 Args:
@@ -28,9 +26,7 @@ Args:
 ```
 buildscript {
     repositories {
-        maven { url 'https://dl.bintray.com/opencaesar/adapters' }
         mavenCentral()
-        jcenter()
     }
     dependencies {
         classpath 'io.opencaesar.owl:oml2owl-gradle:+'

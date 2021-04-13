@@ -6,9 +6,15 @@ mainClassName = 'io.opencaesar.oml2owl.Oml2OwlApp'
 applicationName = 'oml2owl'
 
 dependencies {
+	implementation "com.beust:jcommander:${versions.jcommander}"
+	implementation "log4j:log4j:${versions.log4j}"
+	implementation "org.slf4j:slf4j-simple:${versions.slf4j}"
+	testImplementation "junit:junit:${versions.junit}"
+
 	implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
 	implementation "io.opencaesar.oml:oml-validate:${versions.oml_tools}"
 	implementation "io.opencaesar.owl:owl-close-world:${versions.owl_tools}"
+	
 	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
 	implementation "org.jgrapht:jgrapht-core:${versions.jgrapht}"
 }

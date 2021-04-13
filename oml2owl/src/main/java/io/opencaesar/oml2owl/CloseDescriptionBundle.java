@@ -66,7 +66,7 @@ public class CloseDescriptionBundle {
 	protected final Resource resource;
 
 	/**
-	 * @param resource
+	 * @param resource The OML resource of the description bundle
 	 */
 	public CloseDescriptionBundle(final Resource resource) {
 		this.resource = resource;
