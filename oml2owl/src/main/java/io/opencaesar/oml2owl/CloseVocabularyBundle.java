@@ -1,3 +1,21 @@
+/**
+ * 
+ * Copyright 2019-2021 California Institute of Technology ("Caltech").
+ * U.S. Government sponsorship acknowledged.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
 package io.opencaesar.oml2owl;
 
 import static io.opencaesar.closeworld.Axiom.AxiomType.DISJOINT_CLASSES;
@@ -29,7 +47,6 @@ import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.SpecializationAxiom;
 import io.opencaesar.oml.util.OmlRead;
 
-@SuppressWarnings("all")
 public class CloseVocabularyBundle {
 
 	protected final Resource resource;
@@ -55,7 +72,7 @@ public class CloseVocabularyBundle {
 
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof Entity && !(e instanceof Aspect)).map(e -> (Entity)e).forEach(entity -> {
-				final ClassExpression.Singleton s = new ClassExpression.Singleton(OmlRead.getIri((Entity) entity));
+				final ClassExpression.Singleton s = new ClassExpression.Singleton(((Entity) entity).getIri());
 				singletonMap.put(entity, s);
 				vertexList.add(s);
 			});
@@ -64,7 +81,7 @@ public class CloseVocabularyBundle {
 		toStream(allOntologies.iterator()).forEach(g -> {
 			toStream(g.eAllContents()).filter(e -> e instanceof SpecializationAxiom).map(e -> (SpecializationAxiom)e).forEach(axiom -> {
 				final ClassExpression.Singleton specializedSingleton = singletonMap.get(axiom.getSpecializedTerm());
-				final ClassExpression.Singleton specializingSingleton = singletonMap.get(OmlRead.getSpecificTerm(axiom));
+				final ClassExpression.Singleton specializingSingleton = singletonMap.get(OmlRead.getSubTerm(axiom));
 
 				if (specializedSingleton != null && specializingSingleton != null) {
 					edgeList.add(specializedSingleton);
@@ -90,7 +107,7 @@ public class CloseVocabularyBundle {
 
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(resource);
-			final Collection<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> getImportedOntologies(o));
+			final Collection<Ontology> allOntologies = OmlRead.closure(omlOntology, true, o -> getImportedOntologies(o));
 			final Taxonomy conceptTaxonomy = super.omlConceptTaxonomy(allOntologies);
 			final Axiom.AxiomType axiomType = disjointUnions ? DISJOINT_UNION : DISJOINT_CLASSES;
 
