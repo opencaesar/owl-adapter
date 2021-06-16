@@ -1,3 +1,21 @@
+/**
+ * 
+ * Copyright 2019-2021 California Institute of Technology ("Caltech").
+ * U.S. Government sponsorship acknowledged.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
 package io.opencaesar.oml2owl;
 
 import java.util.Collection;
@@ -28,6 +46,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 
 import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.oml.Concept;
+import io.opencaesar.oml.ConceptInstance;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.EntityPredicate;
 import io.opencaesar.oml.ForwardRelation;
@@ -281,7 +300,7 @@ public class CloseDescriptionBundle {
 			.map(s -> (SpecializableTerm)s)
 			.forEach(term -> {
 				taxonomy.addVertex(term);
-				OmlRead.getGeneralTerms(term).forEach(specialized -> {
+				OmlRead.getSuperTerms(term).forEach(specialized -> {
 					taxonomy.addVertex(specialized);
 					taxonomy.addEdge(specialized, term);
 				});
@@ -310,7 +329,7 @@ public class CloseDescriptionBundle {
 			.map(s -> (Property)s)
 			.forEach(p -> {
 					graph.addVertex(p);
-					OmlRead.getGeneralTerms(p).forEach(s -> {
+					OmlRead.getSuperTerms(p).forEach(s -> {
 						final Property sp = (Property) s;
 						graph.addVertex(sp);
 						graph.addEdge(sp, p);
@@ -355,7 +374,7 @@ public class CloseDescriptionBundle {
 					graph.addVertex(f);
 				if (Objects.nonNull(r))
 					graph.addVertex(r);
-				OmlRead.getGeneralTerms(re).forEach(s -> {
+				OmlRead.getSuperTerms(re).forEach(s -> {
 					if (s instanceof RelationEntity) {
 						final RelationEntity sre = (RelationEntity) s;
 						final Relation sf = sre.getForwardRelation();
@@ -404,9 +423,10 @@ public class CloseDescriptionBundle {
 			specializations.add(entity);
 			final HashSet<NamedInstance> instances = new HashSet<>();
 			specializations.stream().filter(s -> s instanceof Concept).map(s -> (Concept) s).forEach(concept -> {
-				OmlSearch.findConceptInstancesWithType(concept).forEach(instance -> {
-					instances.add(instance);
-				});
+				OmlSearch.findInstancesOfType(concept).stream()
+					.filter(i -> i instanceof ConceptInstance)
+					.map(i -> (ConceptInstance)i)
+					.forEach(i -> instances.add(i));
 			});
 			map.put(entity, instances);
 		});
@@ -594,7 +614,7 @@ public class CloseDescriptionBundle {
 						}
 					});
 				});
-				OmlSearch.findLinkAssertionsWithSource(subj).forEach(link -> {
+				OmlSearch.findLinkAssertions(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
 					if (all_relations.contains(rel)) {
 						subj_vals_map.get(rel).add(link.getTarget());
@@ -634,7 +654,7 @@ public class CloseDescriptionBundle {
 
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
-			final Collection<Ontology> allOntologies = OmlRead.reflexiveClosure(omlOntology, o -> OmlRead.getImportedOntologies(o));
+			final Collection<Ontology> allOntologies = OmlRead.closure(omlOntology, true, o -> OmlRead.getImportedOntologies(o));
 
 			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedScalarProperties = getEntitiesWithRestrictedScalarProperties(allOntologies);
 			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedStructuredProperties = getEntitiesWithRestrictedStructuredProperties(allOntologies);
@@ -656,10 +676,10 @@ public class CloseDescriptionBundle {
 			 * Generate data property cardinality restrictions.
 			 */
 			scalarPropertyCounts.forEach((subj, map) -> {
-				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
+				final IRI subj_iri = IRI.create(subj.getIri());
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
 				map.forEach((prop, c) -> {
-					final IRI prop_iri = IRI.create(OmlRead.getIri(prop));
+					final IRI prop_iri = IRI.create(prop.getIri());
 					final OWLDataProperty dp = this.owlApi.getOWLDataProperty(prop_iri);
 					final OWLDataMaxCardinality mc = this.owlApi.getOWLDataMaxCardinality(c, dp);
 					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
@@ -671,10 +691,10 @@ public class CloseDescriptionBundle {
 			 * Generate object property cardinality restrictions.
 			 */
 			structuredPropertyCounts.forEach((subj, map) -> {
-				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
+				final IRI subj_iri = IRI.create(subj.getIri());
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
 				map.forEach((prop, c) -> {
-					final IRI prop_iri = IRI.create(OmlRead.getIri(prop));
+					final IRI prop_iri = IRI.create(prop.getIri());
 					final OWLObjectProperty dp = this.owlApi.getOWLObjectProperty(prop_iri);
 					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, dp);
 					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
@@ -682,10 +702,10 @@ public class CloseDescriptionBundle {
 				});
 			});
 			relationCounts.forEach((subj, map) -> {
-				final IRI subj_iri = IRI.create(OmlRead.getIri(subj));
+				final IRI subj_iri = IRI.create(subj.getIri());
 				final OWLNamedIndividual ni = this.owlApi.getOWLNamedIndividual(subj_iri);
 				map.forEach((prop, c) -> {
-					final IRI prop_iri = IRI.create(OmlRead.getIri(prop));
+					final IRI prop_iri = IRI.create(prop.getIri());
 					final OWLObjectProperty op = this.owlApi.getOWLObjectProperty(prop_iri);
 					final OWLObjectMaxCardinality mc = this.owlApi.getOWLObjectMaxCardinality(c, op);
 					final OWLClassAssertionAxiom ca = this.owlApi.getOWLClassAssertionAxiom(mc, ni);
