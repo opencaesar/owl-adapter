@@ -20,8 +20,6 @@ package io.opencaesar.oml2owl;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -51,7 +49,6 @@ import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
-import com.google.common.io.CharStreams;
 
 import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.Ontology;
@@ -149,7 +146,7 @@ public class Oml2OwlApp {
 		
 		final File inputCatalogFile = new File(inputCatalogPath);
 		final File inputFolder = inputCatalogFile.getParentFile();
-		final OmlCatalog inputCatalog = OmlCatalog.create(inputCatalogFile.toURI().toURL());
+		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
 
 		// load the OML otologies
 		List<Ontology> inputOntologies = new ArrayList<>(); 
@@ -265,7 +262,7 @@ public class Oml2OwlApp {
 	private void copyCatalog(final File inputCatalogFile, final File outputCatalogFile) throws Exception {
 		LOGGER.info(("Saving: " + inputCatalogFile));
 		Files.copy(Paths.get(inputCatalogFile.getPath()), Paths.get(outputCatalogFile.getPath()), StandardCopyOption.REPLACE_EXISTING);
-		final OmlCatalog inputCatalog = OmlCatalog.create(inputCatalogFile.toURI().toURL());
+		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
 		List<String> _nestedCatalogs = inputCatalog.getNestedCatalogs();
 		for (final String c : _nestedCatalogs) {
 			final java.net.URI uri = new URL(c).toURI();
@@ -290,16 +287,8 @@ public class Oml2OwlApp {
 	 * @return version string from build.properties or UNKNOWN
 	 */
 	private String getAppVersion() {
-		String version = "UNKNOWN";
-		try {
-			InputStream input = Thread.currentThread().getContextClassLoader().getResourceAsStream("version.txt");
-			InputStreamReader reader = new InputStreamReader(input);
-			version = CharStreams.toString(reader);
-		} catch (IOException e) {
-			String errorMsg = "Could not read version.txt file." + e;
-			LOGGER.error(errorMsg, e);
-		}
-		return version;
+    	var version = this.getClass().getPackage().getImplementationVersion();
+    	return (version != null) ? version : "<SNAPSHOT>";
 	}
 
 	public static class InputCatalogPath implements IParameterValidator {

@@ -55,9 +55,9 @@ import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.DifferentFromPredicate;
 import io.opencaesar.oml.DoubleLiteral;
 import io.opencaesar.oml.Element;
-import io.opencaesar.oml.EntityPredicate;
 import io.opencaesar.oml.EnumeratedScalar;
 import io.opencaesar.oml.FacetedScalar;
+import io.opencaesar.oml.FeaturePredicate;
 import io.opencaesar.oml.Import;
 import io.opencaesar.oml.IntegerLiteral;
 import io.opencaesar.oml.KeyAxiom;
@@ -74,13 +74,13 @@ import io.opencaesar.oml.RelationEntity;
 import io.opencaesar.oml.RelationEntityPredicate;
 import io.opencaesar.oml.RelationInstance;
 import io.opencaesar.oml.RelationInstanceReference;
-import io.opencaesar.oml.RelationPredicate;
 import io.opencaesar.oml.RelationRangeRestrictionAxiom;
 import io.opencaesar.oml.RelationTargetRestrictionAxiom;
 import io.opencaesar.oml.RelationTypeAssertion;
 import io.opencaesar.oml.ReverseRelation;
 import io.opencaesar.oml.Rule;
 import io.opencaesar.oml.SameAsPredicate;
+import io.opencaesar.oml.Scalar;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom;
@@ -95,6 +95,7 @@ import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
 import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom;
 import io.opencaesar.oml.Term;
+import io.opencaesar.oml.TypePredicate;
 import io.opencaesar.oml.Vocabulary;
 import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.util.OmlRead;
@@ -745,23 +746,27 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected List<SWRLAtom> getAtom(final Predicate predicate) {
-		if (predicate instanceof DifferentFromPredicate) {
-			return getAtom((DifferentFromPredicate) predicate);
-		} else if (predicate instanceof EntityPredicate) {
-			return getAtom((EntityPredicate) predicate);
+		if (predicate instanceof TypePredicate) {
+			return getAtom((TypePredicate) predicate);
 		} else if (predicate instanceof RelationEntityPredicate) {
 			return getAtom((RelationEntityPredicate) predicate);
-		} else if (predicate instanceof RelationPredicate) {
-			return getAtom((RelationPredicate) predicate);
+		} else if (predicate instanceof FeaturePredicate) {
+			return getAtom((FeaturePredicate) predicate);
+		} else if (predicate instanceof DifferentFromPredicate) {
+			return getAtom((DifferentFromPredicate) predicate);
 		} else if (predicate instanceof SameAsPredicate) {
 			return getAtom((SameAsPredicate) predicate);
 		}
 		return Collections.emptyList();
 	}
 
-	protected List<SWRLAtom> getAtom(final EntityPredicate predicate) {
+	protected List<SWRLAtom> getAtom(final TypePredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
-		atoms.add(owl.getClassAtom(predicate.getEntity().getIri(), getSwrlIri(predicate.getVariable())));
+		if (predicate.getType() instanceof Scalar) {
+			atoms.add(owl.getDataRangeAtom(predicate.getType().getIri(), getSwrlIri(predicate.getVariable())));
+		} else {
+			atoms.add(owl.getClassAtom(predicate.getType().getIri(), getSwrlIri(predicate.getVariable())));
+		}
 		return atoms;
 	}
 
@@ -773,9 +778,13 @@ public class Oml2Owl extends OmlSwitch<Void> {
 		return atoms;
 	}
 
-	protected List<SWRLAtom> getAtom(final RelationPredicate predicate) {
+	protected List<SWRLAtom> getAtom(final FeaturePredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
-		atoms.add(owl.getObjectPropertyAtom(predicate.getRelation().getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+		if (predicate.getFeature() instanceof ScalarProperty) {
+			atoms.add(owl.getDataPropertyAtom(predicate.getFeature().getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+		} else {
+			atoms.add(owl.getObjectPropertyAtom(predicate.getFeature().getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+		}
 		return atoms;
 	}
 
@@ -833,7 +842,7 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected OWLAnonymousIndividual createIndividual(final StructureInstance instance) {
-		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual(OmlRead.getId(instance));
+		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
 		return individual;
 	}

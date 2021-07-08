@@ -82,6 +82,8 @@ import org.semanticweb.owlapi.model.OWLSymmetricObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLTransitiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.SWRLAtom;
 import org.semanticweb.owlapi.model.SWRLClassAtom;
+import org.semanticweb.owlapi.model.SWRLDataPropertyAtom;
+import org.semanticweb.owlapi.model.SWRLDataRangeAtom;
 import org.semanticweb.owlapi.model.SWRLDifferentIndividualsAtom;
 import org.semanticweb.owlapi.model.SWRLObjectPropertyAtom;
 import org.semanticweb.owlapi.model.SWRLRule;
@@ -244,8 +246,8 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLNamedIndividual(nodeId);
 	}
 
-	public OWLAnonymousIndividual getAnonymousIndividual(final String nodeId) {
-		return factory.getOWLAnonymousIndividual(nodeId);
+	public OWLAnonymousIndividual getAnonymousIndividual() {
+		return factory.getOWLAnonymousIndividual();
 	}
 
 	public SWRLRule addRule(final OWLOntology ontology, final List<SWRLAtom> head, final List<SWRLAtom> body, final OWLAnnotation... annotations) {
@@ -260,11 +262,24 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getSWRLClassAtom(class_, variable);
 	}
 
+	public SWRLDataRangeAtom getDataRangeAtom(final String datatypeIri, final String variableIri) {
+		final OWLDatatype datatype = factory.getOWLDatatype(datatypeIri);
+		final SWRLVariable variable = factory.getSWRLVariable(variableIri);
+		return factory.getSWRLDataRangeAtom(datatype, variable);
+	}
+
 	public SWRLObjectPropertyAtom getObjectPropertyAtom(final String propertyIri, final String variable1Iri, final String variable2Iri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final SWRLVariable variable1 = factory.getSWRLVariable(variable1Iri);
 		final SWRLVariable variable2 = factory.getSWRLVariable(variable2Iri);
 		return factory.getSWRLObjectPropertyAtom(property, variable1, variable2);
+	}
+
+	public SWRLDataPropertyAtom getDataPropertyAtom(final String propertyIri, final String variable1Iri, final String variable2Iri) {
+		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
+		final SWRLVariable variable1 = factory.getSWRLVariable(variable1Iri);
+		final SWRLVariable variable2 = factory.getSWRLVariable(variable2Iri);
+		return factory.getSWRLDataPropertyAtom(property, variable1, variable2);
 	}
 
 	public SWRLSameIndividualAtom getSameIndividualAtom(final String variable1Iri, final String variable2Iri) {

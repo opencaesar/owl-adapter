@@ -48,7 +48,8 @@ import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.ConceptInstance;
 import io.opencaesar.oml.Entity;
-import io.opencaesar.oml.EntityPredicate;
+import io.opencaesar.oml.Feature;
+import io.opencaesar.oml.FeaturePredicate;
 import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.Literal;
 import io.opencaesar.oml.NamedInstance;
@@ -58,7 +59,6 @@ import io.opencaesar.oml.Relation;
 import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
 import io.opencaesar.oml.RelationEntity;
 import io.opencaesar.oml.RelationEntityPredicate;
-import io.opencaesar.oml.RelationPredicate;
 import io.opencaesar.oml.RelationRangeRestrictionAxiom;
 import io.opencaesar.oml.ReverseRelation;
 import io.opencaesar.oml.Rule;
@@ -72,6 +72,8 @@ import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
+import io.opencaesar.oml.Type;
+import io.opencaesar.oml.TypePredicate;
 import io.opencaesar.oml.Vocabulary;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
@@ -212,10 +214,10 @@ public class CloseDescriptionBundle {
 			.map(s -> (Rule)s)
 			.forEach(rule -> {
 				rule.getConsequent().forEach(p -> {
-					if (p instanceof EntityPredicate) {
-						final Entity e = ((EntityPredicate) p).getEntity();
-						if (e instanceof RelationEntity) {
-							final RelationEntity re = (RelationEntity) e;
+					if (p instanceof TypePredicate) {
+						final Type t = ((TypePredicate) p).getType();
+						if (t instanceof RelationEntity) {
+							final RelationEntity re = (RelationEntity) t;
 							final ForwardRelation fr = re.getForwardRelation();
 							if (null != fr)
 								addDerivedRelationViaRule(derivedRelations, fr, rule);
@@ -223,10 +225,10 @@ public class CloseDescriptionBundle {
 							if (null != rr)
 								addDerivedRelationViaRule(derivedRelations, rr, rule);
 						}
-					} else if (p instanceof RelationPredicate) {
-						final Relation r = ((RelationPredicate) p).getRelation();
-						if (null != r)
-							addDerivedRelationViaRule(derivedRelations, r, rule);
+					} else if (p instanceof FeaturePredicate) {
+						final Feature f = ((FeaturePredicate) p).getFeature();
+						if (f instanceof Relation)
+							addDerivedRelationViaRule(derivedRelations, (Relation)f, rule);
 					} else if (p instanceof RelationEntityPredicate) {
 						final RelationEntity re = ((RelationEntityPredicate) p).getEntity();
 						final ForwardRelation fr = re.getForwardRelation();
