@@ -18,12 +18,10 @@
  */
 package io.opencaesar.oml2owl;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -182,16 +180,15 @@ public class Oml2OwlApp {
 		
 		// create the equivalent OWL ontologies
 		
-		for (final Resource inputResource : inputResourceSet.getResources()) {
-			final Ontology ontology = OmlRead.getOntology(inputResource);
+        for (Ontology ontology : inputOntologies) {
 			if (ontology != null && !Oml2Owl.isBuiltInOntology(ontology.getIri())) {
-				java.net.URI uri = new java.net.URI(inputResource.getURI().toString());
-				String relativePath = outputFolderPath+File.separator+inputFolder.toURI().relativize(uri).getPath();
-				final File outputFile = new File(relativePath.substring(0, relativePath.lastIndexOf('.')+1)+"owl");
+	            var uri = URI.createURI(ontology.getIri());
+	            var relativePath = uri.authority()+uri.path();
+				final File outputFile = new File(outputFolderPath+File.separator+relativePath+".owl");
 				LOGGER.info(("Creating: " + outputFile));
-				final OWLOntology owlOntology = new Oml2Owl(inputResource, owl2api).run();
+				final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api).run();
 				outputFiles.put(outputFile, owlOntology);
-				oml2owl.put(inputResource, owlOntology);
+				oml2owl.put(ontology.eResource(), owlOntology);
 				LOGGER.info(("Created: " + outputFile));
 			}
 		}
@@ -218,8 +215,8 @@ public class Oml2OwlApp {
 			}
 		});
 		
-		// create the equivalent OWL catalog
-		copyCatalog(inputCatalogFile, outputCatalogFile);
+		// create the output OWL catalog
+		createOutputCatalog(outputCatalogFile);
 		
 		LOGGER.info("=================================================================");
 		LOGGER.info("                          E N D");
@@ -259,18 +256,16 @@ public class Oml2OwlApp {
 		return omlFiles;
 	}
 
-	private void copyCatalog(final File inputCatalogFile, final File outputCatalogFile) throws Exception {
-		LOGGER.info(("Saving: " + inputCatalogFile));
-		Files.copy(Paths.get(inputCatalogFile.getPath()), Paths.get(outputCatalogFile.getPath()), StandardCopyOption.REPLACE_EXISTING);
-		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
-		List<String> _nestedCatalogs = inputCatalog.getNestedCatalogs();
-		for (final String c : _nestedCatalogs) {
-			final java.net.URI uri = new URL(c).toURI();
-			final File nestedInputCatalogFile = new File(uri);
-			String relativePath = inputCatalogFile.getParentFile().toURI().relativize(uri).getPath();
-			final File nestedOutputCatalogFile = new File(outputCatalogFile.getParent()+File.separator+relativePath);
-			copyCatalog(nestedInputCatalogFile, nestedOutputCatalogFile);
-		}
+	private void createOutputCatalog(final File outputCatalogFile) throws Exception {
+		LOGGER.info(("Saving: " + outputCatalogFile));
+        BufferedWriter bw = new BufferedWriter(new FileWriter(outputCatalogFile));
+        bw.write(
+                "<?xml version='1.0'?>\n" +
+                        "<catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\" prefer=\"public\">\n" +
+                        "\t<rewriteURI uriStartString=\"http://\" rewritePrefix=\"./\" />\n" +
+                        "</catalog>"
+        );
+        bw.close();
 	}
 
 	private String getFileExtension(final File file) {
