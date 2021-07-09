@@ -780,10 +780,11 @@ public class Oml2Owl extends OmlSwitch<Void> {
 
 	protected List<SWRLAtom> getAtom(final FeaturePredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
-		if (predicate.getFeature() instanceof ScalarProperty) {
-			atoms.add(owl.getDataPropertyAtom(predicate.getFeature().getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+		var feature = predicate.getFeature();
+		if (feature instanceof AnnotationProperty || feature instanceof ScalarProperty) {
+			atoms.add(owl.getDataPropertyAtom(feature.getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
 		} else {
-			atoms.add(owl.getObjectPropertyAtom(predicate.getFeature().getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+			atoms.add(owl.getObjectPropertyAtom(feature.getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
 		}
 		return atoms;
 	}
