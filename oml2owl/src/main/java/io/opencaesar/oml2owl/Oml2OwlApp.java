@@ -22,11 +22,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -38,10 +34,9 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
-import org.semanticweb.owlapi.model.OWLOntologyStorageException;
+import org.semanticweb.owlapi.formats.*;
+import org.semanticweb.owlapi.io.OWLFunctionalSyntaxOntologyFormat;
+import org.semanticweb.owlapi.model.*;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
@@ -88,28 +83,36 @@ public class Oml2OwlApp {
 	private String outputCatalogPath;
 
 	@Parameter(
+			names = { "--format", "-f" },
+			description = "Format for the output OWL files (default=rdf/xml, options: functional, n3, n-quads, owl/xml, trig, trix, turtle)",
+			validateWith = Oml2OwlApp.OutputFormat.class,
+			required = true,
+			order = 4)
+	private String outputFormat = "rdf/xml";
+
+	@Parameter(
 			names = { "--disjoint-unions", "-u" },
 			description = "Create disjoint union axioms",
-			order = 4)
+			order = 5)
 	private boolean disjointUnions = false;
 
 	@Parameter(
 			names = { "--annotations-on-axioms", "-a" },
 			description = "Emit annotations on axioms",
-			order = 5)
+			order = 6)
 	private boolean annotationsOnAxioms = false;
 
 	@Parameter(
 			names = { "--debug", "-d" },
 			description = "Shows debug logging statements",
-			order = 6)
+			order = 7)
 	private boolean debug;
 
 	@Parameter(
 			names = { "--help", "-h" },
 			description = "Displays summary of options",
 			help = true,
-			order = 7)
+			order = 8)
 	private boolean help;
 
 	private final Logger LOGGER = LogManager.getLogger(Oml2OwlApp.class);
@@ -146,7 +149,7 @@ public class Oml2OwlApp {
 		final File inputFolder = inputCatalogFile.getParentFile();
 		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
 
-		// load the OML otologies
+		// load the OML ontologies
 		List<Ontology> inputOntologies = new ArrayList<>(); 
 		if (rootOntologyIri != null) {
 			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalog);
@@ -179,12 +182,12 @@ public class Oml2OwlApp {
 		final String outputFolderPath = outputCatalogFile.getParent();
 		
 		// create the equivalent OWL ontologies
-		
+		String extension = OutputFormat.extensions.get(outputFormat);
         for (Ontology ontology : inputOntologies) {
 			if (ontology != null && !Oml2Owl.isBuiltInOntology(ontology.getIri())) {
 	            var uri = URI.createURI(ontology.getIri());
 	            var relativePath = uri.authority()+uri.path();
-				final File outputFile = new File(outputFolderPath+File.separator+relativePath+".owl");
+				final File outputFile = new File(outputFolderPath+File.separator+relativePath+extension);
 				LOGGER.info(("Creating: " + outputFile));
 				final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api).run();
 				outputFiles.put(outputFile, owlOntology);
@@ -206,10 +209,11 @@ public class Oml2OwlApp {
 		});
 		
 		// save the output resources
+		OWLDocumentFormat format = OutputFormat.formats.get(outputFormat);
 		outputFiles.forEach((file, owlOntology) -> {
 			LOGGER.info("Saving: "+file);
 			try {
-				ontologyManager.saveOntology(owlOntology, /*new TurtleDocumentFormat,*/ IRI.create(file));
+				ontologyManager.saveOntology(owlOntology, format, IRI.create(file));
 			} catch (OWLOntologyStorageException e) {
 				e.printStackTrace();
 			}
@@ -306,6 +310,50 @@ public class Oml2OwlApp {
 			final File folder = file.getParentFile();
 			folder.mkdirs();
 		}
+	}
+
+	public static class OutputFormat implements IParameterValidator {
+		@Override
+		public void validate(final String name, final String value) throws ParameterException {
+			if (!formats.containsKey(value)) {
+				throw new ParameterException((("Parameter " + name) + " should be a valid OWL format: " +
+						formats.keySet().stream().reduce( (x,y) -> x + " " + y) ));
+			}
+		}
+
+		public static HashMap<String, OWLDocumentFormat> formats;
+
+		public static HashMap<String, String> extensions;
+
+		static {
+			formats = new HashMap<>();
+			extensions = new HashMap<>();
+			formats.put("functional", new FunctionalSyntaxDocumentFormat());
+			extensions.put("functional", ".owl");
+
+			formats.put("n3", new N3DocumentFormat());
+			extensions.put("n3", ".n3");
+
+			formats.put("n-quads", new NQuadsDocumentFormat());
+			extensions.put("n-quads", ".nq");
+
+			formats.put("owl/xml", new OWLXMLDocumentFormat());
+			extensions.put("owl/xml", ".owl");
+
+			formats.put("rdf/xml", new RDFXMLDocumentFormat());
+			extensions.put("rdf/xml", ".owl");
+
+			formats.put("trig", new TrigDocumentFormat());
+			extensions.put("trig", ".trig");
+
+			formats.put("trix", new TrixDocumentFormat());
+			extensions.put("trix", ".trix");
+
+			formats.put("turtle", new TurtleDocumentFormat());
+			extensions.put("turtle", ".ttl");
+		}
+
+
 	}
 
 }

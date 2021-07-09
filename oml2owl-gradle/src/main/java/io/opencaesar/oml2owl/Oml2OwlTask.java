@@ -33,6 +33,8 @@ public class Oml2OwlTask extends DefaultTask {
 
 	public String outputCatalogPath;
 
+	public String outputFormat;
+
 	public boolean disjointUnions;
 
 	public boolean annotationsOnAxioms;
@@ -54,6 +56,10 @@ public class Oml2OwlTask extends DefaultTask {
 		    args.add("-o");
 		    args.add(outputCatalogPath);
         }
+        if (outputFormat != null) {
+        	args.add("-f");
+        	args.add(outputFormat);
+		}
 	    if (disjointUnions) {
 		    args.add("-u");
 	    }
