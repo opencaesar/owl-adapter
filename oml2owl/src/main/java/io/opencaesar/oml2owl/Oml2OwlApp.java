@@ -86,7 +86,7 @@ public class Oml2OwlApp {
 			names = { "--format", "-f" },
 			description = "Format for the output OWL files (default=rdf/xml, options: functional, n3, n-quads, owl/xml, trig, trix, turtle)",
 			validateWith = Oml2OwlApp.OutputFormat.class,
-			required = true,
+			required = false,
 			order = 4)
 	private String outputFormat = "rdf/xml";
 
