@@ -22,7 +22,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -34,9 +39,20 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.formats.*;
-import org.semanticweb.owlapi.io.OWLFunctionalSyntaxOntologyFormat;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat;
+import org.semanticweb.owlapi.formats.N3DocumentFormat;
+import org.semanticweb.owlapi.formats.NQuadsDocumentFormat;
+import org.semanticweb.owlapi.formats.NTriplesDocumentFormat;
+import org.semanticweb.owlapi.formats.RDFJsonDocumentFormat;
+import org.semanticweb.owlapi.formats.RDFXMLDocumentFormat;
+import org.semanticweb.owlapi.formats.TrigDocumentFormat;
+import org.semanticweb.owlapi.formats.TrixDocumentFormat;
+import org.semanticweb.owlapi.formats.TurtleDocumentFormat;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLDocumentFormat;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLOntologyStorageException;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
@@ -62,7 +78,7 @@ public class Oml2OwlApp {
 	@Parameter(
 			names = { "--input-catalog-path", "-i" }, 
 			description = "Path of the input OML catalog (Required)", 
-			validateWith = Oml2OwlApp.InputCatalogPath.class, 
+			validateWith = InputCatalogPath.class, 
 			required = true, 
 			order = 1)
 	private String inputCatalogPath;
@@ -77,18 +93,18 @@ public class Oml2OwlApp {
 	@Parameter(
 			names = { "--output-catalog-path", "-o" }, 
 			description = "Path of the output OWL catalog (Required)", 
-			validateWith = Oml2OwlApp.OutputCatalogPath.class, 
+			validateWith = OutputCatalogPath.class, 
 			required = true, 
 			order = 3)
 	private String outputCatalogPath;
 
 	@Parameter(
-			names = { "--format", "-f" },
-			description = "Format for the output OWL files (default=rdf/xml, options: functional, n3, n-quads, owl/xml, trig, trix, turtle)",
-			validateWith = Oml2OwlApp.OutputFormat.class,
+			names = { "--output-file-extension", "-f" },
+			description = "Extension for the output OWL files (default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, fss)",
+			validateWith = FileExtensionValidator.class,
 			required = false,
 			order = 4)
-	private String outputFormat = "rdf/xml";
+	private String outputFileExtension = "owl";
 
 	@Parameter(
 			names = { "--disjoint-unions", "-u" },
@@ -182,12 +198,11 @@ public class Oml2OwlApp {
 		final String outputFolderPath = outputCatalogFile.getParent();
 		
 		// create the equivalent OWL ontologies
-		String extension = OutputFormat.extensions.get(outputFormat);
         for (Ontology ontology : inputOntologies) {
 			if (ontology != null && !Oml2Owl.isBuiltInOntology(ontology.getIri())) {
 	            var uri = URI.createURI(ontology.getIri());
 	            var relativePath = uri.authority()+uri.path();
-				final File outputFile = new File(outputFolderPath+File.separator+relativePath+extension);
+				final File outputFile = new File(outputFolderPath+File.separator+relativePath+"."+outputFileExtension);
 				LOGGER.info(("Creating: " + outputFile));
 				final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api).run();
 				outputFiles.put(outputFile, owlOntology);
@@ -209,7 +224,7 @@ public class Oml2OwlApp {
 		});
 		
 		// save the output resources
-		OWLDocumentFormat format = OutputFormat.formats.get(outputFormat);
+		OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension);
 		outputFiles.forEach((file, owlOntology) -> {
 			LOGGER.info("Saving: "+file);
 			try {
@@ -312,47 +327,30 @@ public class Oml2OwlApp {
 		}
 	}
 
-	public static class OutputFormat implements IParameterValidator {
+	public static class FileExtensionValidator implements IParameterValidator {
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
-			if (!formats.containsKey(value)) {
-				throw new ParameterException((("Parameter " + name) + " should be a valid OWL format: " +
-						formats.keySet().stream().reduce( (x,y) -> x + " " + y) ));
+			if (!extensions.containsKey(value)) {
+				throw new ParameterException((("Parameter " + name) + " should be a valid OWL file extension: " +
+						extensions.keySet().stream().reduce( (x,y) -> x + " " + y) ));
 			}
 		}
 
-		public static HashMap<String, OWLDocumentFormat> formats;
-
-		public static HashMap<String, String> extensions;
+		public static HashMap<String, OWLDocumentFormat> extensions = new HashMap<>();
 
 		static {
-			formats = new HashMap<>();
-			extensions = new HashMap<>();
-			formats.put("functional", new FunctionalSyntaxDocumentFormat());
-			extensions.put("functional", ".owl");
-
-			formats.put("n3", new N3DocumentFormat());
-			extensions.put("n3", ".n3");
-
-			formats.put("n-quads", new NQuadsDocumentFormat());
-			extensions.put("n-quads", ".nq");
-
-			formats.put("owl/xml", new OWLXMLDocumentFormat());
-			extensions.put("owl/xml", ".owl");
-
-			formats.put("rdf/xml", new RDFXMLDocumentFormat());
-			extensions.put("rdf/xml", ".owl");
-
-			formats.put("trig", new TrigDocumentFormat());
-			extensions.put("trig", ".trig");
-
-			formats.put("trix", new TrixDocumentFormat());
-			extensions.put("trix", ".trix");
-
-			formats.put("turtle", new TurtleDocumentFormat());
-			extensions.put("turtle", ".ttl");
+			extensions.put("owl", new RDFXMLDocumentFormat());
+			extensions.put("rdf", new RDFXMLDocumentFormat());
+			extensions.put("xml", new RDFXMLDocumentFormat());
+			extensions.put("rj", new RDFJsonDocumentFormat());
+			extensions.put("ttl", new TurtleDocumentFormat());
+			extensions.put("n3", new N3DocumentFormat());
+			extensions.put("nt", new NTriplesDocumentFormat());
+			extensions.put("trig", new TrigDocumentFormat());
+			extensions.put("nq", new NQuadsDocumentFormat());
+			extensions.put("trix", new TrixDocumentFormat());
+			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
 		}
-
 
 	}
 
