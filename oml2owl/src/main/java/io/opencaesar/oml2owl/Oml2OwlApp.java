@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -37,22 +38,13 @@ import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
+import org.eclipse.rdf4j.model.impl.SimpleIRI;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat;
-import org.semanticweb.owlapi.formats.N3DocumentFormat;
-import org.semanticweb.owlapi.formats.NQuadsDocumentFormat;
-import org.semanticweb.owlapi.formats.NTriplesDocumentFormat;
-import org.semanticweb.owlapi.formats.RDFJsonDocumentFormat;
-import org.semanticweb.owlapi.formats.RDFXMLDocumentFormat;
-import org.semanticweb.owlapi.formats.TrigDocumentFormat;
-import org.semanticweb.owlapi.formats.TrixDocumentFormat;
-import org.semanticweb.owlapi.formats.TurtleDocumentFormat;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLDocumentFormat;
-import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
-import org.semanticweb.owlapi.model.OWLOntologyStorageException;
+import org.semanticweb.owlapi.formats.*;
+import org.semanticweb.owlapi.functional.renderer.FunctionalSyntaxStorer;
+import org.semanticweb.owlapi.model.*;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
@@ -69,6 +61,8 @@ import io.opencaesar.oml.util.OmlXMIResourceFactory;
 import io.opencaesar.oml.validate.OmlValidator;
 import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl;
 import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl;
+import org.semanticweb.owlapi.rdf.rdfxml.renderer.RDFXMLStorer;
+import org.semanticweb.owlapi.rio.RioStorer;
 
 public class Oml2OwlApp {
 
@@ -224,12 +218,21 @@ public class Oml2OwlApp {
 		});
 		
 		// save the output resources
-		OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension);
 		outputFiles.forEach((file, owlOntology) -> {
 			LOGGER.info("Saving: "+file);
 			try {
-				ontologyManager.saveOntology(owlOntology, format, IRI.create(file));
+				OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension);
+				IRI documentIRI = IRI.create(file);
+				// Workaround
+				// See https://github.com/owlcs/owlapi/issues/1002
+				// See https://github.com/owlcs/owlapi/pull/1003
+				OWLStorer storer = FileExtensionValidator.storers.get(outputFileExtension).apply(owlOntology);
+				storer.storeOntology(owlOntology, documentIRI, format);
+				// Requires OWLAPI 5.1.18 or later
+				// ontologyManager.saveOntology(owlOntology,format,documentIRI);
 			} catch (OWLOntologyStorageException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		});
@@ -340,10 +343,10 @@ public class Oml2OwlApp {
 
 		static {
 			extensions.put("owl", new RDFXMLDocumentFormat());
-			extensions.put("rdf", new RDFXMLDocumentFormat());
+			extensions.put("rdf", new RioRDFXMLDocumentFormat());
 			extensions.put("xml", new RDFXMLDocumentFormat());
 			extensions.put("rj", new RDFJsonDocumentFormat());
-			extensions.put("ttl", new TurtleDocumentFormat());
+			extensions.put("ttl", new RioTurtleDocumentFormat());
 			extensions.put("n3", new N3DocumentFormat());
 			extensions.put("nt", new NTriplesDocumentFormat());
 			extensions.put("trig", new TrigDocumentFormat());
@@ -352,6 +355,33 @@ public class Oml2OwlApp {
 			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
 		}
 
+		// Workaround.
+		// See https://github.com/owlcs/owlapi/issues/1002
+		// See https://github.com/owlcs/owlapi/pull/1003
+
+		public static HashMap<String, Function<OWLOntology,OWLStorer>> storers = new HashMap<>();
+
+		public static OWLStorer createOntologyStorer(OWLDocumentFormatFactory factory, OWLOntology owlOntology) {
+			return owlOntology
+					.getOntologyID()
+					.getOntologyIRI()
+					.map(iri -> new RioStorer(factory, SimpleValueFactory.getInstance().createIRI(iri.toString())))
+					.orElse(new RioStorer(factory));
+		}
+
+		static {
+			storers.put("owl", owlOntology -> new RDFXMLStorer());
+			storers.put("rdf", owlOntology -> createOntologyStorer(new RioRDFXMLDocumentFormatFactory(), owlOntology));
+			storers.put("xml", owlOntology -> new RDFXMLStorer());
+			storers.put("rj", owlOntology -> createOntologyStorer(new RDFJsonDocumentFormatFactory(), owlOntology));
+			storers.put("ttl", owlOntology -> createOntologyStorer(new RioTurtleDocumentFormatFactory(), owlOntology));
+			storers.put("n3", owlOntology -> createOntologyStorer(new N3DocumentFormatFactory(), owlOntology));
+			storers.put("nt", owlOntology -> createOntologyStorer(new NTriplesDocumentFormatFactory(), owlOntology));
+			storers.put("trig", owlOntology -> createOntologyStorer(new TrigDocumentFormatFactory(), owlOntology));
+			storers.put("nq", owlOntology -> createOntologyStorer(new NQuadsDocumentFormatFactory(), owlOntology));
+			storers.put("trix", owlOntology -> createOntologyStorer(new TrixDocumentFormatFactory(), owlOntology));
+			storers.put("fss", owlOntology -> new FunctionalSyntaxStorer());
+		}
 	}
 
 }
