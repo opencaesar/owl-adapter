@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -37,22 +38,31 @@ import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat;
 import org.semanticweb.owlapi.formats.N3DocumentFormat;
 import org.semanticweb.owlapi.formats.NQuadsDocumentFormat;
+import org.semanticweb.owlapi.formats.NQuadsDocumentFormatFactory;
 import org.semanticweb.owlapi.formats.NTriplesDocumentFormat;
 import org.semanticweb.owlapi.formats.RDFJsonDocumentFormat;
+import org.semanticweb.owlapi.formats.RDFJsonLDDocumentFormat;
+import org.semanticweb.owlapi.formats.RDFJsonLDDocumentFormatFactory;
 import org.semanticweb.owlapi.formats.RDFXMLDocumentFormat;
+import org.semanticweb.owlapi.formats.RioTurtleDocumentFormat;
 import org.semanticweb.owlapi.formats.TrigDocumentFormat;
+import org.semanticweb.owlapi.formats.TrigDocumentFormatFactory;
 import org.semanticweb.owlapi.formats.TrixDocumentFormat;
-import org.semanticweb.owlapi.formats.TurtleDocumentFormat;
+import org.semanticweb.owlapi.formats.TrixDocumentFormatFactory;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDocumentFormat;
+import org.semanticweb.owlapi.model.OWLDocumentFormatFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLOntologyStorageException;
+import org.semanticweb.owlapi.model.OWLStorer;
+import org.semanticweb.owlapi.rio.RioStorer;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
@@ -100,7 +110,7 @@ public class Oml2OwlApp {
 
 	@Parameter(
 			names = { "--output-file-extension", "-f" },
-			description = "Extension for the output OWL files (default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, fss)",
+			description = "Extension for the output OWL files (default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss)",
 			validateWith = FileExtensionValidator.class,
 			required = false,
 			order = 4)
@@ -224,12 +234,23 @@ public class Oml2OwlApp {
 		});
 		
 		// save the output resources
-		OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension);
 		outputFiles.forEach((file, owlOntology) -> {
 			LOGGER.info("Saving: "+file);
 			try {
-				ontologyManager.saveOntology(owlOntology, format, IRI.create(file));
+				OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension);
+				IRI documentIRI = IRI.create(file);
+				// Workaround
+				// See https://github.com/owlcs/owlapi/issues/1002
+				// See https://github.com/owlcs/owlapi/pull/1003
+				if (FileExtensionValidator.storers.get(outputFileExtension) != null) {
+					OWLStorer storer = FileExtensionValidator.storers.get(outputFileExtension).apply(owlOntology);
+					storer.storeOntology(owlOntology, documentIRI, format);
+				} else {
+					ontologyManager.saveOntology(owlOntology, format, documentIRI);
+				}
 			} catch (OWLOntologyStorageException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		});
@@ -339,19 +360,43 @@ public class Oml2OwlApp {
 		public static HashMap<String, OWLDocumentFormat> extensions = new HashMap<>();
 
 		static {
+			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
+			// triple formats
 			extensions.put("owl", new RDFXMLDocumentFormat());
 			extensions.put("rdf", new RDFXMLDocumentFormat());
 			extensions.put("xml", new RDFXMLDocumentFormat());
-			extensions.put("rj", new RDFJsonDocumentFormat());
-			extensions.put("ttl", new TurtleDocumentFormat());
 			extensions.put("n3", new N3DocumentFormat());
+			extensions.put("ttl", new RioTurtleDocumentFormat());
+			extensions.put("rj", new RDFJsonDocumentFormat());
 			extensions.put("nt", new NTriplesDocumentFormat());
+			// quad formats
+			extensions.put("jsonld", new RDFJsonLDDocumentFormat());
 			extensions.put("trig", new TrigDocumentFormat());
-			extensions.put("nq", new NQuadsDocumentFormat());
 			extensions.put("trix", new TrixDocumentFormat());
-			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
+			extensions.put("nq", new NQuadsDocumentFormat());
 		}
 
+		// Workaround.
+		// See https://github.com/owlcs/owlapi/issues/1002
+		// See https://github.com/owlcs/owlapi/pull/1003
+
+		public static HashMap<String, Function<OWLOntology,OWLStorer>> storers = new HashMap<>();
+
+		public static OWLStorer createQuadOntologyStorer(OWLDocumentFormatFactory factory, OWLOntology owlOntology) {
+			return owlOntology
+					.getOntologyID()
+					.getOntologyIRI()
+					.map(iri -> new RioStorer(factory, SimpleValueFactory.getInstance().createIRI(iri.toString())))
+					.orElse(new RioStorer(factory));
+		}
+
+		static {
+			// quad formats
+			storers.put("jsonld", owlOntology -> createQuadOntologyStorer(new RDFJsonLDDocumentFormatFactory(), owlOntology));
+			storers.put("trig", owlOntology -> createQuadOntologyStorer(new TrigDocumentFormatFactory(), owlOntology));
+			storers.put("trix", owlOntology -> createQuadOntologyStorer(new TrixDocumentFormatFactory(), owlOntology));
+			storers.put("nq", owlOntology -> createQuadOntologyStorer(new NQuadsDocumentFormatFactory(), owlOntology));
+		}
 	}
 
 }
