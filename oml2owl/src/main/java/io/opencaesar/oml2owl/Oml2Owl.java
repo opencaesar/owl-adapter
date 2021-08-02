@@ -201,7 +201,11 @@ public class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseEnumeratedScalar(final EnumeratedScalar scalar) {
-		owl.addDataOneOf(ontology, scalar.getIri(), scalar.getLiterals().stream().map(i -> getLiteral(i)).toArray(OWLLiteral[]::new));
+		if (scalar.getLiterals().isEmpty()) {
+			owl.addDatatype(ontology, scalar.getIri());
+		} else {
+			owl.addDataOneOf(ontology, scalar.getIri(), scalar.getLiterals().stream().map(i -> getLiteral(i)).toArray(OWLLiteral[]::new));
+		}
 		return null;
 	}
 
