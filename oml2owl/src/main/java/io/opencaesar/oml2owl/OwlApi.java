@@ -63,6 +63,7 @@ import org.semanticweb.owlapi.model.OWLLiteral;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
 import org.semanticweb.owlapi.model.OWLObjectAllValuesFrom;
 import org.semanticweb.owlapi.model.OWLObjectExactCardinality;
+import org.semanticweb.owlapi.model.OWLObjectHasSelf;
 import org.semanticweb.owlapi.model.OWLObjectHasValue;
 import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectMinCardinality;
@@ -298,6 +299,15 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		final OWLClass subClass = factory.getOWLClass(subIri);
 		final OWLClass supClass = factory.getOWLClass(superIri);
 		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(subClass, supClass, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
+	public OWLSubClassOfAxiom addSubClassOfObjectHasSelf(final OWLOntology ontology, final String classIri, final String propertyIri, final OWLAnnotation... annotations) {
+		final OWLClass aClass = factory.getOWLClass(classIri);
+		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
+		final OWLObjectHasSelf hasSelf = factory.getOWLObjectHasSelf(property);
+		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(aClass, hasSelf, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
 	}

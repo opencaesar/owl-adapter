@@ -262,7 +262,9 @@ public class Oml2Owl extends OmlSwitch<Void> {
 			owl.addAsymmetricObjectProperty(ontology, forwardIri);
 		}
 		if (entity.isReflexive()) {
-			owl.addReflexiveObjectProperty(ontology, forwardIri);
+			//see: https://github.com/opencaesar/oml/issues/64
+			//owl.addReflexiveObjectProperty(ontology, forwardIri);
+			owl.addSubClassOfObjectHasSelf(ontology, entity.getSource().getIri(), forwardIri);
 		}
 		if (entity.isIrreflexive()) {
 			owl.addIrreflexiveObjectProperty(ontology, forwardIri);
@@ -343,22 +345,17 @@ public class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseImport(final Import import_) {
-		Ontology importedOntology = OmlRead.getImportedOntology(import_);
-		if (importedOntology != null) {
-			final String iri = importedOntology.getIri();
-			if (Oml2Owl.isBuiltInOntology(iri)) {
-				final List<Import> indirectImports = OmlRead.closure(import_, false, it -> OmlRead.getImports(OmlRead.getImportedOntology(it)));
-				indirectImports.forEach(i2 -> {
-					final String iri2 = OmlRead.getImportedOntology(i2).getIri();
-					if (!Oml2Owl.isBuiltInOntology(iri2)) {
-						owl.addImportsDeclaration(ontology, iri2);
-					}
-				});
-			} else {
-				owl.addImportsDeclaration(ontology, iri);
-			}
+		final String iri = import_.getIri();
+		if (isBuiltInOntology(iri)) {
+			final List<Import> indirectImports = OmlRead.closure(import_, false, it -> OmlRead.getImports(OmlRead.getImportedOntology(it)));
+			indirectImports.forEach(i2 -> {
+				final String iri2 = OmlRead.getImportedOntology(i2).getIri();
+				if (!isBuiltInOntology(iri2)) {
+					owl.addImportsDeclaration(ontology, iri2);
+				}
+			});
 		} else {
-			throw new RuntimeException("Could not resolve IRI '"+ import_.getUri()+ "'");
+			owl.addImportsDeclaration(ontology, iri);
 		}
 		return null;
 	}
@@ -544,23 +541,19 @@ public class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseConceptTypeAssertion(final ConceptTypeAssertion assertion) {
-		final List<OWLAnnotation> annotations = assertion.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addClassAssertion(ontology, 
 				OmlRead.getSubject(assertion).getIri(),
-				assertion.getType().getIri(),
-				toArray(annotations));
+				assertion.getType().getIri());
 		return null;
 	}
 
 	@Override
 	public Void caseRelationTypeAssertion(final RelationTypeAssertion assertion) {
-		final List<OWLAnnotation> annotations = assertion.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		final RelationInstance instance = OmlRead.getSubject(assertion);
 		final String instanceIri = instance.getIri();
 		owl.addClassAssertion(ontology, 
 				instanceIri, 
-				assertion.getType().getIri(),
-				toArray(annotations));
+				assertion.getType().getIri());
 		instance.getSources().forEach(s ->
 			owl.addObjectPropertyAssertion(ontology, 
 					instanceIri, 
@@ -723,30 +716,24 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected void appliesTo(final ScalarPropertyValueAssertion assertion, final OWLIndividual individual) {
-		final List<OWLAnnotation> annotations = assertion.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addDataPropertyAssertion(ontology, 
 				individual, 
 				assertion.getProperty().getIri(),
-				getLiteral(assertion.getValue()),
-				toArray(annotations));
+				getLiteral(assertion.getValue()));
 	}
 
 	protected void appliesTo(final StructuredPropertyValueAssertion assertion, final OWLIndividual individual) {
-		final List<OWLAnnotation> annotations = assertion.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addObjectPropertyAssertion(ontology, 
 				individual, 
 				assertion.getProperty().getIri(),
-				createIndividual(assertion.getValue()),
-				toArray(annotations));
+				createIndividual(assertion.getValue()));
 	}
 
 	protected void appliesTo(final LinkAssertion assertion, final OWLNamedIndividual individual) {
-		final List<OWLAnnotation> annotations = assertion.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addObjectPropertyAssertion(ontology, 
 				individual.getIRI().getIRIString(),
 				assertion.getRelation().getIri(), 
-				assertion.getTarget().getIri(),
-				toArray(annotations));
+				assertion.getTarget().getIri());
 	}
 
 	protected List<SWRLAtom> getAtom(final Predicate predicate) {
