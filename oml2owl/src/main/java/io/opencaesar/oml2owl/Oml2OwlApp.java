@@ -290,9 +290,17 @@ public class Oml2OwlApp {
 		final ArrayList<File> omlFiles = new ArrayList<File>();
 		for (CatalogEntry entry : inputCatalog.getEntries()) {
 			if (Catalog.REWRITE_URI == entry.getEntryType()) {
-				File rewritePrefix = new File(new URL(entry.getEntryArg(1)).toURI().getPath());
-				if (rewritePrefix.exists() && rewritePrefix.isDirectory()) {
-					omlFiles.addAll(collectOMLFiles(rewritePrefix));
+				File file = new File(new URL(entry.getEntryArg(1)).toURI().getPath());
+				if (file.isDirectory()) {
+					omlFiles.addAll(collectOMLFiles(file));
+				} else { // likely a file name with no extension
+					file = new File(file.toString()+"."+OmlConstants.OML_EXTENSION);
+					if (!file.exists()) {
+						file = new File(file.toString()+"."+OmlConstants.OMLXMI_EXTENSION);
+					}
+					if (file.exists()) {
+						omlFiles.add(file);
+					}
 				}
 			}
 		}
