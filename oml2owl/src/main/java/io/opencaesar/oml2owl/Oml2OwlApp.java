@@ -22,6 +22,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -35,6 +38,8 @@ import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.xml.resolver.Catalog;
+import org.apache.xml.resolver.CatalogEntry;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
@@ -172,7 +177,6 @@ public class Oml2OwlApp {
 		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
 		
 		final File inputCatalogFile = new File(inputCatalogPath);
-		final File inputFolder = inputCatalogFile.getParentFile();
 		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
 
 		// load the OML ontologies
@@ -183,7 +187,7 @@ public class Oml2OwlApp {
 			Ontology rootOntology = OmlRead.getOntology(inputResourceSet.getResource(rootUri, true));
 			inputOntologies.addAll(OmlRead.getAllImportedOntologies(rootOntology, true));
 		} else {
-			final Collection<File> inputFiles = collectOMLFiles(inputFolder);
+			final Collection<File> inputFiles = collectOMLFiles(inputCatalog);
 			for (File inputFile : inputFiles) {
 				final URI ontologyUri = URI.createFileURI(inputFile.getAbsolutePath());
 				LOGGER.info(("Reading: " + ontologyUri));
@@ -282,6 +286,19 @@ public class Oml2OwlApp {
 		return resolved;
 	}
 
+	private Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
+		final ArrayList<File> omlFiles = new ArrayList<File>();
+		for (CatalogEntry entry : inputCatalog.getEntries()) {
+			if (Catalog.REWRITE_URI == entry.getEntryType()) {
+				File rewritePrefix = new File(new URL(entry.getEntryArg(1)).toURI().getPath());
+				if (rewritePrefix.exists() && rewritePrefix.isDirectory()) {
+					omlFiles.addAll(collectOMLFiles(rewritePrefix));
+				}
+			}
+		}
+		return omlFiles;
+	}
+	
 	private Collection<File> collectOMLFiles(final File directory) {
 		final ArrayList<File> omlFiles = new ArrayList<File>();
 		for (final File file : directory.listFiles()) {
