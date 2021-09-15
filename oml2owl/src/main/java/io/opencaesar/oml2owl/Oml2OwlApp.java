@@ -38,8 +38,6 @@ import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.apache.xml.resolver.Catalog;
-import org.apache.xml.resolver.CatalogEntry;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
@@ -287,40 +285,18 @@ public class Oml2OwlApp {
 	}
 
 	private Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
+		var fileExtensions = new ArrayList<String>();
+		fileExtensions.add(OmlConstants.OML_EXTENSION);
+		fileExtensions.add(OmlConstants.OMLXMI_EXTENSION);
+		
 		final ArrayList<File> omlFiles = new ArrayList<File>();
-		for (CatalogEntry entry : inputCatalog.getEntries()) {
-			if (Catalog.REWRITE_URI == entry.getEntryType()) {
-				File file = new File(new URL(entry.getEntryArg(1)).toURI().getPath());
-				if (file.isDirectory()) {
-					omlFiles.addAll(collectOMLFiles(file));
-				} else { // likely a file name with no extension
-					file = new File(file.toString()+"."+OmlConstants.OML_EXTENSION);
-					if (!file.exists()) {
-						file = new File(file.toString()+"."+OmlConstants.OMLXMI_EXTENSION);
-					}
-					if (file.exists()) {
-						omlFiles.add(file);
-					}
-				}
-			}
+		for (URI uri : inputCatalog.getFileUris(fileExtensions)) {
+			File file = new File(new URL(uri.toString()).toURI().getPath());
+			omlFiles.add(file);
 		}
 		return omlFiles;
 	}
 	
-	private Collection<File> collectOMLFiles(final File directory) {
-		final ArrayList<File> omlFiles = new ArrayList<File>();
-		for (final File file : directory.listFiles()) {
-			if (file.isFile()) {
-				if (OML.equals(getFileExtension(file)) || OMLXMI.equals(getFileExtension(file))) {
-					omlFiles.add(file);
-				}
-			} else if (file.isDirectory()) {
-				omlFiles.addAll(collectOMLFiles(file));
-			}
-		}
-		return omlFiles;
-	}
-
 	private void createOutputCatalog(final File outputCatalogFile) throws Exception {
 		LOGGER.info(("Saving: " + outputCatalogFile));
         BufferedWriter bw = new BufferedWriter(new FileWriter(outputCatalogFile));
@@ -331,14 +307,6 @@ public class Oml2OwlApp {
                         "</catalog>"
         );
         bw.close();
-	}
-
-	private String getFileExtension(final File file) {
-        final String fileName = file.getName();
-        if(fileName.lastIndexOf(".") != -1)
-        	return fileName.substring(fileName.lastIndexOf(".")+1);
-        else 
-        	return "";
 	}
 
 	/**
