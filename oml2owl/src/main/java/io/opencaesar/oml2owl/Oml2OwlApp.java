@@ -40,9 +40,10 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
-import org.eclipse.xtext.resource.XtextResourceSet;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat;
 import org.semanticweb.owlapi.formats.N3DocumentFormat;
@@ -171,7 +172,7 @@ public class Oml2OwlApp {
 
 		OmlStandaloneSetup.doSetup();
 		OmlXMIResourceFactory.register();
-		final XtextResourceSet inputResourceSet = new XtextResourceSet();
+		final ResourceSet inputResourceSet = new ResourceSetImpl();
 		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
 		
 		final File inputCatalogFile = new File(inputCatalogPath);
