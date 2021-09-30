@@ -362,180 +362,150 @@ public class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseSpecializationAxiom(final SpecializationAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
-		specializes(OmlRead.getSubTerm(axiom), axiom.getSpecializedTerm(), axiom.getOwningReference(), toArray(annotations));
+		specializes(OmlRead.getSubTerm(axiom), axiom.getSpecializedTerm(), axiom.getOwningReference());
 		return null;
 	}
 
 	@Override
 	public Void caseScalarPropertyRangeRestrictionAxiom(final ScalarPropertyRangeRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		if (axiom.getKind() == RangeRestrictionKind.ALL) {
 			owl.addDataAllValuesFrom(ontology, OmlRead.getRestrictingClassifier(axiom).getIri(),
-					axiom.getProperty().getIri(), axiom.getRange().getIri(),
-					toArray(annotations));
+					axiom.getProperty().getIri(), axiom.getRange().getIri());
 		} else {
 			owl.addDataSomeValuesFrom(ontology, OmlRead.getRestrictingClassifier(axiom).getIri(),
-					axiom.getProperty().getIri(), axiom.getRange().getIri(),
-					toArray(annotations));
+					axiom.getProperty().getIri(), axiom.getRange().getIri());
 		}
 		return null;
 	}
 
 	@Override
 	public Void caseScalarPropertyValueRestrictionAxiom(final ScalarPropertyValueRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addDataHasValue(ontology, OmlRead.getRestrictingClassifier(axiom).getIri(),
-				axiom.getProperty().getIri(), getLiteral(axiom.getValue()),
-				toArray(annotations));
+				axiom.getProperty().getIri(), getLiteral(axiom.getValue()));
 		return null;
 	}
 
 	@Override
 	public Void caseScalarPropertyCardinalityRestrictionAxiom(final ScalarPropertyCardinalityRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		if (axiom.getKind() == CardinalityRestrictionKind.MIN) {
 			owl.addDataMinCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 			owl.addDataMaxCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(),
 					axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		} else {
 			owl.addDataExactCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(),
 					axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		}
 		return null;
 	}
 
 	@Override
 	public Void caseStructuredPropertyRangeRestrictionAxiom(final StructuredPropertyRangeRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		if (axiom.getKind() == RangeRestrictionKind.ALL) {
 			owl.addObjectAllValuesFrom(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(),
 					axiom.getProperty().getIri(), 
-					axiom.getRange().getIri(),
-					toArray(annotations));
+					axiom.getRange().getIri());
 		} else {
 			owl.addObjectSomeValuesFrom(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(),
 					axiom.getProperty().getIri(), 
-					axiom.getRange().getIri(),
-					toArray(annotations));
+					axiom.getRange().getIri());
 		}
 		return null;
 	}
 
 	@Override
 	public Void caseStructuredPropertyValueRestrictionAxiom(final StructuredPropertyValueRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addObjectHasValue(ontology, 
 				OmlRead.getRestrictingClassifier(axiom).getIri(),
 				axiom.getProperty().getIri(), 
-				createIndividual(axiom.getValue()),
-				toArray(annotations));
+				createIndividual(axiom.getValue()));
 		return null;
 	}
 
 	@Override
 	public Void caseStructuredPropertyCardinalityRestrictionAxiom(final StructuredPropertyCardinalityRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		if (axiom.getKind() == CardinalityRestrictionKind.MIN) {
 			owl.addObjectMinCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 			owl.addObjectMaxCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		} else {
 			owl.addObjectExactCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		}
 		return null;
 	}
 
 	@Override
 	public Void caseRelationRangeRestrictionAxiom(final RelationRangeRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		if (axiom.getKind() == RangeRestrictionKind.ALL) {
 			owl.addObjectAllValuesFrom(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(),
 					axiom.getRelation().getIri(), 
-					axiom.getRange().getIri(),
-					toArray(annotations));
+					axiom.getRange().getIri());
 		} else {
 			owl.addObjectSomeValuesFrom(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(),
 					axiom.getRelation().getIri(), 
-					axiom.getRange().getIri(),
-					toArray(annotations));
+					axiom.getRange().getIri());
 		}
 		return null;
 	}
 
 	@Override
 	public Void caseRelationTargetRestrictionAxiom(final RelationTargetRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addObjectHasValue(ontology, 
 				OmlRead.getRestrictingClassifier(axiom).getIri(),
 				axiom.getRelation().getIri(), 
-				axiom.getTarget().getIri(),
-				toArray(annotations));
+				axiom.getTarget().getIri());
 		return null;
 	}
 
 	@Override
 	public Void caseRelationCardinalityRestrictionAxiom(final RelationCardinalityRestrictionAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		if (axiom.getKind() == CardinalityRestrictionKind.MIN) {
 			owl.addObjectMinCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getRelation().getIri(), 
 					(int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 			owl.addObjectMaxCardinality(ontology,
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getRelation().getIri(), 
 					(int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		} else {
 			owl.addObjectExactCardinality(ontology, 
 					OmlRead.getRestrictingClassifier(axiom).getIri(), 
 					axiom.getRelation().getIri(), 
 					(int) axiom.getCardinality(), 
-					(axiom.getRange() != null) ? axiom.getRange().getIri() : null,
-					toArray(annotations));
+					(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 		}
 		return null;
 	}
 
 	@Override
 	public Void caseKeyAxiom(final KeyAxiom axiom) {
-		final List<OWLAnnotation> annotations = axiom.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
 		owl.addHasKey(ontology, 
 				OmlRead.getKeyedEntity(axiom).getIri(), 
-				axiom.getProperties().stream().map(i -> i.getIri()).collect(Collectors.toList()), 
-				toArray(annotations));
+				axiom.getProperties().stream().map(i -> i.getIri()).collect(Collectors.toList()));
 		return null;
 	}
 
@@ -587,7 +557,7 @@ public class Oml2Owl extends OmlSwitch<Void> {
 		}
 	}
 
-	protected void specializes(final Term specific, final Term general, final Reference owningReference, final OWLAnnotation[] annotations) {
+	protected void specializes(final Term specific, final Term general, final Reference owningReference, final OWLAnnotation...annotations) {
 		if (specific instanceof Aspect && general instanceof Aspect) {
 			specializes((Aspect) specific, (Aspect) general, owningReference, annotations);
 			return;
