@@ -17,6 +17,7 @@ gradlew.bat oml2owl:run --args="..."
 Args:
 ```
 --input-catalog-path | -i path/to/input/oml/catalog.xml [Required]
+--root-ontology-iri | -r http://... [Optional]
 --output-catalog-path | -o path/to/output/owl/catalog.xml [Required]
 --output-file-extension | -f [optional, default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss]
 --disjoint-unions | -u [Optional]
@@ -35,6 +36,7 @@ buildscript {
 }
 task oml2owl(type:io.opencaesar.oml2owl.Oml2OwlTask) {
     inputCatalogPath = file('path/to/input/oml/catalog.xml') [Required]
+    rootOntologyIri = 'http://...' [Optional]
     outputCatalogPath = file('path/to/output/owl/catalog.xml') [Required]
     outputFileExtension = 'owl' [Optional, default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss]
     disjointUnions = true [Optional, false by default]
