@@ -99,7 +99,7 @@ public class Oml2OwlApp {
 
 	@Parameter(
 			names= { "--root-ontology-iri", "-r" }, 
-			description="Root OML ontology IRI (Required)",
+			description="Root OML ontology IRI (Optional)",
 			required=false, 
 			order=2)
 	private String rootOntologyIri = null;
