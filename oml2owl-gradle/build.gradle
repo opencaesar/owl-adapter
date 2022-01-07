@@ -4,4 +4,5 @@ description = 'An gradle interface to run Oml to Owl'
 dependencies {
 	implementation gradleApi()
     implementation project (':oml2owl')
+	implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
 }

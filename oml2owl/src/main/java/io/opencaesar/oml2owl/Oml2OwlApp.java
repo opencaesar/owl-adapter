@@ -285,7 +285,7 @@ public class Oml2OwlApp {
 		return resolved;
 	}
 
-	private Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
+	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
 		var fileExtensions = new ArrayList<String>();
 		fileExtensions.add(OmlConstants.OML_EXTENSION);
 		fileExtensions.add(OmlConstants.OMLXMI_EXTENSION);
