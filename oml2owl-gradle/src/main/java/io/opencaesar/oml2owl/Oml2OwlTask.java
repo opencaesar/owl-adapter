@@ -27,13 +27,14 @@ import org.eclipse.emf.common.util.URI;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
 import org.gradle.work.Incremental;
-import org.gradle.work.InputChanges;
 
 import io.opencaesar.oml.util.OmlCatalog;
 
@@ -58,8 +59,9 @@ public abstract class Oml2OwlTask extends DefaultTask {
     @InputFiles
     public abstract ConfigurableFileCollection getInputFiles();
 
+    @Optional
 	@Input
-	public String rootOntologyIri;
+	public abstract Property<String> getRootOntologyIri();
 
 	@Input
 	public String outputCatalogPath;
@@ -72,49 +74,54 @@ public abstract class Oml2OwlTask extends DefaultTask {
     @OutputDirectory
 	public abstract DirectoryProperty getOutputDir();
 
+    @Optional
 	@Input
-	public String outputFileExtension;
+	public abstract Property<String> getOutputFileExtension();
 
+    @Optional
 	@Input
-	public boolean disjointUnions;
+	public abstract Property<Boolean> getDisjointUnions();
 
+    @Optional
 	@Input
-	public boolean annotationsOnAxioms;
+	public abstract Property<Boolean> getAnnotationsOnAxioms();
 
 	public boolean debug;
 
     @TaskAction
-    public void run(InputChanges inputChanges) {
+    public void run() {
         List<String> args = new ArrayList<String>();
         if (inputCatalogPath != null) {
 		    args.add("-i");
 		    args.add(inputCatalogPath);
         }
-        if (rootOntologyIri != null) {
+        if (getRootOntologyIri().isPresent()) {
 		    args.add("-r");
-		    args.add(rootOntologyIri);
+		    args.add(getRootOntologyIri().get());
         }
         if (outputCatalogPath != null) {
 		    args.add("-o");
 		    args.add(outputCatalogPath);
         }
-        if (outputFileExtension != null) {
+        if (getOutputFileExtension().isPresent()) {
         	args.add("-f");
-        	args.add(outputFileExtension);
+        	args.add(getOutputFileExtension().get());
 		}
-	    if (disjointUnions) {
-		    args.add("-u");
+	    if (getDisjointUnions().isPresent()) {
+	    	if (getDisjointUnions().get()) {
+	    		args.add("-u");
+	    	}
 	    }
-	    if (annotationsOnAxioms) {
-		    args.add("-a");
+	    if (getAnnotationsOnAxioms().isPresent()) {
+	    	if (getAnnotationsOnAxioms().get()) {
+	    		args.add("-a");
+	    	}
 	    }
 	    if (debug) {
 		    args.add("-d");
 	    }
 	    try {
-	    	if (inputChanges.getFileChanges(getInputFiles()).iterator().hasNext()) {
-	    		Oml2OwlApp.main(args.toArray(new String[0]));
-	    	}
+    		Oml2OwlApp.main(args.toArray(new String[0]));
 		} catch (Exception e) {
 			throw new TaskExecutionException(this, e);
 		}
