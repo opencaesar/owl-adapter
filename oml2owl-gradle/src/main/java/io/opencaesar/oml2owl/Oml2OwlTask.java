@@ -57,7 +57,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
 
     @Incremental
     @InputFiles
-    public abstract ConfigurableFileCollection getInputFiles();
+    protected abstract ConfigurableFileCollection getInputFiles();
 
     @Optional
     @Input
@@ -71,7 +71,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     }
 
     @OutputDirectory
-    public abstract DirectoryProperty getOutputDir();
+    protected abstract DirectoryProperty getOutputDir();
 
     @Optional
     @Input
