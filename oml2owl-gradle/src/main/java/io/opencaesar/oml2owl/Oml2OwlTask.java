@@ -25,6 +25,7 @@ import java.util.List;
 
 import org.eclipse.emf.common.util.URI;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
@@ -40,7 +41,6 @@ import io.opencaesar.oml.util.OmlCatalog;
 
 public abstract class Oml2OwlTask extends DefaultTask {
 	
-	@Input
     public String inputCatalogPath;
 
     public void setInputCatalogPath(String s) {
@@ -51,7 +51,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     		files.add(new File(s));
     		getInputFiles().from(files);
     	} catch (Exception e) {
-    		System.out.println(e);
+			throw new GradleException(e.getLocalizedMessage(), e);
     	}
     }
 
@@ -60,11 +60,10 @@ public abstract class Oml2OwlTask extends DefaultTask {
     public abstract ConfigurableFileCollection getInputFiles();
 
     @Optional
-	@Input
-	public abstract Property<String> getRootOntologyIri();
+    @Input
+    public abstract Property<String> getRootOntologyIri();
 
-	@Input
-	public String outputCatalogPath;
+    public String outputCatalogPath;
 
     public void setOutputCatalogPath(String s) {
     	outputCatalogPath = s;
@@ -72,25 +71,27 @@ public abstract class Oml2OwlTask extends DefaultTask {
     }
 
     @OutputDirectory
-	public abstract DirectoryProperty getOutputDir();
+    public abstract DirectoryProperty getOutputDir();
 
     @Optional
-	@Input
-	public abstract Property<String> getOutputFileExtension();
+    @Input
+    public abstract Property<String> getOutputFileExtension();
 
     @Optional
-	@Input
-	public abstract Property<Boolean> getDisjointUnions();
+    @Input
+    public abstract Property<Boolean> getDisjointUnions();
 
     @Optional
-	@Input
-	public abstract Property<Boolean> getAnnotationsOnAxioms();
+    @Input
+    public abstract Property<Boolean> getAnnotationsOnAxioms();
 
-	public boolean debug;
+    @Input
+    @Optional
+    public abstract Property<Boolean> getDebug();
 
     @TaskAction
     public void run() {
-        List<String> args = new ArrayList<String>();
+        List<String> args = new ArrayList<>();
         if (inputCatalogPath != null) {
 		    args.add("-i");
 		    args.add(inputCatalogPath);
@@ -117,7 +118,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	    		args.add("-a");
 	    	}
 	    }
-	    if (debug) {
+		if (getDebug().isPresent() && getDebug().get()) {
 		    args.add("-d");
 	    }
 	    try {
