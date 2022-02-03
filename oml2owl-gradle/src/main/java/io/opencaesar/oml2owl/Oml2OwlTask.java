@@ -41,10 +41,7 @@ import io.opencaesar.oml.util.OmlCatalog;
 
 public abstract class Oml2OwlTask extends DefaultTask {
 	
-	private String inputCatalogPath;
-
-	@Input
-	public String getInputCatalogPath() { return inputCatalogPath; }
+    public String inputCatalogPath;
 
     public void setInputCatalogPath(String s) {
     	try {
@@ -63,13 +60,10 @@ public abstract class Oml2OwlTask extends DefaultTask {
     public abstract ConfigurableFileCollection getInputFiles();
 
     @Optional
-	@Input
-	public abstract Property<String> getRootOntologyIri();
+    @Input
+    public abstract Property<String> getRootOntologyIri();
 
-	private String outputCatalogPath;
-
-	@Input
-	public String getOutputCatalogPath() { return outputCatalogPath; }
+    public String outputCatalogPath;
 
     public void setOutputCatalogPath(String s) {
     	outputCatalogPath = s;
@@ -77,23 +71,23 @@ public abstract class Oml2OwlTask extends DefaultTask {
     }
 
     @OutputDirectory
-	public abstract DirectoryProperty getOutputDir();
+    public abstract DirectoryProperty getOutputDir();
 
     @Optional
-	@Input
-	public abstract Property<String> getOutputFileExtension();
+    @Input
+    public abstract Property<String> getOutputFileExtension();
 
     @Optional
-	@Input
-	public abstract Property<Boolean> getDisjointUnions();
+    @Input
+    public abstract Property<Boolean> getDisjointUnions();
 
     @Optional
-	@Input
-	public abstract Property<Boolean> getAnnotationsOnAxioms();
+    @Input
+    public abstract Property<Boolean> getAnnotationsOnAxioms();
 
-	@Input
-	@Optional
-	public abstract Property<Boolean> getDebug();
+    @Input
+    @Optional
+    public abstract Property<Boolean> getDebug();
 
     @TaskAction
     public void run() {
