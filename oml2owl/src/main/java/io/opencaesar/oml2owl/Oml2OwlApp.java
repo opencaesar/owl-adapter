@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -290,7 +291,7 @@ public class Oml2OwlApp {
 		fileExtensions.add(OmlConstants.OML_EXTENSION);
 		fileExtensions.add(OmlConstants.OMLXMI_EXTENSION);
 		
-		final ArrayList<File> omlFiles = new ArrayList<File>();
+		final var omlFiles = new LinkedHashSet<File>();
 		for (URI uri : inputCatalog.getFileUris(fileExtensions)) {
 			File file = new File(new URL(uri.toString()).toURI().getPath());
 			omlFiles.add(file);
