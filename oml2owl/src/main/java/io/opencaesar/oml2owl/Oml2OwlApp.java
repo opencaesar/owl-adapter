@@ -196,9 +196,18 @@ public class Oml2OwlApp {
 			}
 		}
 		
-		// validate ontologies
-		for (Ontology ontology : inputOntologies) {
-			OmlValidator.validate(ontology);
+		// validate resources
+		StringBuffer problems = new StringBuffer();
+		for (Resource resource : inputResourceSet.getResources()) {
+			String results = OmlValidator.validate(resource);
+	        if (results.length()>0) {
+	        	if (problems.length()>0)
+	        		problems.append("\n\n");
+	        	problems.append(results);
+	        }
+		}
+		if (problems.length()>0) {
+			throw new IllegalStateException("\n"+problems.toString());
 		}
 		
 		// create OWL manager
