@@ -21,18 +21,20 @@ package io.opencaesar.oml2owl;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import org.apache.xml.resolver.Catalog;
+import org.apache.xml.resolver.CatalogEntry;
 import org.eclipse.emf.common.util.URI;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
-import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.OutputFiles;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
 import org.gradle.work.Incremental;
@@ -41,37 +43,15 @@ import io.opencaesar.oml.util.OmlCatalog;
 
 public abstract class Oml2OwlTask extends DefaultTask {
 	
-    public String inputCatalogPath;
-
-    public void setInputCatalogPath(String s) {
-    	try {
-    		inputCatalogPath = s;
-    		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(s));
-    		Collection<File> files = Oml2OwlApp.collectOMLFiles(inputCatalog);
-    		files.add(new File(s));
-    		getInputFiles().from(files);
-    	} catch (Exception e) {
-			throw new GradleException(e.getLocalizedMessage(), e);
-    	}
-    }
-
-    @Incremental
-    @InputFiles
-    protected abstract ConfigurableFileCollection getInputFiles();
+	@Input
+    public abstract Property<File> getInputCatalogPath();
 
     @Optional
     @Input
     public abstract Property<String> getRootOntologyIri();
 
-    public String outputCatalogPath;
-
-    public void setOutputCatalogPath(String s) {
-    	outputCatalogPath = s;
-    	getOutputDir().set(new File(s).getParentFile());
-    }
-
-    @OutputDirectory
-    protected abstract DirectoryProperty getOutputDir();
+	@Input
+    public abstract Property<File> getOutputCatalogPath();
 
     @Optional
     @Input
@@ -85,24 +65,77 @@ public abstract class Oml2OwlTask extends DefaultTask {
     @Input
     public abstract Property<Boolean> getAnnotationsOnAxioms();
 
-    @Input
     @Optional
+    @Input
     public abstract Property<Boolean> getDebug();
 
+	@Incremental
+	@InputFiles
+    @SuppressWarnings("deprecation")
+    protected ConfigurableFileCollection getInputFiles() {
+    	try {
+    		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
+    		Collection<File> inputFiles = Oml2OwlApp.collectOMLFiles(inputCatalog);
+    		inputFiles.add(getInputCatalogPath().get());
+    		return getProject().files(inputFiles);
+    	} catch (Exception e) {
+			throw new GradleException(e.getLocalizedMessage(), e);
+    	}
+    }
+    
+   @OutputFiles
+   @SuppressWarnings("deprecation")
+   protected ConfigurableFileCollection getOutputFiles() {
+    	try {
+    		if (getInputCatalogPath().isPresent() && getOutputCatalogPath().isPresent()) {
+        		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
+        		final String outputFolderPath = getOutputCatalogPath().get().getParent();
+	    		Collection<File> outputFiles = new ArrayList<>(getInputFiles().getFiles().size()+1);
+	    		for (File inputFile : getInputFiles().getFiles()) {
+	    			String inputFileUri = inputFile.toURI().toString();
+	    			if (!inputFile.equals(getInputCatalogPath().get())) {
+	    				for (CatalogEntry e : inputCatalog.getEntries()) {
+	    					if (e.getEntryType() == Catalog.REWRITE_URI) {
+	    						String uriStartString = e.getEntryArg(0);
+	    						String rewriteUri = e.getEntryArg(1);
+	    						int i =  inputFileUri.indexOf(rewriteUri);
+	    						if (i != -1) {
+	    							String relativePath = inputFileUri.replace(rewriteUri, uriStartString);
+	    							relativePath = relativePath.substring(7); // remove http://
+	    							int j = relativePath.lastIndexOf('.');
+	    							if (j != -1) {
+	    								relativePath = relativePath.substring(0, j);
+	    							}
+	    							relativePath = relativePath+"."+getOutputFileExtension().getOrElse("owl");
+	    							outputFiles.add(new File(outputFolderPath+File.separator+relativePath));
+	    						}
+	    					}
+	    				}
+	    			}
+	    		}
+	    		outputFiles.add(getOutputCatalogPath().get());
+	    		return getProject().files(outputFiles);
+    		}
+    		return getProject().files(Collections.EMPTY_LIST);
+    	} catch (Exception e) {
+			throw new GradleException(e.getLocalizedMessage(), e);
+    	}
+    }
+    
     @TaskAction
     public void run() {
         List<String> args = new ArrayList<>();
-        if (inputCatalogPath != null) {
+        if (getInputCatalogPath().isPresent()) {
 		    args.add("-i");
-		    args.add(inputCatalogPath);
+		    args.add(getInputCatalogPath().get().getAbsolutePath());
         }
         if (getRootOntologyIri().isPresent()) {
 		    args.add("-r");
 		    args.add(getRootOntologyIri().get());
         }
-        if (outputCatalogPath != null) {
+        if (getOutputCatalogPath().isPresent()) {
 		    args.add("-o");
-		    args.add(outputCatalogPath);
+		    args.add(getOutputCatalogPath().get().getAbsolutePath());
         }
         if (getOutputFileExtension().isPresent()) {
         	args.add("-f");

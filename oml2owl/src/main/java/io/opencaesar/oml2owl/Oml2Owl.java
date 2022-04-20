@@ -778,12 +778,14 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected OWLLiteral getLiteral(final QuotedLiteral literal) {
+		// remove invisible characters from the value
+		String value = literal.getValue().replaceAll("[^\\x20-\\x7e]", "");
 		if (literal.getType() != null) {
-			return owl.getLiteralWithDatatype(literal.getValue().toString(), literal.getType().getIri());
+			return owl.getLiteralWithDatatype(value, literal.getType().getIri());
 		} else if (literal.getLangTag() != null) {
-			return owl.getLiteralWithLangTag(literal.getValue().toString(), literal.getLangTag());
+			return owl.getLiteralWithLangTag(value, literal.getLangTag());
 		} else {		
-			return owl.getLiteral(literal.getValue());
+			return owl.getLiteral(value);
 		}
 	}
 
@@ -825,7 +827,7 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected String getSwrlIri(final String variableName) {
-		return "urn:swrl#" + variableName;
+		return "urn:swrl:var#" + variableName;
 	}
 
 	static boolean isBuiltInOntology(final String iri) {
