@@ -22,7 +22,6 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.semanticweb.owlapi.model.AddImport;
 import org.semanticweb.owlapi.model.AddOntologyAnnotation;
@@ -75,6 +74,7 @@ import org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLProperty;
 import org.semanticweb.owlapi.model.OWLReflexiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
 import org.semanticweb.owlapi.model.OWLSubDataPropertyOfAxiom;
@@ -86,13 +86,15 @@ import org.semanticweb.owlapi.model.SWRLClassAtom;
 import org.semanticweb.owlapi.model.SWRLDataPropertyAtom;
 import org.semanticweb.owlapi.model.SWRLDataRangeAtom;
 import org.semanticweb.owlapi.model.SWRLDifferentIndividualsAtom;
+import org.semanticweb.owlapi.model.SWRLIndividualArgument;
+import org.semanticweb.owlapi.model.SWRLLiteralArgument;
 import org.semanticweb.owlapi.model.SWRLObjectPropertyAtom;
 import org.semanticweb.owlapi.model.SWRLRule;
 import org.semanticweb.owlapi.model.SWRLSameIndividualAtom;
 import org.semanticweb.owlapi.model.SWRLVariable;
 import org.semanticweb.owlapi.vocab.OWLFacet;
 
-public class OwlApi extends io.opencaesar.closeworld.OwlApi {
+class OwlApi extends io.opencaesar.closeworld.OwlApi {
 
 	protected final boolean annotationsOnAxioms;
 
@@ -251,48 +253,78 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLAnonymousIndividual();
 	}
 
+	protected SWRLVariable getSWRLVariable(String variable) {
+		return factory.getSWRLVariable("urn:swrl:var#" + variable);
+	}
+	
 	public SWRLRule addRule(final OWLOntology ontology, final List<SWRLAtom> head, final List<SWRLAtom> body, final OWLAnnotation... annotations) {
 		final SWRLRule axiom = factory.getSWRLRule(body, head, Arrays.asList(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
 	}
 
-	public SWRLClassAtom getClassAtom(final String classIri, final String variableIri) {
+	public SWRLClassAtom getClassAtom(final String classIri, final String variable) {
 		final OWLClass class_ = factory.getOWLClass(classIri);
-		final SWRLVariable variable = factory.getSWRLVariable(variableIri);
-		return factory.getSWRLClassAtom(class_, variable);
+		final SWRLVariable argument = getSWRLVariable(variable);
+		return factory.getSWRLClassAtom(class_, argument);
 	}
 
-	public SWRLDataRangeAtom getDataRangeAtom(final String datatypeIri, final String variableIri) {
+	public SWRLDataRangeAtom getDataRangeAtom(final String datatypeIri, final String variable) {
 		final OWLDatatype datatype = factory.getOWLDatatype(datatypeIri);
-		final SWRLVariable variable = factory.getSWRLVariable(variableIri);
-		return factory.getSWRLDataRangeAtom(datatype, variable);
+		final SWRLVariable argument = getSWRLVariable(variable);
+		return factory.getSWRLDataRangeAtom(datatype, argument);
 	}
 
-	public SWRLObjectPropertyAtom getObjectPropertyAtom(final String propertyIri, final String variable1Iri, final String variable2Iri) {
+	public SWRLObjectPropertyAtom getObjectPropertyAtom(final String propertyIri, final String variable1, final String variable2) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final SWRLVariable variable1 = factory.getSWRLVariable(variable1Iri);
-		final SWRLVariable variable2 = factory.getSWRLVariable(variable2Iri);
-		return factory.getSWRLObjectPropertyAtom(property, variable1, variable2);
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLVariable argument2 = getSWRLVariable(variable2);
+		return factory.getSWRLObjectPropertyAtom(property, argument1, argument2);
 	}
 
-	public SWRLDataPropertyAtom getDataPropertyAtom(final String propertyIri, final String variable1Iri, final String variable2Iri) {
+	public SWRLObjectPropertyAtom getObjectPropertyAtom2(final String propertyIri, final String variable1, final OWLIndividual individual2) {
+		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLIndividualArgument argument2 = factory.getSWRLIndividualArgument(individual2);
+		return factory.getSWRLObjectPropertyAtom(property, argument1, argument2);
+	}
+
+	public SWRLDataPropertyAtom getDataPropertyAtom(final String propertyIri, final String variable1, final String variable2) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final SWRLVariable variable1 = factory.getSWRLVariable(variable1Iri);
-		final SWRLVariable variable2 = factory.getSWRLVariable(variable2Iri);
-		return factory.getSWRLDataPropertyAtom(property, variable1, variable2);
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLVariable argument2 = getSWRLVariable(variable2);
+		return factory.getSWRLDataPropertyAtom(property, argument1, argument2);
 	}
 
-	public SWRLSameIndividualAtom getSameIndividualAtom(final String variable1Iri, final String variable2Iri) {
-		final SWRLVariable variable1 = factory.getSWRLVariable(variable1Iri);
-		final SWRLVariable variable2 = factory.getSWRLVariable(variable2Iri);
-		return factory.getSWRLSameIndividualAtom(variable1, variable2);
+	public SWRLDataPropertyAtom getDataPropertyAtom2(final String propertyIri, final String variable1, final OWLLiteral literal2) {
+		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLLiteralArgument argument2 = factory.getSWRLLiteralArgument(literal2);
+		return factory.getSWRLDataPropertyAtom(property, argument1, argument2);
 	}
 
-	public SWRLDifferentIndividualsAtom getDifferentIndividualsAtom(final String variable1Iri, final String variable2Iri) {
-		final SWRLVariable variable1 = factory.getSWRLVariable(variable1Iri);
-		final SWRLVariable variable2 = factory.getSWRLVariable(variable2Iri);
-		return factory.getSWRLDifferentIndividualsAtom(variable1, variable2);
+	public SWRLSameIndividualAtom getSameIndividualAtom(final String variable1, final String variable2) {
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLVariable argument2 = getSWRLVariable(variable2);
+		return factory.getSWRLSameIndividualAtom(argument1, argument2);
+	}
+
+	public SWRLSameIndividualAtom getSameIndividualAtom2(final String variable1, final OWLIndividual individual2) {
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLIndividualArgument argument2 = factory.getSWRLIndividualArgument(individual2);
+		return factory.getSWRLSameIndividualAtom(argument1, argument2);
+	}
+
+	public SWRLDifferentIndividualsAtom getDifferentIndividualsAtom(final String variable1, final String variable2) {
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLVariable argument2 = getSWRLVariable(variable2);
+		return factory.getSWRLDifferentIndividualsAtom(argument1, argument2);
+	}
+
+	public SWRLDifferentIndividualsAtom getDifferentIndividualsAtom2(final String variable1, final OWLIndividual individual2) {
+		final SWRLVariable argument1 = getSWRLVariable(variable1);
+		final SWRLIndividualArgument argument2 = factory.getSWRLIndividualArgument(individual2);
+		return factory.getSWRLDifferentIndividualsAtom(argument1, argument2);
 	}
 
 	public OWLSubClassOfAxiom addSubClassOf(final OWLOntology ontology, final String subIri, final String superIri, final OWLAnnotation... annotations) {
@@ -312,9 +344,8 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
-	public OWLHasKeyAxiom addHasKey(final OWLOntology ontology, final String classIri, final List<String> keyPropertyIris, final OWLAnnotation... annotations) {
+	public OWLHasKeyAxiom addHasKey(final OWLOntology ontology, final String classIri, final List<OWLProperty> keyProperties, final OWLAnnotation... annotations) {
 		final OWLClass aClass = factory.getOWLClass(classIri);
-		final List<OWLDataProperty> keyProperties = keyPropertyIris.stream().map(iri -> factory.getOWLDataProperty(iri)).collect(Collectors.toList());
 		final OWLHasKeyAxiom axiom = factory.getOWLHasKeyAxiom(aClass, keyProperties, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
@@ -609,6 +640,14 @@ public class OwlApi extends io.opencaesar.closeworld.OwlApi {
 
 	public OWLLiteral getLiteralWithLangTag(final String value, final String langTag) {
 		return factory.getOWLLiteral(value, langTag);
+	}
+
+	public OWLDataProperty getDataProperty(String propertyIri) {
+		return factory.getOWLDataProperty(propertyIri);
+	}
+
+	public OWLObjectProperty getObjectProperty(String propertyIri) {
+		return factory.getOWLObjectProperty(propertyIri);
 	}
 
 	public List<OWLAnnotation> checkIfNeeded(final OWLAnnotation... annotations) {
