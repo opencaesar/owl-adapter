@@ -331,11 +331,13 @@ public class CloseDescriptionBundle {
 			.map(s -> (Property)s)
 			.forEach(p -> {
 					graph.addVertex(p);
-					OmlRead.getSuperTerms(p).forEach(s -> {
-						final Property sp = (Property) s;
-						graph.addVertex(sp);
-						graph.addEdge(sp, p);
-					});
+					if (p instanceof SpecializableTerm) {
+						OmlRead.getSuperTerms((SpecializableTerm)p).forEach(s -> {
+							final Property sp = (Property) s;
+							graph.addVertex(sp);
+							graph.addEdge(sp, p);
+						});
+					}
 				});
 
 		final List<Set<Property>> components = new ConnectivityInspector<>(graph)

@@ -28,6 +28,7 @@ import java.util.stream.StreamSupport;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
@@ -275,10 +276,10 @@ public class Oml2Owl extends OmlSwitch<Void> {
 		
 		// derivation rule for forward relation
 		final ArrayList<SWRLAtom> antedecents = new ArrayList<SWRLAtom>();
-		antedecents.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, getSwrlIri("r"), getSwrlIri("s")));
-		antedecents.add(owl.getClassAtom(entity.getIri(), getSwrlIri("r")));
-		antedecents.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, getSwrlIri("r"), getSwrlIri("t")));
-		final SWRLObjectPropertyAtom consequent = owl.getObjectPropertyAtom(forwardIri, getSwrlIri("s"), getSwrlIri("t"));
+		antedecents.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, "r", "s"));
+		antedecents.add(owl.getClassAtom(entity.getIri(), "r"));
+		antedecents.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, "r", "t"));
+		final SWRLObjectPropertyAtom consequent = owl.getObjectPropertyAtom(forwardIri, "s", "t");
 		final OWLAnnotation annotation = owl.getAnnotation(RDFS.LABEL.toString(), owl.getLiteral(forwardName+" derivation"));
 		owl.addRule(ontology, Collections.singletonList(consequent), antedecents, annotation);
 	}
@@ -505,7 +506,13 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	public Void caseKeyAxiom(final KeyAxiom axiom) {
 		owl.addHasKey(ontology, 
 				OmlRead.getKeyedEntity(axiom).getIri(), 
-				axiom.getProperties().stream().map(i -> i.getIri()).collect(Collectors.toList()));
+				axiom.getProperties().stream()
+					.map(i -> {
+						if (i instanceof ScalarProperty) 
+							return owl.getDataProperty(i.getIri());
+						else
+							return owl.getObjectProperty(i.getIri());
+					}).collect(Collectors.toList()));
 		return null;
 	}
 
@@ -538,13 +545,16 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected OWLAnnotation createAnnotation(final Annotation annotation) {
-		final OWLLiteral literal;
 		if (annotation.getValue() != null) {
-			literal = getLiteral(annotation.getValue());
+			final OWLLiteral literal = getLiteral(annotation.getValue());
+			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
+		} else if (annotation.getReferenceValue() != null) {
+			final IRI iri = owl.createIri(annotation.getReferenceValue().getIri());
+			return owl.getAnnotation(annotation.getProperty().getIri(), iri);
 		} else {
-			literal = owl.getLiteral("true");
+			final OWLLiteral literal = owl.getLiteral("true");
+			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
 		}
-		return owl.getAnnotation(annotation.getProperty().getIri(), literal);
 	}
 
 	protected void addAnnotation(final Element element, final Annotation annotation) {
@@ -724,18 +734,22 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	protected List<SWRLAtom> getAtom(final TypePredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
 		if (predicate.getType() instanceof Scalar) {
-			atoms.add(owl.getDataRangeAtom(predicate.getType().getIri(), getSwrlIri(predicate.getVariable())));
+			atoms.add(owl.getDataRangeAtom(predicate.getType().getIri(), predicate.getVariable()));
 		} else {
-			atoms.add(owl.getClassAtom(predicate.getType().getIri(), getSwrlIri(predicate.getVariable())));
+			atoms.add(owl.getClassAtom(predicate.getType().getIri(), predicate.getVariable()));
 		}
 		return atoms;
 	}
 
 	protected List<SWRLAtom> getAtom(final RelationEntityPredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
-		atoms.add(owl.getClassAtom(predicate.getEntity().getIri(), getSwrlIri(predicate.getEntityVariable())));
-		atoms.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, getSwrlIri(predicate.getEntityVariable()), getSwrlIri(predicate.getVariable1())));
-		atoms.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, getSwrlIri(predicate.getEntityVariable()), getSwrlIri(predicate.getVariable2())));
+		atoms.add(owl.getClassAtom(predicate.getEntity().getIri(), predicate.getEntityVariable()));
+		atoms.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, predicate.getEntityVariable(), predicate.getVariable1()));
+		if (predicate.getVariable2() != null) {
+			atoms.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, predicate.getEntityVariable(), predicate.getVariable2()));
+		} else if (predicate.getInstance2() != null) {
+			atoms.add(owl.getObjectPropertyAtom2(OmlConstants.targetRelation, predicate.getEntityVariable(), owl.getNamedIndividual(predicate.getInstance2().getIri())));
+		}
 		return atoms;
 	}
 
@@ -743,22 +757,38 @@ public class Oml2Owl extends OmlSwitch<Void> {
 		final List<SWRLAtom> atoms = new ArrayList<>();
 		var feature = predicate.getFeature();
 		if (feature instanceof AnnotationProperty || feature instanceof ScalarProperty) {
-			atoms.add(owl.getDataPropertyAtom(feature.getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+			if (predicate.getVariable2() != null) {
+				atoms.add(owl.getDataPropertyAtom(feature.getIri(), predicate.getVariable1(), predicate.getVariable2()));
+			} else if (predicate.getLiteral2() != null) {
+				atoms.add(owl.getDataPropertyAtom2(feature.getIri(), predicate.getVariable1(), getLiteral(predicate.getLiteral2())));
+			}
 		} else {
-			atoms.add(owl.getObjectPropertyAtom(feature.getIri(), getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+			if (predicate.getVariable2() != null) {
+				atoms.add(owl.getObjectPropertyAtom(feature.getIri(), predicate.getVariable1(), predicate.getVariable2()));
+			} else if (predicate.getInstance2() != null) {
+				atoms.add(owl.getObjectPropertyAtom2(feature.getIri(), predicate.getVariable1(), owl.getNamedIndividual(predicate.getInstance2().getIri())));
+			}
 		}
 		return atoms;
 	}
 
 	protected List<SWRLAtom> getAtom(final SameAsPredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
-		atoms.add(owl.getSameIndividualAtom(getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+		if (predicate.getVariable2() != null) {
+			atoms.add(owl.getSameIndividualAtom(predicate.getVariable1(), predicate.getVariable2()));
+		} else if (predicate.getInstance2() != null) {
+			atoms.add(owl.getSameIndividualAtom2(predicate.getVariable1(), owl.getNamedIndividual(predicate.getInstance2().getIri())));
+		}
 		return atoms;
 	}
 
 	protected List<SWRLAtom> getAtom(final DifferentFromPredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
-		atoms.add(owl.getDifferentIndividualsAtom(getSwrlIri(predicate.getVariable1()), getSwrlIri(predicate.getVariable2())));
+		if (predicate.getVariable2() != null) {
+			atoms.add(owl.getDifferentIndividualsAtom(predicate.getVariable1(), predicate.getVariable2()));
+		} else if (predicate.getInstance2() != null) {
+			atoms.add(owl.getDifferentIndividualsAtom2(predicate.getVariable1(), owl.getNamedIndividual(predicate.getInstance2().getIri())));
+		}
 		return atoms;
 	}
 
@@ -824,10 +854,6 @@ public class Oml2Owl extends OmlSwitch<Void> {
 		String namespace = entity.getOntology().getNamespace();
 		String name = getForwardName(entity);
 		return namespace+name;
-	}
-
-	protected String getSwrlIri(final String variableName) {
-		return "urn:swrl:var#" + variableName;
 	}
 
 	static boolean isBuiltInOntology(final String iri) {
