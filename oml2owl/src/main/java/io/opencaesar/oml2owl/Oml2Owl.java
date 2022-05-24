@@ -28,6 +28,7 @@ import java.util.stream.StreamSupport;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
@@ -544,13 +545,16 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected OWLAnnotation createAnnotation(final Annotation annotation) {
-		final OWLLiteral literal;
 		if (annotation.getValue() != null) {
-			literal = getLiteral(annotation.getValue());
+			final OWLLiteral literal = getLiteral(annotation.getValue());
+			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
+		} else if (annotation.getReferenceValue() != null) {
+			final IRI iri = owl.createIri(annotation.getReferenceValue().getIri());
+			return owl.getAnnotation(annotation.getProperty().getIri(), iri);
 		} else {
-			literal = owl.getLiteral("true");
+			final OWLLiteral literal = owl.getLiteral("true");
+			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
 		}
-		return owl.getAnnotation(annotation.getProperty().getIri(), literal);
 	}
 
 	protected void addAnnotation(final Element element, final Annotation annotation) {
