@@ -170,6 +170,12 @@ public class Oml2Owl extends OmlSwitch<Void> {
 	public Void caseConcept(final Concept concept) {
 		owl.addClass(ontology, concept.getIri());
 		owl.addAnnotationAssertion(ontology, concept.getIri(), owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Concept)));
+		if (!concept.getEnumeratedInstances().isEmpty()) {
+			List<OWLNamedIndividual> individuals = concept.getEnumeratedInstances().stream()
+					.map(i -> owl.getNamedIndividual(i.getIri()))
+					.collect(Collectors.toList());
+			owl.addObjectOneOf(ontology, concept.getIri(), individuals);
+		}
 		return null;
 	}
 

@@ -49,6 +49,7 @@ import org.semanticweb.owlapi.model.OWLDatatype;
 import org.semanticweb.owlapi.model.OWLDatatypeDefinitionAxiom;
 import org.semanticweb.owlapi.model.OWLDatatypeRestriction;
 import org.semanticweb.owlapi.model.OWLDeclarationAxiom;
+import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
 import org.semanticweb.owlapi.model.OWLFunctionalDataPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLFunctionalObjectPropertyAxiom;
@@ -66,6 +67,7 @@ import org.semanticweb.owlapi.model.OWLObjectHasSelf;
 import org.semanticweb.owlapi.model.OWLObjectHasValue;
 import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectMinCardinality;
+import org.semanticweb.owlapi.model.OWLObjectOneOf;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLObjectPropertyDomainAxiom;
@@ -153,12 +155,20 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
-	public OWLDataOneOf addDataOneOf(final OWLOntology ontology, final String subIri, final OWLLiteral... literals) {
-		final OWLDatatype datatype = factory.getOWLDatatype(subIri);
+	public OWLDataOneOf addDataOneOf(final OWLOntology ontology, final String datatypeIri, final OWLLiteral... literals) {
+		final OWLDatatype datatype = factory.getOWLDatatype(datatypeIri);
 		final OWLDataOneOf dataOneOf = factory.getOWLDataOneOf(literals);
 		final OWLDatatypeDefinitionAxiom axiom = factory.getOWLDatatypeDefinitionAxiom(datatype, dataOneOf);
 		manager.addAxiom(ontology, axiom);
 		return dataOneOf;
+	}
+
+	public OWLObjectOneOf addObjectOneOf(final OWLOntology ontology, final String classIri, final List<OWLNamedIndividual> individuals) {
+		final OWLClass class_ = factory.getOWLClass(classIri);
+		final OWLObjectOneOf objectOneOf = factory.getOWLObjectOneOf(individuals);
+		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(class_, objectOneOf);
+		manager.addAxiom(ontology, axiom);
+		return objectOneOf;
 	}
 
 	public OWLObjectProperty addObjectProperty(final OWLOntology ontology, final String iri) {
