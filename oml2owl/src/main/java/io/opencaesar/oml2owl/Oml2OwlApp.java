@@ -26,6 +26,7 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -78,17 +79,15 @@ import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.dsl.OmlStandaloneSetup;
+import io.opencaesar.oml.resource.OmlJsonResourceFactory;
+import io.opencaesar.oml.resource.OmlXMIResourceFactory;
 import io.opencaesar.oml.util.OmlCatalog;
 import io.opencaesar.oml.util.OmlRead;
-import io.opencaesar.oml.util.OmlXMIResourceFactory;
 import io.opencaesar.oml.validate.OmlValidator;
 import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl;
 import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl;
 
 public class Oml2OwlApp {
-
-	static final String OML = "oml";
-	static final String OMLXMI = "omlxmi";
 
 	@Parameter(
 			names = { "--input-catalog-path", "-i" }, 
@@ -173,6 +172,7 @@ public class Oml2OwlApp {
 
 		OmlStandaloneSetup.doSetup();
 		OmlXMIResourceFactory.register();
+		OmlJsonResourceFactory.register();
 		final ResourceSet inputResourceSet = new ResourceSetImpl();
 		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
 		
@@ -284,11 +284,11 @@ public class Oml2OwlApp {
 			if (new File(filename).isFile()) {
 				return resolved;
 			}
-			if (new File(filename+'.'+OML).isFile()) {
-				return URI.createFileURI(filename+'.'+OML);
-			}
-			if (new File(filename+'.'+OMLXMI).isFile()) {
-				return URI.createFileURI(filename+'.'+OMLXMI);
+			var fileExtensions = Arrays.asList(OmlConstants.OML_EXTENSIONS);
+			for (String ext : fileExtensions) {
+				if (new File(filename+'.'+ext).isFile()) {
+					return URI.createFileURI(filename+'.'+ext);
+				}
 			}
 		}
 		
@@ -296,9 +296,7 @@ public class Oml2OwlApp {
 	}
 
 	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
-		var fileExtensions = new ArrayList<String>();
-		fileExtensions.add(OmlConstants.OML_EXTENSION);
-		fileExtensions.add(OmlConstants.OMLXMI_EXTENSION);
+		var fileExtensions = Arrays.asList(OmlConstants.OML_EXTENSIONS);
 		
 		final var omlFiles = new LinkedHashSet<File>();
 		for (URI uri : inputCatalog.getFileUris(fileExtensions)) {
@@ -335,7 +333,7 @@ public class Oml2OwlApp {
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
 			if (!file.getName().endsWith("catalog.xml")) {
-				throw new ParameterException((("Parameter " + name) + " should be a valid OWL catalog path"));
+				throw new ParameterException((("Parameter " + name) + " should be a valid OML catalog path"));
 			}
 		}
 	}
