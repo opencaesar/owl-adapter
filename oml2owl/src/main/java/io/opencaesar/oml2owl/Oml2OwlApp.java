@@ -332,7 +332,7 @@ public class Oml2OwlApp {
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
-			if (!file.getName().endsWith("catalog.xml")) {
+			if (!file.exists() || !file.getName().endsWith("catalog.xml")) {
 				throw new ParameterException((("Parameter " + name) + " should be a valid OML catalog path"));
 			}
 		}
