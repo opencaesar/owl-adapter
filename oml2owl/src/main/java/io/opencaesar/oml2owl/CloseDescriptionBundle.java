@@ -44,13 +44,14 @@ import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
-import io.opencaesar.closeworld.OwlApi;
+import io.opencaesar.oml.Classifier;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.ConceptInstance;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.Feature;
 import io.opencaesar.oml.FeaturePredicate;
 import io.opencaesar.oml.ForwardRelation;
+import io.opencaesar.oml.Instance;
 import io.opencaesar.oml.Literal;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
@@ -60,18 +61,21 @@ import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
 import io.opencaesar.oml.RelationEntity;
 import io.opencaesar.oml.RelationEntityPredicate;
 import io.opencaesar.oml.RelationRangeRestrictionAxiom;
+import io.opencaesar.oml.RelationTargetRestrictionAxiom;
 import io.opencaesar.oml.ReverseRelation;
 import io.opencaesar.oml.Rule;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.ScalarPropertyValueAssertion;
+import io.opencaesar.oml.ScalarPropertyValueRestrictionAxiom;
 import io.opencaesar.oml.SpecializableTerm;
 import io.opencaesar.oml.StructureInstance;
 import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
 import io.opencaesar.oml.StructuredPropertyValueAssertion;
+import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom;
 import io.opencaesar.oml.Type;
 import io.opencaesar.oml.TypePredicate;
 import io.opencaesar.oml.Vocabulary;
@@ -105,7 +109,7 @@ public class CloseDescriptionBundle {
 		
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof Entity)
 			.map(s -> (Entity)s)
 			.forEach(entity -> {
@@ -133,6 +137,12 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
+					} else if (r instanceof ScalarPropertyValueRestrictionAxiom) {
+						final ScalarPropertyValueRestrictionAxiom restriction = (ScalarPropertyValueRestrictionAxiom) r;
+						final ScalarProperty property = restriction.getProperty();
+						final HashSet<ScalarProperty> set = map.getOrDefault(entity, new HashSet<>());
+						map.put(entity, set);
+						set.add(property);
 					}
 				});
 			});
@@ -151,7 +161,7 @@ public class CloseDescriptionBundle {
 		
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof Entity)
 			.map(s -> (Entity)s)
 			.forEach(entity -> {
@@ -179,6 +189,12 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
+					} else if (r instanceof StructuredPropertyValueRestrictionAxiom) {
+						final StructuredPropertyValueRestrictionAxiom restriction = (StructuredPropertyValueRestrictionAxiom) r;
+						final StructuredProperty property = restriction.getProperty();
+						final HashSet<StructuredProperty> set = map.getOrDefault(entity, new HashSet<>());
+						map.put(entity, set);
+						set.add(property);
 					}
 				});
 			});
@@ -209,7 +225,7 @@ public class CloseDescriptionBundle {
 		
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof Rule)
 			.map(s -> (Rule)s)
 			.forEach(rule -> {
@@ -245,7 +261,7 @@ public class CloseDescriptionBundle {
 		
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof Entity)
 			.map(s -> (Entity)s)
 			.forEach(entity -> {
@@ -277,6 +293,14 @@ public class CloseDescriptionBundle {
 							break;
 						default:
 						}
+					} else if (r instanceof RelationTargetRestrictionAxiom) {
+						final RelationTargetRestrictionAxiom restriction = (RelationTargetRestrictionAxiom) r;
+						final Relation relation = restriction.getRelation();
+						final HashSet<Relation> set = map.getOrDefault(entity, new HashSet<>());
+						map.put(entity, set);
+						if (derivedRelations.getOrDefault(relation, new HashSet<>()).isEmpty()) {
+							set.add(relation);
+						}
 					}
 				});
 			});
@@ -297,7 +321,7 @@ public class CloseDescriptionBundle {
 
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof SpecializableTerm)
 			.map(s -> (SpecializableTerm)s)
 			.forEach(term -> {
@@ -326,7 +350,7 @@ public class CloseDescriptionBundle {
 
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof Property)
 			.map(s -> (Property)s)
 			.forEach(p -> {
@@ -368,7 +392,7 @@ public class CloseDescriptionBundle {
 
 		allOntologies.stream()
 			.filter(o -> o instanceof Vocabulary)
-			.map(o -> OmlRead.getStatements(o))
+			.flatMap(o -> OmlRead.getStatements(o).stream())
 			.filter(s -> s instanceof RelationEntity)
 			.map(s -> (RelationEntity)s)
 			.forEach(re -> {
@@ -484,7 +508,14 @@ public class CloseDescriptionBundle {
 						}
 					}
 				});
-				
+				findAllTypes(subj).stream()
+					.filter(r -> r instanceof Entity)
+					.flatMap(r -> ((Entity)r).getOwnedPropertyRestrictions().stream())
+					.filter(r -> r instanceof ScalarPropertyValueRestrictionAxiom)
+					.map(r -> (ScalarPropertyValueRestrictionAxiom)r)
+					.filter(r -> all_properties.contains(r.getProperty()))
+					.forEach(r -> subj_vals_map.get(r.getProperty()).add(r.getValue()));
+			
 				properties.forEach(property -> {
 					final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
 					if (Objects.nonNull(propertyTree)) {
@@ -551,6 +582,13 @@ public class CloseDescriptionBundle {
 						}
 					}
 				});
+				findAllTypes(subj).stream()
+					.filter(r -> r instanceof Entity)
+					.flatMap(r -> ((Entity)r).getOwnedPropertyRestrictions().stream())
+					.filter(r -> r instanceof StructuredPropertyValueRestrictionAxiom)
+					.map(r -> (StructuredPropertyValueRestrictionAxiom)r)
+					.filter(r -> all_properties.contains(r.getProperty()))
+					.forEach(r -> subj_vals_map.get(r.getProperty()).add(r.getValue()));
 				
 				properties.forEach(property -> {
 					final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
@@ -625,7 +663,14 @@ public class CloseDescriptionBundle {
 					}
 
 				});
-				
+				findAllTypes(subj).stream()
+					.filter(r -> r instanceof Entity)
+					.flatMap(r -> ((Entity)r).getOwnedRelationRestrictions().stream())
+					.filter(r -> r instanceof RelationTargetRestrictionAxiom)
+					.map(r -> (RelationTargetRestrictionAxiom)r)
+					.filter(r -> all_relations.contains(r.getRelation()))
+					.forEach(r -> subj_vals_map.get(r.getRelation()).add(r.getTarget()));
+
 				relations.forEach(relation -> {
 					final Graph<Relation, DefaultEdge> relationTree = getRelationTree(relationTrees, relation);
 					if (Objects.nonNull(relationTree)) {
@@ -645,7 +690,18 @@ public class CloseDescriptionBundle {
 		
 		return map;
 	}
-	
+
+	//TODO: replace with one in OmlSearch
+    public static List<Classifier> findAllTypes(Instance instance) {
+        List<Classifier> types = OmlSearch.findTypes(instance).stream()
+        		.flatMap(t -> OmlSearch.findAllSuperTerms(t, true).stream())
+        		.filter(t -> t instanceof Classifier)
+        		.map(t -> (Classifier)t)
+        		.distinct()
+        		.collect(Collectors.toList());
+        return types;
+    }
+
 	public static class CloseDescriptionBundleToOwl extends CloseDescriptionBundle {
 		protected final OWLOntology ontology;
 		protected final OwlApi owlApi;
@@ -663,11 +719,13 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedScalarProperties = getEntitiesWithRestrictedScalarProperties(allOntologies);
 			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedStructuredProperties = getEntitiesWithRestrictedStructuredProperties(allOntologies);
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
+			
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
 			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
 			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
 
-			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>(entitiesWithRestrictedScalarProperties.keySet());
+			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>();
+			allRestrictedEntities.addAll(entitiesWithRestrictedScalarProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedStructuredProperties.keySet());
 			allRestrictedEntities.addAll(entitiesWithRestrictedRelations.keySet());
 			
