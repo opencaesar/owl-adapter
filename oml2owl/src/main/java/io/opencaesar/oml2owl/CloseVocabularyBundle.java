@@ -47,10 +47,22 @@ import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.SpecializationAxiom;
 import io.opencaesar.oml.util.OmlRead;
 
+/**
+ * An algorithm to close the world on a vocabulary bundle by adding disjointness axioms
+ * between classes without common subclasses
+ */
 public class CloseVocabularyBundle {
 
+	/**
+	 * The vocabulary bundle resource
+	 */
 	protected final Resource resource;
 
+	/**
+	 * Creates a new CloseVocabularyBundle object
+	 * 
+	 * @param resource The vocabulary bundle resource
+	 */
 	public CloseVocabularyBundle(final Resource resource) {
 		this.resource = resource;
 	}
@@ -93,11 +105,34 @@ public class CloseVocabularyBundle {
 		return new Taxonomy(vertexList, edgeList).transitiveReduction().rootAt(new ClassExpression.Universal());
 	}
 
+	/**
+	 * A subclass of CloseVocabularyBundle that works on an Owl ontology
+	 */
 	public static class CloseVocabularyBundleToOwl extends CloseVocabularyBundle {
+		
+		/**
+		 * The Owl ontology
+		 */
 		protected final OWLOntology ontology;
+		
+		/**
+		 * Whether to add djsjointUnion axioms
+		 */
 		protected final boolean disjointUnions;
+		
+		/**
+		 * The Owl API
+		 */
 		protected final OwlApi owlApi;
 
+		/**
+		 * Creates a new CloseVocabularyBundleToOwl object
+		 * 
+		 * @param resource The vocabulary bundle resource
+		 * @param ontology The Owl ontology
+		 * @param disjointUnions Whether to add djsjointUnion axioms
+		 * @param owlApi The Owl API
+		 */
 		public CloseVocabularyBundleToOwl(final Resource resource, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
 			super(resource);
 			this.ontology = ontology;
@@ -105,6 +140,9 @@ public class CloseVocabularyBundle {
 			this.owlApi = owlApi;
 		}
 
+		/**
+		 * Runs the algorithm
+		 */
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(resource);
 			final Collection<Ontology> allOntologies = OmlRead.closure(omlOntology, true, o -> getImportedOntologies(o));
@@ -117,13 +155,4 @@ public class CloseVocabularyBundle {
 		}
 	}
 
-	public static class CloseVocabularyBundleToOml extends CloseVocabularyBundle {
-		public CloseVocabularyBundleToOml(final Resource resource) {
-			super(resource);
-		}
-
-		public void run() throws RuntimeException {
-			throw new RuntimeException("CloseBundleToOml not implemented");
-		}
-	}
 }

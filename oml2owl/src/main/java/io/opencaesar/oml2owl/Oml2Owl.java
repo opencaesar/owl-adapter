@@ -102,7 +102,7 @@ import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSwitch;
 
-public class Oml2Owl extends OmlSwitch<Void> {
+class Oml2Owl extends OmlSwitch<Void> {
 
 	public static final List<String> BUILT_IN_ONTOLOGIES = Arrays.asList(new String[] {
 		"http://www.w3.org/2001/XMLSchema",

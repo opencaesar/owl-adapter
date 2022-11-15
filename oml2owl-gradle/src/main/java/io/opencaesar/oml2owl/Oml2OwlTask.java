@@ -41,37 +41,85 @@ import org.gradle.work.Incremental;
 
 import io.opencaesar.oml.util.OmlCatalog;
 
+/**
+ * A gradle task to invoke the Oml2Owl tool 
+ */
 public abstract class Oml2OwlTask extends DefaultTask {
 	
+	/**
+	 * Creates a new Oml2OwlTask object
+	 */
+	public Oml2OwlTask() {
+	}
+
+	/**
+	 * Path of the input OML catalog.
+	 * 
+	 * @return File Property
+	 */
 	@Input
     public abstract Property<File> getInputCatalogPath();
 
+	/**
+	 * Root OML ontology IRI.
+	 * 
+	 * @return String Property
+	 */
     @Optional
     @Input
     public abstract Property<String> getRootOntologyIri();
 
+	/**
+	 * Path of the output OWL catalog.
+	 * 
+	 * @return File Property
+	 */
 	@Input
     public abstract Property<File> getOutputCatalogPath();
 
+	/**
+	 * Extension for the output OWL files (default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss).
+	 * 
+	 * @return String Property
+	 */
     @Optional
     @Input
     public abstract Property<String> getOutputFileExtension();
 
+	/**
+	 * Whether to create disjoint union axioms.
+	 * 
+	 * @return Boolean Property
+	 */
     @Optional
     @Input
     public abstract Property<Boolean> getDisjointUnions();
 
+	/**
+	 * Whether to Emit annotations on axioms.
+	 * 
+	 * @return Boolean Property
+	 */
     @Optional
     @Input
     public abstract Property<Boolean> getAnnotationsOnAxioms();
 
+	/**
+	 * The debug flag
+	 * 
+	 * @return Boolean Property
+	 */
     @Optional
     @Input
     public abstract Property<Boolean> getDebug();
 
+	/**
+	 * The collection of input OML files referenced by the input Oml catalog
+	 * 
+	 * @return ConfigurableFileCollection
+	 */
 	@Incremental
 	@InputFiles
-    @SuppressWarnings("deprecation")
     protected ConfigurableFileCollection getInputFiles() {
     	try {
     		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
@@ -83,8 +131,12 @@ public abstract class Oml2OwlTask extends DefaultTask {
     	}
     }
     
+	/**
+	 * The collection of input Owl files referenced by the output Owl catalog
+	 * 
+	 * @return ConfigurableFileCollection
+	 */
    @OutputFiles
-   @SuppressWarnings("deprecation")
    protected ConfigurableFileCollection getOutputFiles() {
     	try {
     		if (getInputCatalogPath().isPresent() && getOutputCatalogPath().isPresent()) {
@@ -122,6 +174,9 @@ public abstract class Oml2OwlTask extends DefaultTask {
     	}
     }
     
+   /**
+    * The gradle task action logic.
+    */
     @TaskAction
     public void run() {
         List<String> args = new ArrayList<>();

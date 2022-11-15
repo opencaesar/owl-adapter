@@ -87,6 +87,9 @@ import io.opencaesar.oml.validate.OmlValidator;
 import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl;
 import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl;
 
+/**
+ * An application to transform Oml resources into Owl resources
+ */
 public class Oml2OwlApp {
 
 	@Parameter(
@@ -122,13 +125,13 @@ public class Oml2OwlApp {
 
 	@Parameter(
 			names = { "--disjoint-unions", "-u" },
-			description = "Create disjoint union axioms",
+			description = "Whether to create disjoint union axioms",
 			order = 5)
 	private boolean disjointUnions = false;
 
 	@Parameter(
 			names = { "--annotations-on-axioms", "-a" },
-			description = "Emit annotations on axioms",
+			description = "Whether to Emit annotations on axioms",
 			order = 6)
 	private boolean annotationsOnAxioms = false;
 
@@ -147,6 +150,12 @@ public class Oml2OwlApp {
 
 	private final Logger LOGGER = LogManager.getLogger(Oml2OwlApp.class);
 
+	/**
+	 * Main method
+	 * 
+	 * @param args command line arguments for the app
+	 * @throws Exception when template instantiation has a problem
+	 */
 	public static void main(final String... args) throws Exception {
 		final Oml2OwlApp app = new Oml2OwlApp();
 		final JCommander builder = JCommander.newBuilder().addObject(app).build();
@@ -162,6 +171,17 @@ public class Oml2OwlApp {
 		app.run();
 	}
 
+	/**
+	 * Creates a new Oml2OwlApp object
+	 */
+	public Oml2OwlApp() {
+	}
+	
+	/**
+	 * Runs the application
+	 * 
+	 * @throws Exception error
+	 */
 	public void run() throws Exception {
 		LOGGER.info("=================================================================");
 		LOGGER.info("                        S T A R T");
@@ -295,6 +315,14 @@ public class Oml2OwlApp {
 		return resolved;
 	}
 
+	/**
+	 * Collects OML files referenced by the given Oml catalog
+	 * 
+	 * @param inputCatalog The input Oml catalog
+	 * @return Collection of Files
+	 * @throws MalformedURLException error
+	 * @throws URISyntaxException error
+	 */
 	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
 		var fileExtensions = Arrays.asList(OmlConstants.OML_EXTENSIONS);
 		
@@ -328,7 +356,15 @@ public class Oml2OwlApp {
     	return (version != null) ? version : "<SNAPSHOT>";
 	}
 
+	/**
+	 * The validator of the input catalog path 
+	 */
 	public static class InputCatalogPath implements IParameterValidator {
+		/**
+		 * Creates a new InputCatalogPath object
+		 */
+		public InputCatalogPath() {
+		}
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
@@ -338,7 +374,15 @@ public class Oml2OwlApp {
 		}
 	}
 
+	/**
+	 * The validator of the output catalog path 
+	 */
 	public static class OutputCatalogPath implements IParameterValidator {
+		/**
+		 * Creates a new OutputCatalogPath object
+		 */
+		public OutputCatalogPath() {
+		}
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
@@ -350,7 +394,15 @@ public class Oml2OwlApp {
 		}
 	}
 
+	/**
+	 * The validator of the file extension 
+	 */
 	public static class FileExtensionValidator implements IParameterValidator {
+		/**
+		 * Creates a new FileExtensionValidator object
+		 */
+		public FileExtensionValidator() {
+		}
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
 			if (!extensions.containsKey(value)) {
@@ -359,7 +411,7 @@ public class Oml2OwlApp {
 			}
 		}
 
-		public static HashMap<String, OWLDocumentFormat> extensions = new HashMap<>();
+		private static HashMap<String, OWLDocumentFormat> extensions = new HashMap<>();
 
 		static {
 			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
@@ -382,9 +434,9 @@ public class Oml2OwlApp {
 		// See https://github.com/owlcs/owlapi/issues/1002
 		// See https://github.com/owlcs/owlapi/pull/1003
 
-		public static HashMap<String, Function<OWLOntology,OWLStorer>> storers = new HashMap<>();
+		private static HashMap<String, Function<OWLOntology,OWLStorer>> storers = new HashMap<>();
 
-		public static OWLStorer createQuadOntologyStorer(OWLDocumentFormatFactory factory, OWLOntology owlOntology) {
+		private static OWLStorer createQuadOntologyStorer(OWLDocumentFormatFactory factory, OWLOntology owlOntology) {
 			return owlOntology
 					.getOntologyID()
 					.getOntologyIRI()

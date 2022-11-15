@@ -44,14 +44,12 @@ import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
-import io.opencaesar.oml.Classifier;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.ConceptInstance;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.Feature;
 import io.opencaesar.oml.FeaturePredicate;
 import io.opencaesar.oml.ForwardRelation;
-import io.opencaesar.oml.Instance;
 import io.opencaesar.oml.Literal;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
@@ -83,14 +81,19 @@ import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
 /**
- * @author sjenkins
- *
+ * An algorithm to close the world on a description bundle by adding cardinality restrictions
+ * as extra classes to individuals
  */
 public class CloseDescriptionBundle {
 
+	/**
+	 * The description bundle resource
+	 */
 	protected final Resource resource;
 
 	/**
+	 * Creates a new CloseDescriptionBundle object
+	 * 
 	 * @param resource The OML resource of the description bundle
 	 */
 	public CloseDescriptionBundle(final Resource resource) {
@@ -508,7 +511,7 @@ public class CloseDescriptionBundle {
 						}
 					}
 				});
-				findAllTypes(subj).stream()
+				OmlSearch.findAllTypes(subj).stream()
 					.filter(r -> r instanceof Entity)
 					.flatMap(r -> ((Entity)r).getOwnedPropertyRestrictions().stream())
 					.filter(r -> r instanceof ScalarPropertyValueRestrictionAxiom)
@@ -582,7 +585,7 @@ public class CloseDescriptionBundle {
 						}
 					}
 				});
-				findAllTypes(subj).stream()
+				OmlSearch.findAllTypes(subj).stream()
 					.filter(r -> r instanceof Entity)
 					.flatMap(r -> ((Entity)r).getOwnedPropertyRestrictions().stream())
 					.filter(r -> r instanceof StructuredPropertyValueRestrictionAxiom)
@@ -663,7 +666,7 @@ public class CloseDescriptionBundle {
 					}
 
 				});
-				findAllTypes(subj).stream()
+				OmlSearch.findAllTypes(subj).stream()
 					.filter(r -> r instanceof Entity)
 					.flatMap(r -> ((Entity)r).getOwnedRelationRestrictions().stream())
 					.filter(r -> r instanceof RelationTargetRestrictionAxiom)
@@ -691,27 +694,37 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
-	//TODO: replace with one in OmlSearch
-    public static List<Classifier> findAllTypes(Instance instance) {
-        List<Classifier> types = OmlSearch.findTypes(instance).stream()
-        		.flatMap(t -> OmlSearch.findAllSuperTerms(t, true).stream())
-        		.filter(t -> t instanceof Classifier)
-        		.map(t -> (Classifier)t)
-        		.distinct()
-        		.collect(Collectors.toList());
-        return types;
-    }
-
+    /**
+     * A subclass of CloseDescriptionBundle that modifies a given Owl ontology
+     */
 	public static class CloseDescriptionBundleToOwl extends CloseDescriptionBundle {
+		
+		/**
+		 * The Owl ontology
+		 */
 		protected final OWLOntology ontology;
+		
+		/**
+		 * Th Owl API
+		 */
 		protected final OwlApi owlApi;
 
+		/**
+		 * Creates a new CloseDescriptionBundleToOwl object
+		 * 
+		 * @param resource the description bundle resource
+		 * @param ontology the Owl ontology
+		 * @param owlApi the Owl API
+		 */
 		public CloseDescriptionBundleToOwl(final Resource resource, final OWLOntology ontology, final OwlApi owlApi) {
 			super(resource);
 			this.ontology = ontology;
 			this.owlApi = owlApi;
 		}
 
+		/**
+		 * Runs the algorithm
+		 */
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
 			final Collection<Ontology> allOntologies = OmlRead.closure(omlOntology, true, o -> OmlRead.getImportedOntologies(o));
