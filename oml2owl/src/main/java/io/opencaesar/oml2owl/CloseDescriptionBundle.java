@@ -659,12 +659,25 @@ public class CloseDescriptionBundle {
 						}
 					});
 				});
+
+				OmlSearch.findRelationInstancesWithTarget(subj).forEach(ri -> {
+					ri.getOwnedTypes().forEach(rta ->{
+						final Relation rel = rta.getType().getReverseRelation();
+						if (all_relations.contains(rel)) {
+							subj_vals_map.get(rel).addAll(ri.getSources());
+						}
+					});
+				});
+
+
 				OmlSearch.findLinkAssertions(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
+					final Relation irel = rel.getInverse();
 					if (all_relations.contains(rel)) {
 						subj_vals_map.get(rel).add(link.getTarget());
+					} else if (all_relations.contains(irel)) {
+						subj_vals_map.get(rel).add(link.getOwningInstance());
 					}
-
 				});
 				OmlSearch.findAllTypes(subj).stream()
 					.filter(r -> r instanceof Entity)
