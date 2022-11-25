@@ -18,15 +18,17 @@
  */
 package io.opencaesar.oml2owl;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import io.opencaesar.oml.*;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.TransitiveClosure;
@@ -44,39 +46,7 @@ import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
-import io.opencaesar.oml.Concept;
-import io.opencaesar.oml.ConceptInstance;
-import io.opencaesar.oml.Entity;
-import io.opencaesar.oml.Feature;
-import io.opencaesar.oml.FeaturePredicate;
-import io.opencaesar.oml.ForwardRelation;
-import io.opencaesar.oml.Literal;
-import io.opencaesar.oml.NamedInstance;
-import io.opencaesar.oml.Ontology;
-import io.opencaesar.oml.Property;
-import io.opencaesar.oml.Relation;
-import io.opencaesar.oml.RelationCardinalityRestrictionAxiom;
-import io.opencaesar.oml.RelationEntity;
-import io.opencaesar.oml.RelationEntityPredicate;
-import io.opencaesar.oml.RelationRangeRestrictionAxiom;
-import io.opencaesar.oml.RelationTargetRestrictionAxiom;
-import io.opencaesar.oml.ReverseRelation;
-import io.opencaesar.oml.Rule;
-import io.opencaesar.oml.ScalarProperty;
-import io.opencaesar.oml.ScalarPropertyCardinalityRestrictionAxiom;
-import io.opencaesar.oml.ScalarPropertyRangeRestrictionAxiom;
-import io.opencaesar.oml.ScalarPropertyValueAssertion;
-import io.opencaesar.oml.ScalarPropertyValueRestrictionAxiom;
-import io.opencaesar.oml.SpecializableTerm;
-import io.opencaesar.oml.StructureInstance;
-import io.opencaesar.oml.StructuredProperty;
-import io.opencaesar.oml.StructuredPropertyCardinalityRestrictionAxiom;
-import io.opencaesar.oml.StructuredPropertyRangeRestrictionAxiom;
-import io.opencaesar.oml.StructuredPropertyValueAssertion;
-import io.opencaesar.oml.StructuredPropertyValueRestrictionAxiom;
-import io.opencaesar.oml.Type;
-import io.opencaesar.oml.TypePredicate;
-import io.opencaesar.oml.Vocabulary;
+import io.opencaesar.oml.util.OmlIndex;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -612,7 +582,56 @@ public class CloseDescriptionBundle {
 		
 		return map;
 	}
-	
+
+
+	// Copied from OmlIndex
+	private static Collection<EStructuralFeature.Setting> searchForReferences(EObject element) {
+		final Resource resource = element.eResource();
+		if (resource == null) {
+			final EObject rootEObject = EcoreUtil.getRootContainer(element);
+			return EcoreUtil.UsageCrossReferencer.find(element, rootEObject);
+		} else {
+			ResourceSet resourceSet = resource.getResourceSet();
+			if (resourceSet == null) {
+				return EcoreUtil.UsageCrossReferencer.find(element, resource);
+			} else {
+				return EcoreUtil.UsageCrossReferencer.find(element, resourceSet);
+			}
+		}
+	}
+
+
+	// Copied from OmlIndex
+	private static List<EObject> findInverseReferencers(Element element, EReference eReference) {
+		final Set<EObject> referencers = new HashSet<>();
+		final ECrossReferenceAdapter adapter = ECrossReferenceAdapter.getCrossReferenceAdapter(element);
+		Collection<EStructuralFeature.Setting> settings;
+		if (adapter != null) {
+			// the fast method
+			settings = adapter.getInverseReferences(element);
+		} else {
+			// the slow method
+			settings = searchForReferences(element);
+		};
+		for (EStructuralFeature.Setting setting : settings) {
+			if (setting.getEStructuralFeature() == eReference) {
+				referencers.add(setting.getEObject());
+			}
+		}
+		return new ArrayList<EObject>(referencers);
+	}
+
+	// Copied from OmlIndex
+	private static <T extends EObject> List<T> findInverseReferencers(Element element, Class<T> type, EReference eReference) {
+		final Set<T> referencers = new HashSet<>();
+		findInverseReferencers(element, eReference).forEach(referencer -> {
+			if (type.isInstance(referencer)) {
+				referencers.add(type.cast(referencer));
+			}
+		});
+		return new ArrayList<T>(referencers);
+	}
+
 	/**
 	 * Returns a map from subject to a map from relation to usage count
 	 * for generating cardinality restrictions on data properties.
@@ -660,24 +679,20 @@ public class CloseDescriptionBundle {
 					});
 				});
 
-				OmlSearch.findRelationInstancesWithTarget(subj).forEach(ri -> {
-					ri.getOwnedTypes().forEach(rta ->{
-						final Relation rel = rta.getType().getReverseRelation();
-						if (all_relations.contains(rel)) {
-							subj_vals_map.get(rel).addAll(ri.getSources());
-						}
-					});
+				// TODO: Move this to OmlIndex or OmlSearch
+				findInverseReferencers(subj, LinkAssertion.class, OmlPackage.Literals.LINK_ASSERTION__TARGET).forEach(li -> {
+					final Relation rel = li.getRelation().getInverse();
+					if (all_relations.contains(rel)) {
+						subj_vals_map.get(rel).add(li.getOwningInstance());
+					}
 				});
-
 
 				OmlSearch.findLinkAssertions(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
-					final Relation irel = rel.getInverse();
 					if (all_relations.contains(rel)) {
 						subj_vals_map.get(rel).add(link.getTarget());
-					} else if (all_relations.contains(irel)) {
-						subj_vals_map.get(rel).add(link.getOwningInstance());
 					}
+
 				});
 				OmlSearch.findAllTypes(subj).stream()
 					.filter(r -> r instanceof Entity)
