@@ -659,6 +659,14 @@ public class CloseDescriptionBundle {
 						}
 					});
 				});
+
+				OmlSearch.findLinkAssertionsWithTarget(subj).forEach(li -> {
+					final Relation rel = li.getRelation().getInverse();
+					if (all_relations.contains(rel)) {
+						subj_vals_map.get(rel).add(OmlRead.getSource(li));
+					}
+				});
+
 				OmlSearch.findLinkAssertions(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
 					if (all_relations.contains(rel)) {
