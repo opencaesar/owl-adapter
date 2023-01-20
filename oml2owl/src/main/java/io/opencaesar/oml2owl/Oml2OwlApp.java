@@ -29,10 +29,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.apache.log4j.Appender;
@@ -239,11 +241,15 @@ public class Oml2OwlApp {
 		// get the output OWL folder
 		final File outputCatalogFile = new File(outputCatalogPath);
 		final String outputFolderPath = outputCatalogFile.getParent();
+		final Set<String> outputSchemes = new HashSet<>();
 		
 		// create the equivalent OWL ontologies
         for (Ontology ontology : inputOntologies) {
 			if (ontology != null && !Oml2Owl.isBuiltInOntology(ontology.getIri())) {
 	            var uri = URI.createURI(ontology.getIri());
+	            if (uri.scheme() != null) { 
+	            	outputSchemes.add(uri.scheme());
+	            }
 	            var relativePath = uri.authority()+uri.path();
 				final File outputFile = new File(outputFolderPath+File.separator+relativePath+"."+outputFileExtension);
 				LOGGER.info(("Creating: " + outputFile));
@@ -289,7 +295,7 @@ public class Oml2OwlApp {
 		});
 		
 		// create the output OWL catalog
-		createOutputCatalog(outputCatalogFile);
+		createOutputCatalog(outputCatalogFile, outputSchemes);
 		
 		LOGGER.info("=================================================================");
 		LOGGER.info("                          E N D");
@@ -334,15 +340,15 @@ public class Oml2OwlApp {
 		return omlFiles;
 	}
 	
-	private void createOutputCatalog(final File outputCatalogFile) throws Exception {
+	private void createOutputCatalog(final File outputCatalogFile, Set<String> schemes) throws Exception {
 		LOGGER.info(("Saving: " + outputCatalogFile));
         BufferedWriter bw = new BufferedWriter(new FileWriter(outputCatalogFile));
-        bw.write(
-                "<?xml version='1.0'?>\n" +
-                        "<catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\" prefer=\"public\">\n" +
-                        "\t<rewriteURI uriStartString=\"http://\" rewritePrefix=\"./\" />\n" +
-                        "</catalog>"
-        );
+        bw.write("<?xml version='1.0'?>\n");
+        bw.write("<catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\" prefer=\"public\">\n");
+        for (String scheme : schemes) {
+        	bw.write("\t<rewriteURI uriStartString=\""+scheme+"://\" rewritePrefix=\"./\" />\n");
+        }
+        bw.write("</catalog>");
         bw.close();
 	}
 
