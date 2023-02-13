@@ -329,7 +329,7 @@ public class CloseDescriptionBundle {
 			.map(s -> (SpecializableTerm)s)
 			.forEach(term -> {
 				taxonomy.addVertex(term);
-				OmlRead.getSuperTerms(term).forEach(specialized -> {
+				OmlSearch.findSuperTerms(term).forEach(specialized -> {
 					taxonomy.addVertex(specialized);
 					taxonomy.addEdge(specialized, term);
 				});
@@ -359,7 +359,7 @@ public class CloseDescriptionBundle {
 			.forEach(p -> {
 					graph.addVertex(p);
 					if (p instanceof SpecializableTerm) {
-						OmlRead.getSuperTerms((SpecializableTerm)p).forEach(s -> {
+						OmlSearch.findSuperTerms((SpecializableTerm)p).forEach(s -> {
 							final Property sp = (Property) s;
 							graph.addVertex(sp);
 							graph.addEdge(sp, p);
@@ -405,7 +405,7 @@ public class CloseDescriptionBundle {
 					graph.addVertex(f);
 				if (Objects.nonNull(r))
 					graph.addVertex(r);
-				OmlRead.getSuperTerms(re).forEach(s -> {
+				OmlSearch.findSuperTerms(re).forEach(s -> {
 					if (s instanceof RelationEntity) {
 						final RelationEntity sre = (RelationEntity) s;
 						final Relation sf = sre.getForwardRelation();
@@ -670,7 +670,7 @@ public class CloseDescriptionBundle {
 				OmlSearch.findLinkAssertions(subj).forEach(link -> {
 					final Relation rel = link.getRelation();
 					if (all_relations.contains(rel)) {
-						subj_vals_map.get(rel).add(link.getTarget());
+						subj_vals_map.get(rel).add(OmlRead.getTarget(link));
 					}
 
 				});
@@ -735,7 +735,7 @@ public class CloseDescriptionBundle {
 		 */
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
-			final Collection<Ontology> allOntologies = OmlRead.closure(omlOntology, true, o -> OmlRead.getImportedOntologies(o));
+			final Collection<Ontology> allOntologies = OmlRead.getAllImportedOntologies(omlOntology, true);
 
 			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedScalarProperties = getEntitiesWithRestrictedScalarProperties(allOntologies);
 			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedStructuredProperties = getEntitiesWithRestrictedStructuredProperties(allOntologies);
