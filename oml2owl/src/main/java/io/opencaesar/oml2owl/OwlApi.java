@@ -584,6 +584,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 	}
 
 	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final OWLIndividual object, final OWLAnnotation... annotations) {
+		addObjectProperty(ontology, propertyIri);
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLObjectPropertyAssertionAxiom axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
@@ -596,6 +597,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 	}
 
 	public OWLDataPropertyAssertionAxiom addDataPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final OWLLiteral literal, final OWLAnnotation... annotations) {
+		addDataProperty(ontology, propertyIri);
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
 		final OWLDataPropertyAssertionAxiom axiom = factory.getOWLDataPropertyAssertionAxiom(property, individual, literal, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
