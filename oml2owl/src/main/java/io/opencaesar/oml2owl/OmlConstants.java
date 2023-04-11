@@ -38,6 +38,8 @@ interface OmlConstants extends io.opencaesar.oml.util.OmlConstants {
 
 	static final String RelationEntity = OML_NS + "RelationEntity";
 
+	static final String UnreifiedRelation = OML_NS + "UnreifiedRelation";
+
 	static final String Structure = OML_NS + "Structure";
 
 	static final String forwardRelation = OML_NS + "forwardRelation";

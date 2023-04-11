@@ -1,15 +1,15 @@
 subprojects {
 	group = 'io.opencaesar.adapters'
-	version = '1.4.5'
+	version = '2.0.0'
 	
 	ext.versions = [
-	    oml: '1.+',
-		oml_tools: '1.+',
-		owl_tools: '1.+',
+	    oml: '2.+',
+		oml_tools: '2.+',
 		owl: '5.1.17',
+		owl_tools: '+',
 		jcommander: '1.72',
 		log4j: '1.2.17',
-		slf4j: '1.7.30',
+		slf4j: '1.7.33',
 		junit: '4.12',
 		jgrapht: '1.1.0'
 	]
