@@ -28,6 +28,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -43,6 +45,8 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -196,7 +200,7 @@ public class Oml2OwlApp {
 		OmlXMIResourceFactory.register();
 		OmlJsonResourceFactory.register();
 		final ResourceSet inputResourceSet = new ResourceSetImpl();
-		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
+		inputResourceSet.eAdapters().add(new ECrossReferenceAdapterEx());
 		
 		final File inputCatalogFile = new File(inputCatalogPath);
 		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
@@ -263,12 +267,14 @@ public class Oml2OwlApp {
 		// run the vocabulary bundle closure algorithm
 		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof VocabularyBundle).forEach(entry -> {
 			LOGGER.info("Closing vocabulary bundle: "+entry.getKey().getURI());
+			switchECrossReferenceAdapter(entry.getKey());
 			new CloseVocabularyBundleToOwl(entry.getKey(), entry.getValue(), disjointUnions, owl2api).run();
 		});
 		
 		// run the description bundle closure algorithm
 		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof DescriptionBundle).forEach(entry -> {
 			LOGGER.info("Closing description bundle: "+entry.getKey().getURI());
+			switchECrossReferenceAdapter(entry.getKey());
 			new CloseDescriptionBundleToOwl(entry.getKey(), entry.getValue(), owl2api).run();
 		});
 		
@@ -302,6 +308,14 @@ public class Oml2OwlApp {
 		LOGGER.info("=================================================================");
 	}
 
+	private void switchECrossReferenceAdapter(Resource r) {
+		final var allResoruces = OmlRead.getAllImportedOntologies(OmlRead.getOntology(r), true).stream()
+				.map(i -> i.eResource())
+				.collect(Collectors.toSet());
+        final var adapter = (ECrossReferenceAdapterEx) ECrossReferenceAdapter.getCrossReferenceAdapter(r.getResourceSet());
+        adapter.setAllResources(allResoruces);
+	}
+	
 	private URI resolveRootOntologyIri(String rootOntologyIri, OmlCatalog catalog) throws IOException {
 		final URI resolved = URI.createURI(catalog.resolveURI(rootOntologyIri));
 		
@@ -417,7 +431,7 @@ public class Oml2OwlApp {
 			}
 		}
 
-		private static HashMap<String, OWLDocumentFormat> extensions = new HashMap<>();
+		private static Map<String, OWLDocumentFormat> extensions = new HashMap<>();
 
 		static {
 			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
@@ -440,7 +454,7 @@ public class Oml2OwlApp {
 		// See https://github.com/owlcs/owlapi/issues/1002
 		// See https://github.com/owlcs/owlapi/pull/1003
 
-		private static HashMap<String, Function<OWLOntology,OWLStorer>> storers = new HashMap<>();
+		private static Map<String, Function<OWLOntology,OWLStorer>> storers = new HashMap<>();
 
 		private static OWLStorer createQuadOntologyStorer(OWLDocumentFormatFactory factory, OWLOntology owlOntology) {
 			return owlOntology
@@ -459,4 +473,27 @@ public class Oml2OwlApp {
 		}
 	}
 
+	private class ECrossReferenceAdapterEx extends ECrossReferenceAdapter {
+		
+		private Set<Resource> allResources = Collections.emptySet();
+		
+		public void setAllResources(Set<Resource> allResources) {
+			this.allResources = allResources;
+		}
+
+		@Override
+		public Collection<EStructuralFeature.Setting> getInverseReferences(EObject eObject) {
+			var references = super.getInverseReferences(eObject);
+			if (!allResources.isEmpty()) {
+				for (var i = references.iterator(); i.hasNext();) {
+					var setting = i.next();
+					if (!allResources.contains(setting.getEObject().eResource())) {
+						i.remove();
+					}
+				}
+			}
+			return references;
+		}
+	}
+	
 }
