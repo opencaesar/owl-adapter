@@ -21,17 +21,12 @@ package io.opencaesar.oml2owl;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.eclipse.emf.ecore.resource.Resource;
-import org.jgrapht.Graph;
-import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.TransitiveClosure;
 import org.jgrapht.alg.util.NeighborCache;
-import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.jgrapht.traverse.DepthFirstIterator;
@@ -346,9 +341,9 @@ public class CloseDescriptionBundle {
 	 * @return map from property to property graph
 	 * @throws UnsupportedOperationException
 	 */
-	private final static HashMap<Property, Graph<Property, DefaultEdge>> getPropertyTrees(
+	private final static HashMap<Property, Set<Property>> getPropertyTrees(
 			final Collection<Ontology> allOntologies) throws UnsupportedOperationException {
-		final HashMap<Property, Graph<Property, DefaultEdge>> map = new HashMap<>();
+		final HashMap<Property, Set<Property>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Property, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
 		allOntologies.stream()
@@ -367,15 +362,14 @@ public class CloseDescriptionBundle {
 					}
 				});
 
-		final List<Set<Property>> components = new ConnectivityInspector<>(graph)
-				.connectedSets();
-		components.forEach(component -> {
-			final AsSubgraph<Property, DefaultEdge> subgraph = new AsSubgraph<>(graph, component);
-			final List<Property> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
-					.collect(Collectors.toList());
-			if (roots.size() > 1)
-				throw new UnsupportedOperationException("multiply-rooted property tree");
-			map.put((Property) roots.get(0), subgraph);
+		graph.vertexSet().forEach(property -> {
+			var subProperties = new HashSet<Property>();
+			subProperties.add(property);
+			var i = new DepthFirstIterator<>(graph, property);
+			while (i.hasNext()) {
+				subProperties.add(i.next());
+			}
+			map.put(property, subProperties);
 		});
 
 		return map;
@@ -388,9 +382,9 @@ public class CloseDescriptionBundle {
 	 * @return map from relation to relation graph
 	 * @throws UnsupportedOperationException
 	 */
-	private final static HashMap<Relation, Graph<Relation, DefaultEdge>> getRelationTrees(
+	private final static HashMap<Relation, Set<Relation>> getRelationTrees(
 			final Collection<Ontology> allOntologies) throws UnsupportedOperationException {
-		final HashMap<Relation, Graph<Relation, DefaultEdge>> map = new HashMap<>();
+		final HashMap<Relation, Set<Relation>> map = new HashMap<>();
 		final DirectedAcyclicGraph<Relation, DefaultEdge> graph = new DirectedAcyclicGraph<>(DefaultEdge.class);
 
 		allOntologies.stream()
@@ -422,15 +416,14 @@ public class CloseDescriptionBundle {
 				});
 			});
 
-		final List<Set<Relation>> components = new ConnectivityInspector<>(graph)
-				.connectedSets();
-		components.forEach(component -> {
-			final AsSubgraph<Relation, DefaultEdge> subgraph = new AsSubgraph<>(graph, component);
-			final List<Relation> roots = subgraph.vertexSet().stream().filter(v -> subgraph.inDegreeOf(v) == 0)
-					.collect(Collectors.toList());
-			if (roots.size() > 1)
-				throw new UnsupportedOperationException("multiply-rooted relation tree");
-			map.put((Relation) roots.get(0), subgraph);
+		graph.vertexSet().forEach(relation -> {
+			var subRelations = new HashSet<Relation>();
+			subRelations.add(relation);
+			var i = new DepthFirstIterator<>(graph, relation);
+			while (i.hasNext()) {
+				subRelations.add(i.next());
+			}
+			map.put(relation, subRelations);
 		});
 
 		return map;
@@ -479,7 +472,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<ScalarProperty>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
-			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees) {
+			final HashMap<Property, Set<Property>> propertyTrees) {
 		final HashMap<NamedInstance, HashMap<ScalarProperty, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
@@ -487,9 +480,7 @@ public class CloseDescriptionBundle {
 			
 			final HashSet<Property> all_properties = new HashSet<>();
 			properties.forEach(property -> {
-				final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
-				if (Objects.nonNull(propertyTree))
-					all_properties.addAll(propertyTree.vertexSet());
+				all_properties.addAll(propertyTrees.get(property));
 			});
 			
 			instances.forEach(instance -> {
@@ -520,18 +511,11 @@ public class CloseDescriptionBundle {
 					.forEach(r -> subj_vals_map.get(r.getProperty()).add(r.getValue()));
 			
 				properties.forEach(property -> {
-					final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
-					if (Objects.nonNull(propertyTree)) {
-						final DepthFirstIterator<Property, DefaultEdge> dfs = new DepthFirstIterator<>(propertyTree, property);
-						while (dfs.hasNext()) {
-							final ScalarProperty prop = (ScalarProperty) dfs.next();
-							final HashSet<Literal> vals = subj_vals_map.get(prop);
-							propertyTree.outgoingEdgesOf(prop).forEach(edge -> {
-								vals.addAll(subj_vals_map.get(propertyTree.getEdgeTarget(edge)));
-							});
-							subj_count_map.put(prop, vals.size());
-						}
+					final HashSet<Literal> vals = subj_vals_map.get(property);
+					for (Property prop : propertyTrees.get(property)) {
+						vals.addAll(subj_vals_map.get(prop));
 					}					
+					subj_count_map.put(property, vals.size());
 				});
 			});			
 		});
@@ -553,7 +537,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<StructuredProperty>> entitiesWithRestrictedProperties,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
-			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees) {
+			final HashMap<Property, Set<Property>> propertyTrees) {
 		final HashMap<NamedInstance, HashMap<StructuredProperty, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedProperties.forEach((entity, properties) -> {
@@ -561,9 +545,7 @@ public class CloseDescriptionBundle {
 			
 			final HashSet<Property> all_properties = new HashSet<>();
 			properties.forEach(property -> {
-				final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
-				if (Objects.nonNull(propertyTree))
-					all_properties.addAll(propertyTree.vertexSet());
+				all_properties.addAll(propertyTrees.get(property));
 			});
 			
 			instances.forEach(instance -> {
@@ -594,18 +576,11 @@ public class CloseDescriptionBundle {
 					.forEach(r -> subj_vals_map.get(r.getProperty()).add(r.getValue()));
 				
 				properties.forEach(property -> {
-					final Graph<Property, DefaultEdge> propertyTree = getPropertyTree(propertyTrees, property);
-					if (Objects.nonNull(propertyTree)) {
-						final DepthFirstIterator<Property, DefaultEdge> dfs = new DepthFirstIterator<>(propertyTree, property);
-						while (dfs.hasNext()) {
-							final StructuredProperty prop = (StructuredProperty) dfs.next();
-							final HashSet<StructureInstance> vals = subj_vals_map.get(prop);
-							propertyTree.outgoingEdgesOf(prop).forEach(edge -> {
-								vals.addAll(subj_vals_map.get(propertyTree.getEdgeTarget(edge)));
-							});
-							subj_count_map.put(prop, vals.size());
-						}
+					final HashSet<StructureInstance> vals = subj_vals_map.get(property);
+					for (Property prop : propertyTrees.get(property)) {
+						vals.addAll(subj_vals_map.get(prop));
 					}					
+					subj_count_map.put(property, vals.size());
 				});
 			});			
 		});
@@ -627,7 +602,7 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations,
 			final HashMap<Entity, HashSet<NamedInstance>> entityInstances,
 			final NeighborCache<SpecializableTerm, DefaultEdge> neighborCache,
-			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees) {
+			final HashMap<Relation, Set<Relation>> relationTrees) {
 		final HashMap<NamedInstance, HashMap<Relation, Integer>> map = new HashMap<>();
 		
 		entitiesWithRestrictedRelations.forEach((entity, relations) -> {
@@ -635,9 +610,7 @@ public class CloseDescriptionBundle {
 
 			final HashSet<Relation> all_relations = new HashSet<>();
 			relations.forEach(relation -> {
-				final Graph<Relation, DefaultEdge> relationTree = getRelationTree(relationTrees, relation);
-				if (Objects.nonNull(relationTree))
-					all_relations.addAll(relationTree.vertexSet());
+				all_relations.addAll(relationTrees.get(relation));
 			});
 			
 			instances.forEach(instance -> {
@@ -683,18 +656,11 @@ public class CloseDescriptionBundle {
 					.forEach(r -> subj_vals_map.get(r.getRelation()).add(r.getTarget()));
 
 				relations.forEach(relation -> {
-					final Graph<Relation, DefaultEdge> relationTree = getRelationTree(relationTrees, relation);
-					if (Objects.nonNull(relationTree)) {
-						final DepthFirstIterator<Relation, DefaultEdge> dfs = new DepthFirstIterator<>(relationTree, relation);
-						while (dfs.hasNext()) {
-							final Relation rel = dfs.next();
-							final HashSet<NamedInstance> vals = subj_vals_map.get(rel);
-							relationTree.outgoingEdgesOf(rel).forEach(edge -> {
-								vals.addAll(subj_vals_map.get(relationTree.getEdgeTarget(edge)));
-							});
-							subj_count_map.put(rel, vals.size());
-						}
+					final HashSet<NamedInstance> vals = subj_vals_map.get(relation);
+					for (Relation rel : relationTrees.get(relation)) {
+						vals.addAll(subj_vals_map.get(rel));
 					}					
+					subj_count_map.put(relation, vals.size());
 				});
 			});			
 		});
@@ -742,8 +708,8 @@ public class CloseDescriptionBundle {
 			final HashMap<Entity, HashSet<Relation>> entitiesWithRestrictedRelations = getEntitiesWithRestrictedRelations(allOntologies);
 			
 			final NeighborCache<SpecializableTerm, DefaultEdge> termSpecializations = getTermSpecializations(allOntologies);
-			final HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees = getPropertyTrees(allOntologies);
-			final HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees = getRelationTrees(allOntologies);
+			final HashMap<Property, Set<Property>> propertyTrees = getPropertyTrees(allOntologies);
+			final HashMap<Relation, Set<Relation>> relationTrees = getRelationTrees(allOntologies);
 
 			final HashSet<Entity> allRestrictedEntities = new HashSet<Entity>();
 			allRestrictedEntities.addAll(entitiesWithRestrictedScalarProperties.keySet());
@@ -797,44 +763,6 @@ public class CloseDescriptionBundle {
 			});
 
 		}
-	}
-
-	/**
-	 * Returns the Property Tree for a given Property
-	 * 
-	 * @param propertyTrees
-	 * @param property
-	 * @return
-	 */
-	private static Graph<Property, DefaultEdge> getPropertyTree(HashMap<Property, Graph<Property, DefaultEdge>> propertyTrees, Property property) {
-		final Graph<Property, DefaultEdge> thePropertyTree = propertyTrees.get(property);
-		if (thePropertyTree == null) {
-			for (Graph<Property, DefaultEdge> aPropertyTree : propertyTrees.values()) {
-				if (aPropertyTree.vertexSet().contains(property)) {
-					return aPropertyTree;
-				}
-			}
-		}
-		return thePropertyTree;
-	}
-
-	/**
-	 * Returns the Relation Tree for a given Relation
-	 * 
-	 * @param relationTrees
-	 * @param relation
-	 * @return
-	 */
-	private static Graph<Relation, DefaultEdge> getRelationTree(HashMap<Relation, Graph<Relation, DefaultEdge>> relationTrees, Relation relation) {
-		final Graph<Relation, DefaultEdge> theRelationTree = relationTrees.get(relation);
-		if (theRelationTree == null) {
-			for (Graph<Relation, DefaultEdge> aRelationTree : relationTrees.values()) {
-				if (aRelationTree.vertexSet().contains(relation)) {
-					return aRelationTree;
-				}
-			}
-		}
-		return theRelationTree;
 	}
 
 }
