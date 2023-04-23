@@ -70,7 +70,7 @@ public class CloseVocabularyBundle {
 	 * @return concept taxonomy
 	 */
 	private Taxonomy omlConceptTaxonomy(final Collection<Vocabulary> allVocabularies) {
-		final Map<Entity, ClassExpression.Singleton> singletonMap = new HashMap<Entity, ClassExpression.Singleton>();
+		final Map<Entity, ClassExpression.Unitary> unitaryMap = new HashMap<Entity, ClassExpression.Unitary>();
 		final List<ClassExpression>  vertexList = new ArrayList<ClassExpression>();
 		final List<ClassExpression>  edgeList = new ArrayList<ClassExpression>();
 
@@ -80,8 +80,8 @@ public class CloseVocabularyBundle {
 				.map(e -> (Entity)e)
 				.filter(e -> !e.isRef())
 				.forEach(entity -> {
-					final ClassExpression.Singleton s = new ClassExpression.Singleton((entity.getIri()));
-					singletonMap.put(entity, s);
+					final ClassExpression.Unitary s = new ClassExpression.Unitary((entity.getIri()));
+					unitaryMap.put(entity, s);
 					vertexList.add(s);
 			});
 		});
@@ -91,11 +91,11 @@ public class CloseVocabularyBundle {
 				.filter(s -> s instanceof SpecializableTerm)
 				.flatMap(t -> ((SpecializableTerm)t).getOwnedSpecializations().stream())
 				.forEach(axiom -> {
-					final ClassExpression.Singleton superSingleton = singletonMap.get(axiom.getSuperTerm());
-					final ClassExpression.Singleton subSingleton = singletonMap.get(axiom.getSubTerm());
-					if (superSingleton != null && subSingleton != null) {
-						edgeList.add(superSingleton);
-						edgeList.add(subSingleton);
+					final ClassExpression.Unitary superUnitary = unitaryMap.get(axiom.getSuperTerm());
+					final ClassExpression.Unitary subUnitary = unitaryMap.get(axiom.getSubTerm());
+					if (superUnitary != null && subUnitary != null) {
+						edgeList.add(superUnitary);
+						edgeList.add(subUnitary);
 					}
 			});
 		});
