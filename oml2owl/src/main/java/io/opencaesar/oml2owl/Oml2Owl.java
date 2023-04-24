@@ -131,28 +131,28 @@ class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseVocabulary(final Vocabulary vocabulary) {
-		ontology = owl.createOntology(vocabulary.getIri());
+		ontology = owl.createOntology(vocabulary.getPrefix(), vocabulary.getNamespace());
 		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Vocabulary)));
 		return null;
 	}
 
 	@Override
 	public Void caseVocabularyBundle(final VocabularyBundle bundle) {
-		ontology = owl.createOntology(bundle.getIri());
+		ontology = owl.createOntology(bundle.getPrefix(), bundle.getNamespace());
 		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.VocabularyBundle)));
 		return null;
 	}
 
 	@Override
 	public Void caseDescription(final Description description) {
-		ontology = owl.createOntology(description.getIri());
+		ontology = owl.createOntology(description.getPrefix(), description.getNamespace());
 		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Description)));
 		return null;
 	}
 
 	@Override
 	public Void caseDescriptionBundle(final DescriptionBundle bundle) {
-		ontology = owl.createOntology(bundle.getIri());
+		ontology = owl.createOntology(bundle.getPrefix(), bundle.getNamespace());
 		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.DescriptionBundle)));
 		return null;
 	}

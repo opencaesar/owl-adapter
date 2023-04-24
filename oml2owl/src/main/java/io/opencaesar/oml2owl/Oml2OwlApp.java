@@ -58,6 +58,7 @@ import org.semanticweb.owlapi.formats.N3DocumentFormat;
 import org.semanticweb.owlapi.formats.NQuadsDocumentFormat;
 import org.semanticweb.owlapi.formats.NQuadsDocumentFormatFactory;
 import org.semanticweb.owlapi.formats.NTriplesDocumentFormat;
+import org.semanticweb.owlapi.formats.PrefixDocumentFormat;
 import org.semanticweb.owlapi.formats.RDFJsonDocumentFormat;
 import org.semanticweb.owlapi.formats.RDFJsonLDDocumentFormat;
 import org.semanticweb.owlapi.formats.RDFJsonLDDocumentFormatFactory;
@@ -72,7 +73,6 @@ import org.semanticweb.owlapi.model.OWLDocumentFormat;
 import org.semanticweb.owlapi.model.OWLDocumentFormatFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
-import org.semanticweb.owlapi.model.OWLOntologyStorageException;
 import org.semanticweb.owlapi.model.OWLStorer;
 import org.semanticweb.owlapi.rio.RioStorer;
 
@@ -282,7 +282,10 @@ public class Oml2OwlApp {
 		outputFiles.forEach((file, owlOntology) -> {
 			LOGGER.info("Saving: "+file);
 			try {
-				OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension);
+				OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension).getDeclaredConstructor().newInstance();
+				if (format instanceof PrefixDocumentFormat) {
+					format.asPrefixOWLDocumentFormat().copyPrefixesFrom(owlOntology.getFormat().asPrefixOWLDocumentFormat());
+				}
 				IRI documentIRI = IRI.create(file);
 				// Workaround
 				// See https://github.com/owlcs/owlapi/issues/1002
@@ -293,9 +296,7 @@ public class Oml2OwlApp {
 				} else {
 					ontologyManager.saveOntology(owlOntology, format, documentIRI);
 				}
-			} catch (OWLOntologyStorageException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		});
@@ -431,23 +432,23 @@ public class Oml2OwlApp {
 			}
 		}
 
-		private static Map<String, OWLDocumentFormat> extensions = new HashMap<>();
+		private static Map<String, Class<? extends OWLDocumentFormat>> extensions = new HashMap<>();
 
 		static {
-			extensions.put("fss", new FunctionalSyntaxDocumentFormat());
+			extensions.put("fss", FunctionalSyntaxDocumentFormat.class);
 			// triple formats
-			extensions.put("owl", new RDFXMLDocumentFormat());
-			extensions.put("rdf", new RDFXMLDocumentFormat());
-			extensions.put("xml", new RDFXMLDocumentFormat());
-			extensions.put("n3", new N3DocumentFormat());
-			extensions.put("ttl", new RioTurtleDocumentFormat());
-			extensions.put("rj", new RDFJsonDocumentFormat());
-			extensions.put("nt", new NTriplesDocumentFormat());
+			extensions.put("owl", RDFXMLDocumentFormat.class);
+			extensions.put("rdf", RDFXMLDocumentFormat.class);
+			extensions.put("xml", RDFXMLDocumentFormat.class);
+			extensions.put("n3", N3DocumentFormat.class);
+			extensions.put("ttl", RioTurtleDocumentFormat.class);
+			extensions.put("rj", RDFJsonDocumentFormat.class);
+			extensions.put("nt", NTriplesDocumentFormat.class);
 			// quad formats
-			extensions.put("jsonld", new RDFJsonLDDocumentFormat());
-			extensions.put("trig", new TrigDocumentFormat());
-			extensions.put("trix", new TrixDocumentFormat());
-			extensions.put("nq", new NQuadsDocumentFormat());
+			extensions.put("jsonld", RDFJsonLDDocumentFormat.class);
+			extensions.put("trig", TrigDocumentFormat.class);
+			extensions.put("trix", TrixDocumentFormat.class);
+			extensions.put("nq", NQuadsDocumentFormat.class);
 		}
 
 		// Workaround.
