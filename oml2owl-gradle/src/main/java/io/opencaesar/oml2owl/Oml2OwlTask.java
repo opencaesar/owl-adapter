@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.xml.resolver.Catalog;
 import org.apache.xml.resolver.CatalogEntry;
@@ -45,6 +46,11 @@ import io.opencaesar.oml.util.OmlCatalog;
  * A gradle task to invoke the Oml2Owl tool 
  */
 public abstract class Oml2OwlTask extends DefaultTask {
+	
+	private final static List<String> BUILT_IN_ONTOLOGIES_PATHS = 
+			Oml2Owl.BUILT_IN_ONTOLOGIES.stream()
+				.map(i -> i.replace("http://", ""))
+				.collect(Collectors.toList());
 	
 	/**
 	 * Creates a new Oml2OwlTask object
@@ -132,7 +138,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     }
     
 	/**
-	 * The collection of input Owl files referenced by the output Owl catalog
+	 * The collection of output Owl files referenced by the output Owl catalog
 	 * 
 	 * @return ConfigurableFileCollection
 	 */
@@ -158,8 +164,10 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	    							if (j != -1) {
 	    								relativePath = relativePath.substring(0, j);
 	    							}
-	    							relativePath = relativePath+"."+getOutputFileExtension().getOrElse("owl");
-	    							outputFiles.add(new File(outputFolderPath+File.separator+relativePath));
+	    							if (!BUILT_IN_ONTOLOGIES_PATHS.contains(relativePath)) {
+		    							relativePath = relativePath+"."+getOutputFileExtension().getOrElse("owl");
+		    							outputFiles.add(new File(outputFolderPath+File.separator+relativePath));
+	    							}
 	    						}
 	    					}
 	    				}
