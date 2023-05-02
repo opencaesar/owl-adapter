@@ -5,8 +5,8 @@ subprojects {
 	ext.versions = [
 	    oml: '2.+',
 		oml_tools: '2.+',
+		owl_tools: '2.+',
 		owl: '5.1.17',
-		owl_tools: '1.2.0',
 		jcommander: '1.72',
 		log4j: '1.2.17',
 		slf4j: '1.7.33',
