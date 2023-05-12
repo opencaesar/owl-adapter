@@ -1,3 +1,5 @@
+apply from: "${rootDir}/gradle/maven-deployment.gradle"
+
 ext.title = 'Oml to Owl Gradle'
 description = 'An gradle interface to run Oml to Owl'
 

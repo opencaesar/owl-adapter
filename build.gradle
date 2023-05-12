@@ -22,7 +22,6 @@ subprojects {
 	apply plugin: 'java'
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
-	apply from: "${rootDir}/gradle/maven-deployment.gradle"
 	
 	sourceCompatibility = '11'
 	targetCompatibility = '11'

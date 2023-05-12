@@ -123,6 +123,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		try {
 			var iri = namespace.substring(0, namespace.length()-1);
 			OWLOntology ontology = manager.createOntology(IRI.create(iri));
+			ontology.getFormat().asPrefixOWLDocumentFormat().setDefaultPrefix(namespace);
 			ontology.getFormat().asPrefixOWLDocumentFormat().setPrefix(prefix, namespace);
 			return ontology;
 		} catch (OWLOntologyCreationException e) {

@@ -838,7 +838,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 			if (entity.getForwardRelation() != null) {
 				return entity.getOntology().getNamespace() + entity.getForwardRelation().getName();
 			} else {
-				var name = entity.isRef() ? entity.getRef().getName() : entity.getName();
+				var name = entity.resolve().getName();
 				return entity.getOntology().getNamespace() + "has"+toFirstUpper(name)+"Forward";
 			}
 		}

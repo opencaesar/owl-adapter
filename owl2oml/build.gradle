@@ -1,11 +1,9 @@
 apply plugin: 'application'
 
-apply from: "${rootDir}/gradle/maven-deployment.gradle"
-
-ext.title = 'Oml to Owl'
-description = 'Oml to Owl Interface'
-mainClassName = 'io.opencaesar.oml2owl.Oml2OwlApp'
-applicationName = 'oml2owl'
+ext.title = 'Owl to Oml'
+description = 'Owl to Oml Interface'
+mainClassName = 'io.opencaesar.owl2oml.Owl2OmlApp'
+applicationName = 'owl2oml'
 
 dependencies {
 	implementation "com.beust:jcommander:${versions.jcommander}"
@@ -14,9 +12,6 @@ dependencies {
 	testImplementation "junit:junit:${versions.junit}"
 
 	implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
-	implementation "io.opencaesar.oml:oml-validate:${versions.oml_tools}"
-	implementation "io.opencaesar.owl:owl-close-world:${versions.owl_tools}"
 	
 	implementation "net.sourceforge.owlapi:owlapi-distribution:${versions.owl}"
-	implementation "org.jgrapht:jgrapht-core:${versions.jgrapht}"
 }

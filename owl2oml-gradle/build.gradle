@@ -1,0 +1,8 @@
+ext.title = 'Owl to Oml Gradle'
+description = 'An gradle interface to run Owl to Oml'
+
+dependencies {
+	implementation gradleApi()
+    implementation project (':owl2oml')
+	implementation "io.opencaesar.oml:io.opencaesar.oml.dsl:${versions.oml}"
+}
