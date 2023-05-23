@@ -64,6 +64,7 @@ import io.opencaesar.oml.InstanceEnumerationAxiom;
 import io.opencaesar.oml.IntegerLiteral;
 import io.opencaesar.oml.KeyAxiom;
 import io.opencaesar.oml.Literal;
+import io.opencaesar.oml.LiteralEnumerationAxiom;
 import io.opencaesar.oml.Member;
 import io.opencaesar.oml.NamedInstance;
 import io.opencaesar.oml.Ontology;
@@ -87,6 +88,7 @@ import io.opencaesar.oml.ReverseRelation;
 import io.opencaesar.oml.Rule;
 import io.opencaesar.oml.SameAsPredicate;
 import io.opencaesar.oml.Scalar;
+import io.opencaesar.oml.ScalarEquivalenceAxiom;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.SpecializationAxiom;
 import io.opencaesar.oml.Structure;
@@ -411,6 +413,50 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	@Override
+	public Void caseScalarEquivalenceAxiom(final ScalarEquivalenceAxiom axiom) {
+		final ArrayList<OWLFacetRestriction> restrictions = new ArrayList<>();
+		if (axiom.getLength() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.LENGTH, owl.getLiteral((axiom.getLength()).longValue())));
+		}
+		if (axiom.getMaxLength() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_LENGTH, owl.getLiteral((axiom.getMaxLength()).longValue())));
+		}
+		if (axiom.getMinLength() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_LENGTH, owl.getLiteral((axiom.getMinLength()).longValue())));
+		}
+		if (axiom.getPattern() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.PATTERN, owl.getLiteral(axiom.getPattern())));
+		}
+		if (axiom.getLanguage() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.LANG_RANGE, owl.getLiteral(axiom.getLanguage())));
+		}
+		if (axiom.getMinInclusive() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_INCLUSIVE, getLiteral(axiom.getMinInclusive())));
+		}
+		if (axiom.getMaxInclusive() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_INCLUSIVE, getLiteral(axiom.getMaxInclusive())));
+		}
+		if (axiom.getMinExclusive() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_EXCLUSIVE, getLiteral(axiom.getMinExclusive())));
+		}
+		if (axiom.getMaxExclusive() != null) {
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_EXCLUSIVE, getLiteral(axiom.getMaxExclusive())));
+		}
+		
+		if (restrictions.isEmpty()) {// alias scalar
+			owl.addDatatypeDefinition(ontology, 
+					axiom.getSubScalar().getIri(),
+					axiom.getSuperScalar().getIri());
+		} else { // scalar restriction
+			owl.addDatatypeDefinition(ontology, 
+					axiom.getSubScalar().getIri(), 
+					axiom.getSuperScalar().getIri(),
+					restrictions.toArray(new OWLFacetRestriction[0]));
+		}
+		return null;
+	}
+
+	@Override
 	public Void casePropertyEquivalenceAxiom(final PropertyEquivalenceAxiom axiom) {
 		if (axiom.getSubProperty() instanceof ScalarProperty) {
 			owl.addEquivalentDataProperties(ontology, 
@@ -528,11 +574,22 @@ class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseInstanceEnumerationAxiom(final InstanceEnumerationAxiom axiom) {
-		List<OWLNamedIndividual> individuals = axiom.getInstances().stream()
+		var individuals = axiom.getInstances().stream()
 				.map(i -> owl.getNamedIndividual(i.getIri()))
 				.collect(Collectors.toList());
-		if (!individuals.isEmpty()) {
+		if (individuals.size() > 0) {
 			owl.addObjectOneOf(ontology, axiom.getEnumeratedConcept().getIri(), individuals);
+		}
+		return null;
+	}
+
+	@Override
+	public Void caseLiteralEnumerationAxiom(final LiteralEnumerationAxiom axiom) {
+		var literals = axiom.getLiterals().stream()
+				.map(i -> getLiteral(i))
+				.toArray(OWLLiteral[]::new);
+		if (literals.length > 0) {
+			owl.addDataOneOf(ontology, axiom.getEnumeratedScalar().getIri(), literals);
 		}
 		return null;
 	}
@@ -568,111 +625,69 @@ class Oml2Owl extends OmlSwitch<Void> {
 		}
 	}
 
-	protected void specializes(final Term specific, final Term general, final OWLAnnotation...annotations) {
+	protected void specializes(final Term specific, final Term general) {
 		if (specific instanceof Aspect && general instanceof Aspect) {
-			specializes((Aspect) specific, (Aspect) general, annotations);
+			specializes((Aspect) specific, (Aspect) general);
 		} else if (specific instanceof Concept && general instanceof Aspect) {
-			specializes((Concept) specific, (Aspect) general, annotations);
+			specializes((Concept) specific, (Aspect) general);
 		} else if (specific instanceof Concept && general instanceof Concept) {
-			specializes((Concept) specific, (Concept) general, annotations);
+			specializes((Concept) specific, (Concept) general);
 		} else if (specific instanceof RelationEntity && general instanceof Aspect) {
-			specializes((RelationEntity) specific, (Aspect) general, annotations);
+			specializes((RelationEntity) specific, (Aspect) general);
 		} else if (specific instanceof RelationEntity && general instanceof RelationEntity) {
-			specializes((RelationEntity) specific, (RelationEntity) general, annotations);
+			specializes((RelationEntity) specific, (RelationEntity) general);
 		} else if (specific instanceof Scalar && general instanceof Scalar) {
-			specializes((Scalar) specific, (Scalar) general, annotations);
+			specializes((Scalar) specific, (Scalar) general);
 		} else if (specific instanceof ScalarProperty && general instanceof ScalarProperty) {
-			specializes((ScalarProperty) specific, (ScalarProperty) general, annotations);
+			specializes((ScalarProperty) specific, (ScalarProperty) general);
 		} else if (specific instanceof Structure && general instanceof Structure) {
-			specializes((Structure) specific, (Structure) general, annotations);
+			specializes((Structure) specific, (Structure) general);
 		} else if (specific instanceof StructuredProperty && general instanceof StructuredProperty) {
-			specializes((StructuredProperty) specific, (StructuredProperty) general, annotations);
+			specializes((StructuredProperty) specific, (StructuredProperty) general);
 		} else if (specific instanceof Relation && general instanceof Relation) {
-			specializes((Relation) specific, (Relation) general, annotations);
+			specializes((Relation) specific, (Relation) general);
 		}
 	}
 
-	protected void specializes(final Concept specific, final Concept general, final OWLAnnotation... annotations) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final Concept specific, final Concept general) {
+		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final Concept specific, final Aspect general, final OWLAnnotation... annotations) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final Concept specific, final Aspect general) {
+		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final Aspect specific, final Aspect general, final OWLAnnotation... annotations) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final Aspect specific, final Aspect general) {
+		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final RelationEntity specific, final RelationEntity general, final OWLAnnotation... annotations) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri(), annotations);
-		owl.addSubObjectPropertyOf(ontology, getForwardIri(specific), getForwardIri(general), annotations);
+	protected void specializes(final RelationEntity specific, final RelationEntity general) {
+		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
+		owl.addSubObjectPropertyOf(ontology, getForwardIri(specific), getForwardIri(general));
 	}
 
-	protected void specializes(final RelationEntity specific, final Aspect general, final OWLAnnotation... annotations) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final RelationEntity specific, final Aspect general) {
+		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final Structure specific, final Structure general, final OWLAnnotation... annotations) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final Structure specific, final Structure general) {
+		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final Scalar specific, final Scalar general, final OWLAnnotation... annotations) {
-		final ArrayList<OWLFacetRestriction> restrictions = new ArrayList<>();
-		if (specific.getLength() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.LENGTH, owl.getLiteral((specific.getLength()).longValue())));
-		}
-		if (specific.getMaxLength() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_LENGTH, owl.getLiteral((specific.getLength()).longValue())));
-		}
-		if (specific.getMinLength() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_LENGTH, owl.getLiteral((specific.getLength()).longValue())));
-		}
-		if (specific.getPattern() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.PATTERN, owl.getLiteral(specific.getPattern())));
-		}
-		if (specific.getLanguage() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.LANG_RANGE, owl.getLiteral(specific.getLanguage())));
-		}
-		if (specific.getMinInclusive() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_INCLUSIVE, getLiteral(specific.getMinInclusive())));
-		}
-		if (specific.getMaxInclusive() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_INCLUSIVE, getLiteral(specific.getMaxInclusive())));
-		}
-		if (specific.getMinExclusive() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_EXCLUSIVE, getLiteral(specific.getMinExclusive())));
-		}
-		if (specific.getMaxExclusive() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_EXCLUSIVE, getLiteral(specific.getMaxExclusive())));
-		}
-		
-		if (!restrictions.isEmpty()) {
-			owl.addDatatypeDefinition(ontology, 
-					specific.getIri(), 
-					general.getIri(),
-					restrictions.toArray(new OWLFacetRestriction[0]),
-					annotations);
-		} else if (specific.getOwnedEnumeration() != null && !specific.getOwnedEnumeration().getLiterals().isEmpty()) {
-			owl.addDataOneOf(ontology, specific.getIri(), specific.getOwnedEnumeration().getLiterals().stream().map(i -> getLiteral(i)).toArray(OWLLiteral[]::new));
-		} else { // the alias case
-			owl.addDatatypeDefinition(ontology, 
-					specific.getIri(),
-					general.getIri(),
-					annotations);
-		}
+	protected void specializes(final Scalar specific, final Scalar general) {
+		/* no impl since specialization is only permitted between standard scalars which we do not translate to owl */
 	}
 
-	protected void specializes(final ScalarProperty specific, final ScalarProperty general, final OWLAnnotation... annotations) {
-		owl.addSubDataPropertyOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final ScalarProperty specific, final ScalarProperty general) {
+		owl.addSubDataPropertyOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final StructuredProperty specific, final StructuredProperty general, final OWLAnnotation... annotations) {
-		owl.addSubObjectPropertyOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final StructuredProperty specific, final StructuredProperty general) {
+		owl.addSubObjectPropertyOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final Relation specific, final Relation general, final OWLAnnotation... annotations) {
-		owl.addSubObjectPropertyOf(ontology, specific.getIri(), general.getIri(), annotations);
+	protected void specializes(final Relation specific, final Relation general) {
+		owl.addSubObjectPropertyOf(ontology, specific.getIri(), general.getIri());
 	}
 
 	protected void appliesTo(final PropertyValueAssertion assertion, final OWLIndividual individual) {
@@ -799,8 +814,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected OWLLiteral getLiteral(final QuotedLiteral literal) {
-		// remove invisible characters from the value
-		String value = literal.getValue().replaceAll("[^\\x20-\\x7e]", "");
+		String value = literal.getValue();
 		if (literal.getType() != null) {
 			return owl.getLiteralWithDatatype(value, literal.getType().getIri());
 		} else if (literal.getLangTag() != null) {
