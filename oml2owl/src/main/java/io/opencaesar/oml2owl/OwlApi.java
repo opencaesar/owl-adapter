@@ -19,6 +19,7 @@
 package io.opencaesar.oml2owl;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLAsymmetricObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLClassExpression;
 import org.semanticweb.owlapi.model.OWLDataAllValuesFrom;
 import org.semanticweb.owlapi.model.OWLDataExactCardinality;
 import org.semanticweb.owlapi.model.OWLDataHasValue;
@@ -43,6 +45,7 @@ import org.semanticweb.owlapi.model.OWLDataOneOf;
 import org.semanticweb.owlapi.model.OWLDataProperty;
 import org.semanticweb.owlapi.model.OWLDataPropertyAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLDataPropertyDomainAxiom;
+import org.semanticweb.owlapi.model.OWLDataPropertyExpression;
 import org.semanticweb.owlapi.model.OWLDataPropertyRangeAxiom;
 import org.semanticweb.owlapi.model.OWLDataSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLDatatype;
@@ -50,6 +53,8 @@ import org.semanticweb.owlapi.model.OWLDatatypeDefinitionAxiom;
 import org.semanticweb.owlapi.model.OWLDatatypeRestriction;
 import org.semanticweb.owlapi.model.OWLDeclarationAxiom;
 import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
+import org.semanticweb.owlapi.model.OWLEquivalentDataPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLEquivalentObjectPropertiesAxiom;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
 import org.semanticweb.owlapi.model.OWLFunctionalDataPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLFunctionalObjectPropertyAxiom;
@@ -65,12 +70,14 @@ import org.semanticweb.owlapi.model.OWLObjectAllValuesFrom;
 import org.semanticweb.owlapi.model.OWLObjectExactCardinality;
 import org.semanticweb.owlapi.model.OWLObjectHasSelf;
 import org.semanticweb.owlapi.model.OWLObjectHasValue;
+import org.semanticweb.owlapi.model.OWLObjectIntersectionOf;
 import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectMinCardinality;
 import org.semanticweb.owlapi.model.OWLObjectOneOf;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLObjectPropertyDomainAxiom;
+import org.semanticweb.owlapi.model.OWLObjectPropertyExpression;
 import org.semanticweb.owlapi.model.OWLObjectPropertyRangeAxiom;
 import org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -84,10 +91,13 @@ import org.semanticweb.owlapi.model.OWLSubObjectPropertyOfAxiom;
 import org.semanticweb.owlapi.model.OWLSymmetricObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLTransitiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.SWRLAtom;
+import org.semanticweb.owlapi.model.SWRLBuiltInAtom;
 import org.semanticweb.owlapi.model.SWRLClassAtom;
+import org.semanticweb.owlapi.model.SWRLDArgument;
 import org.semanticweb.owlapi.model.SWRLDataPropertyAtom;
 import org.semanticweb.owlapi.model.SWRLDataRangeAtom;
 import org.semanticweb.owlapi.model.SWRLDifferentIndividualsAtom;
+import org.semanticweb.owlapi.model.SWRLIArgument;
 import org.semanticweb.owlapi.model.SWRLIndividualArgument;
 import org.semanticweb.owlapi.model.SWRLLiteralArgument;
 import org.semanticweb.owlapi.model.SWRLObjectPropertyAtom;
@@ -109,9 +119,13 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return IRI.create(iri);
 	}
 
-	public OWLOntology createOntology(final String iri) {
+	public OWLOntology createOntology(String prefix, String namespace) {
 		try {
-			return manager.createOntology(IRI.create(iri));
+			var iri = namespace.substring(0, namespace.length()-1);
+			OWLOntology ontology = manager.createOntology(IRI.create(iri));
+			ontology.getFormat().asPrefixOWLDocumentFormat().setDefaultPrefix(namespace);
+			ontology.getFormat().asPrefixOWLDocumentFormat().setPrefix(prefix, namespace);
+			return ontology;
 		} catch (OWLOntologyCreationException e) {
 			e.printStackTrace();
 			return null;
@@ -263,78 +277,54 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLAnonymousIndividual();
 	}
 
-	protected SWRLVariable getSWRLVariable(String variable) {
-		return factory.getSWRLVariable("urn:swrl:var#" + variable);
-	}
-	
 	public SWRLRule addRule(final OWLOntology ontology, final List<SWRLAtom> head, final List<SWRLAtom> body, final OWLAnnotation... annotations) {
 		final SWRLRule axiom = factory.getSWRLRule(body, head, Arrays.asList(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
 	}
 
-	public SWRLClassAtom getClassAtom(final String classIri, final String variable) {
+	public SWRLVariable getSWRLVariable(String variable) {
+		return factory.getSWRLVariable("urn:swrl:var#" + variable);
+	}
+	
+	public SWRLIndividualArgument getSWRLIndividualArgument(final OWLIndividual individual) {
+		return factory.getSWRLIndividualArgument(individual);
+	}
+
+	public SWRLLiteralArgument getSWRLLiteralArgument(final OWLLiteral literal) {
+		return factory.getSWRLLiteralArgument(literal);
+	}
+
+	public SWRLClassAtom getClassAtom(final String classIri, final SWRLIArgument argument) {
 		final OWLClass class_ = factory.getOWLClass(classIri);
-		final SWRLVariable argument = getSWRLVariable(variable);
 		return factory.getSWRLClassAtom(class_, argument);
 	}
 
-	public SWRLDataRangeAtom getDataRangeAtom(final String datatypeIri, final String variable) {
+	public SWRLDataRangeAtom getDataRangeAtom(final String datatypeIri, SWRLDArgument argument) {
 		final OWLDatatype datatype = factory.getOWLDatatype(datatypeIri);
-		final SWRLVariable argument = getSWRLVariable(variable);
 		return factory.getSWRLDataRangeAtom(datatype, argument);
 	}
 
-	public SWRLObjectPropertyAtom getObjectPropertyAtom(final String propertyIri, final String variable1, final String variable2) {
+	public SWRLObjectPropertyAtom getObjectPropertyAtom(final String propertyIri, final SWRLIArgument argument1, final SWRLIArgument argument2) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLVariable argument2 = getSWRLVariable(variable2);
 		return factory.getSWRLObjectPropertyAtom(property, argument1, argument2);
 	}
-
-	public SWRLObjectPropertyAtom getObjectPropertyAtom2(final String propertyIri, final String variable1, final OWLIndividual individual2) {
-		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLIndividualArgument argument2 = factory.getSWRLIndividualArgument(individual2);
-		return factory.getSWRLObjectPropertyAtom(property, argument1, argument2);
-	}
-
-	public SWRLDataPropertyAtom getDataPropertyAtom(final String propertyIri, final String variable1, final String variable2) {
+	
+	public SWRLDataPropertyAtom getDataPropertyAtom(final String propertyIri, final SWRLIArgument argument1, final SWRLDArgument argument2) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLVariable argument2 = getSWRLVariable(variable2);
 		return factory.getSWRLDataPropertyAtom(property, argument1, argument2);
 	}
 
-	public SWRLDataPropertyAtom getDataPropertyAtom2(final String propertyIri, final String variable1, final OWLLiteral literal2) {
-		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLLiteralArgument argument2 = factory.getSWRLLiteralArgument(literal2);
-		return factory.getSWRLDataPropertyAtom(property, argument1, argument2);
-	}
-
-	public SWRLSameIndividualAtom getSameIndividualAtom(final String variable1, final String variable2) {
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLVariable argument2 = getSWRLVariable(variable2);
+	public SWRLSameIndividualAtom getSameIndividualAtom(final SWRLIArgument argument1, final SWRLIArgument argument2) {
 		return factory.getSWRLSameIndividualAtom(argument1, argument2);
 	}
 
-	public SWRLSameIndividualAtom getSameIndividualAtom2(final String variable1, final OWLIndividual individual2) {
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLIndividualArgument argument2 = factory.getSWRLIndividualArgument(individual2);
-		return factory.getSWRLSameIndividualAtom(argument1, argument2);
-	}
-
-	public SWRLDifferentIndividualsAtom getDifferentIndividualsAtom(final String variable1, final String variable2) {
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLVariable argument2 = getSWRLVariable(variable2);
+	public SWRLDifferentIndividualsAtom getDifferentIndividualsAtom(final SWRLIArgument argument1, final SWRLIArgument argument2) {
 		return factory.getSWRLDifferentIndividualsAtom(argument1, argument2);
 	}
 
-	public SWRLDifferentIndividualsAtom getDifferentIndividualsAtom2(final String variable1, final OWLIndividual individual2) {
-		final SWRLVariable argument1 = getSWRLVariable(variable1);
-		final SWRLIndividualArgument argument2 = factory.getSWRLIndividualArgument(individual2);
-		return factory.getSWRLDifferentIndividualsAtom(argument1, argument2);
+	public SWRLBuiltInAtom getBuiltInAtom(final String builtInIri, final List<SWRLDArgument> arguments) {
+		return factory.getSWRLBuiltInAtom(createIri(builtInIri), arguments);
 	}
 
 	public OWLSubClassOfAxiom addSubClassOf(final OWLOntology ontology, final String subIri, final String superIri, final OWLAnnotation... annotations) {
@@ -345,13 +335,54 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addSubClassOfObjectHasSelf(final OWLOntology ontology, final String classIri, final String propertyIri, final OWLAnnotation... annotations) {
-		final OWLClass aClass = factory.getOWLClass(classIri);
-		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final OWLObjectHasSelf hasSelf = factory.getOWLObjectHasSelf(property);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(aClass, hasSelf, checkIfNeeded(annotations));
+	public OWLSubClassOfAxiom addSubClassOf(final OWLOntology ontology, final String subIri, final OWLClassExpression superExpression, final OWLAnnotation... annotations) {
+		final OWLClass subClass = factory.getOWLClass(subIri);
+		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(subClass, superExpression, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
+	}
+
+	public OWLEquivalentClassesAxiom addEquivalentClasses(final OWLOntology ontology, final String classIri, OWLClassExpression equivalentClass, final OWLAnnotation... annotations) {
+		final List<OWLClassExpression> classes = new ArrayList<>();
+		classes.add(factory.getOWLClass(classIri));
+		classes.add(equivalentClass);
+		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(classes, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
+	public OWLEquivalentClassesAxiom addEquivalentClasses(final OWLOntology ontology, final String classIri, String equivalentClassIri, final OWLAnnotation... annotations) {
+		final List<OWLClassExpression> classes = new ArrayList<>();
+		classes.add(factory.getOWLClass(classIri));
+		classes.add(factory.getOWLClass(equivalentClassIri));
+		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(classes, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
+	public OWLEquivalentDataPropertiesAxiom addEquivalentDataProperties(final OWLOntology ontology, final String propertyIri, String equivalentPropertyIri, final OWLAnnotation... annotations) {
+		final List<OWLDataPropertyExpression> properties = new ArrayList<>();
+		properties.add(factory.getOWLDataProperty(propertyIri));
+		properties.add(factory.getOWLDataProperty(equivalentPropertyIri));
+		final OWLEquivalentDataPropertiesAxiom axiom = factory.getOWLEquivalentDataPropertiesAxiom(properties, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
+	public OWLEquivalentObjectPropertiesAxiom addEquivalentObjectProperties(final OWLOntology ontology, final String propertyIri, String equivalentPropertyIri, final OWLAnnotation... annotations) {
+		final List<OWLObjectPropertyExpression> properties = new ArrayList<>();
+		properties.add(factory.getOWLObjectProperty(propertyIri));
+		properties.add(factory.getOWLObjectProperty(equivalentPropertyIri));
+		final OWLEquivalentObjectPropertiesAxiom axiom = factory.getOWLEquivalentObjectPropertiesAxiom(properties, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
+	public OWLObjectIntersectionOf getObjectIntersectionOf(List<String> classIris, List<OWLClassExpression> expressions) {
+		final List<OWLClassExpression> classes = new ArrayList<>();
+		classIris.stream().forEach(i -> classes.add(factory.getOWLClass(i)));
+		classes.addAll(expressions);
+		return factory.getOWLObjectIntersectionOf(classes);
 	}
 
 	public OWLHasKeyAxiom addHasKey(final OWLOntology ontology, final String classIri, final List<OWLProperty> keyProperties, final OWLAnnotation... annotations) {
@@ -361,156 +392,103 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addObjectSomeValuesFrom(final OWLOntology ontology, final String classIri, final String propertyIri, final String typeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectSomeValuesFrom getObjectSomeValuesFrom(final String propertyIri, final String typeIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLClass type = factory.getOWLClass(typeIri);
-		final OWLObjectSomeValuesFrom restriction = factory.getOWLObjectSomeValuesFrom(property, type);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLObjectSomeValuesFrom(property, type);
 	}
 
-	public OWLSubClassOfAxiom addObjectAllValuesFrom(final OWLOntology ontology, final String classIri, final String propertyIri, final String typeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectAllValuesFrom getObjectAllValuesFrom(final String propertyIri, final String typeIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLClass type = factory.getOWLClass(typeIri);
-		final OWLObjectAllValuesFrom restriction = factory.getOWLObjectAllValuesFrom(property, type);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLObjectAllValuesFrom(property, type);
 	}
 
-	public OWLSubClassOfAxiom addObjectHasValue(final OWLOntology ontology, final String classIri, final String propertyIri, final OWLIndividual individual, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectHasValue getObjectHasValue(final String propertyIri, final OWLIndividual individual) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final OWLObjectHasValue restriction = factory.getOWLObjectHasValue(property, individual);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLObjectHasValue(property, individual);
 	}
 
-	public OWLSubClassOfAxiom addObjectHasValue(final OWLOntology ontology, final String classIri, final String propertyIri, final String individualIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectHasSelf getObjectHasSelf(final String propertyIri) {
+		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
+		return factory.getOWLObjectHasSelf(property);
+	}
+
+	public OWLObjectHasValue getObjectHasValue(final String propertyIri, final String individualIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLNamedIndividual individual = factory.getOWLNamedIndividual(individualIri);
-		final OWLObjectHasValue restriction = factory.getOWLObjectHasValue(property, individual);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLObjectHasValue(property, individual);
 	}
 
-	public OWLSubClassOfAxiom addObjectExactCardinality(final OWLOntology ontology, final String classIri, final String propertyIri, final int cardinality, final String rangeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectExactCardinality getObjectExactCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final OWLObjectExactCardinality restriction;
 		if (rangeIri != null) {
-			restriction = factory.getOWLObjectExactCardinality(cardinality, property, factory.getOWLClass(rangeIri));
+			return factory.getOWLObjectExactCardinality(cardinality, property, factory.getOWLClass(rangeIri));
 		} else {
-			restriction = factory.getOWLObjectExactCardinality(cardinality, property);
+			return factory.getOWLObjectExactCardinality(cardinality, property);
 		}
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addObjectMinCardinality(final OWLOntology ontology, final String classIri, final String propertyIri, final int cardinality, final String rangeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectMinCardinality getObjectMinCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final OWLObjectMinCardinality restriction;
 		if (rangeIri != null) {
-			restriction = factory.getOWLObjectMinCardinality(cardinality, property, factory.getOWLClass(rangeIri));
+			return factory.getOWLObjectMinCardinality(cardinality, property, factory.getOWLClass(rangeIri));
 		} else {
-			restriction = factory.getOWLObjectMinCardinality(cardinality, property);
+			return factory.getOWLObjectMinCardinality(cardinality, property);
 		}
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addObjectMaxCardinality(final OWLOntology ontology, final String classIri, final String propertyIri, final int cardinality, final String rangeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLObjectMaxCardinality getObjectMaxCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final OWLObjectMaxCardinality restriction;
 		if (rangeIri != null) {
-			restriction = factory.getOWLObjectMaxCardinality(cardinality, property, factory.getOWLClass(rangeIri));
+			return factory.getOWLObjectMaxCardinality(cardinality, property, factory.getOWLClass(rangeIri));
 		} else {
-			restriction = factory.getOWLObjectMaxCardinality(cardinality, property);
+			return factory.getOWLObjectMaxCardinality(cardinality, property);
 		}
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addDataExactCardinality(final OWLOntology ontology, final String classIri, final String propertyIri, final int cardinality, final String rangeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLDataExactCardinality getDataExactCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final OWLDataExactCardinality restriction;
 		if (rangeIri != null) {
-			restriction = factory.getOWLDataExactCardinality(cardinality, property, factory.getOWLDatatype(rangeIri));
+			return factory.getOWLDataExactCardinality(cardinality, property, factory.getOWLDatatype(rangeIri));
 		} else {
-			restriction = factory.getOWLDataExactCardinality(cardinality, property);
+			return factory.getOWLDataExactCardinality(cardinality, property);
 		}
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addDataMinCardinality(final OWLOntology ontology, final String classIri, final String propertyIri, final int cardinality, final String rangeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLDataMinCardinality getDataMinCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final OWLDataMinCardinality restriction;
 		if (rangeIri != null) {
-			restriction = factory.getOWLDataMinCardinality(cardinality, property, factory.getOWLDatatype(rangeIri));
+			return factory.getOWLDataMinCardinality(cardinality, property, factory.getOWLDatatype(rangeIri));
 		} else {
-			restriction = factory.getOWLDataMinCardinality(cardinality, property);
+			return factory.getOWLDataMinCardinality(cardinality, property);
 		}
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addDataMaxCardinality(final OWLOntology ontology, final String classIri, final String propertyIri, final int cardinality, final String rangeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLDataMaxCardinality getDataMaxCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final OWLDataMaxCardinality restriction;
 		if (rangeIri != null) {
-			restriction = factory.getOWLDataMaxCardinality(cardinality, property, factory.getOWLDatatype(rangeIri));
+			return factory.getOWLDataMaxCardinality(cardinality, property, factory.getOWLDatatype(rangeIri));
 		} else {
-			restriction = factory.getOWLDataMaxCardinality(cardinality, property);
+			return factory.getOWLDataMaxCardinality(cardinality, property);
 		}
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
 	}
 
-	public OWLSubClassOfAxiom addDataSomeValuesFrom(final OWLOntology ontology, final String classIri, final String propertyIri, final String typeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLDataSomeValuesFrom getDataSomeValuesFrom(final String propertyIri, final String typeIri) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
 		final OWLDatatype type = factory.getOWLDatatype(typeIri);
-		final OWLDataSomeValuesFrom restriction = factory.getOWLDataSomeValuesFrom(property, type);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLDataSomeValuesFrom(property, type);
 	}
 
-	public OWLSubClassOfAxiom addDataAllValuesFrom(final OWLOntology ontology, final String classIri, final String propertyIri, final String typeIri, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLDataAllValuesFrom getDataAllValuesFrom(final String propertyIri, final String typeIri) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
 		final OWLDatatype type = factory.getOWLDatatype(typeIri);
-		final OWLDataAllValuesFrom restriction = factory.getOWLDataAllValuesFrom(property, type);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLDataAllValuesFrom(property, type);
 	}
 
-	public OWLSubClassOfAxiom addDataHasValue(final OWLOntology ontology, final String classIri, final String propertyIri, final OWLLiteral literal, final OWLAnnotation... annotations) {
-		final OWLClass class_ = factory.getOWLClass(classIri);
+	public OWLDataHasValue getDataHasValue(final String propertyIri, final OWLLiteral literal) {
 		final OWLDataProperty property = factory.getOWLDataProperty(propertyIri);
-		final OWLDataHasValue restriction = factory.getOWLDataHasValue(property, literal);
-		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(class_, restriction, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+		return factory.getOWLDataHasValue(property, literal);
 	}
 
 	public OWLSubObjectPropertyOfAxiom addSubObjectPropertyOf(final OWLOntology ontology, final String subPropertyIri, final String superPropertyIri, final OWLAnnotation... annotations) {
@@ -561,10 +539,10 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
-	public OWLInverseObjectPropertiesAxiom addInverseProperties(final OWLOntology ontology, final String forwardPropertyIri, final String reversePropertyIri) {
+	public OWLInverseObjectPropertiesAxiom addInverseProperties(final OWLOntology ontology, final String forwardPropertyIri, final String inversePropertyIri) {
 		final OWLObjectProperty forwardproperty = factory.getOWLObjectProperty(forwardPropertyIri);
-		final OWLObjectProperty reverseProperty = factory.getOWLObjectProperty(reversePropertyIri);
-		final OWLInverseObjectPropertiesAxiom axiom = factory.getOWLInverseObjectPropertiesAxiom(forwardproperty, reverseProperty);
+		final OWLObjectProperty inverseProperty = factory.getOWLObjectProperty(inversePropertyIri);
+		final OWLInverseObjectPropertiesAxiom axiom = factory.getOWLInverseObjectPropertiesAxiom(forwardproperty, inverseProperty);
 		manager.addAxiom(ontology, axiom);
 		return axiom;
 	}
@@ -662,7 +640,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLObjectProperty(propertyIri);
 	}
 
-	public List<OWLAnnotation> checkIfNeeded(final OWLAnnotation... annotations) {
+	public List<OWLAnnotation> checkIfNeeded(final OWLAnnotation[] annotations) {
 		if (annotationsOnAxioms) {
 			return Arrays.asList(annotations);
 		} else {

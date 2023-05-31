@@ -16,7 +16,7 @@
  * limitations under the License.
  * 
  */
-package io.opencaesar.oml2owl;
+package io.opencaesar.owl2oml;
 
 interface OmlConstants extends io.opencaesar.oml.util.OmlConstants {
 	

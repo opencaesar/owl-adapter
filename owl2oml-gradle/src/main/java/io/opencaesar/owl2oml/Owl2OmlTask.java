@@ -16,14 +16,13 @@
  * limitations under the License.
  * 
  */
-package io.opencaesar.oml2owl;
+package io.opencaesar.owl2oml;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.xml.resolver.Catalog;
 import org.apache.xml.resolver.CatalogEntry;
@@ -45,17 +44,12 @@ import io.opencaesar.oml.util.OmlCatalog;
 /**
  * A gradle task to invoke the Oml2Owl tool 
  */
-public abstract class Oml2OwlTask extends DefaultTask {
-	
-	private final static List<String> BUILT_IN_ONTOLOGIES_PATHS = 
-			Oml2Owl.BUILT_IN_ONTOLOGIES.stream()
-				.map(i -> i.replace("http://", ""))
-				.collect(Collectors.toList());
+public abstract class Owl2OmlTask extends DefaultTask {
 	
 	/**
-	 * Creates a new Oml2OwlTask object
+	 * Creates a new Owl2OmlTask object
 	 */
-	public Oml2OwlTask() {
+	public Owl2OmlTask() {
 	}
 
 	/**
@@ -129,7 +123,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     protected ConfigurableFileCollection getInputFiles() {
     	try {
     		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
-    		Collection<File> inputFiles = Oml2OwlApp.collectOMLFiles(inputCatalog);
+    		Collection<File> inputFiles = Owl2OmlApp.collectOMLFiles(inputCatalog);
     		inputFiles.add(getInputCatalogPath().get());
     		return getProject().files(inputFiles);
     	} catch (Exception e) {
@@ -147,7 +141,6 @@ public abstract class Oml2OwlTask extends DefaultTask {
     	try {
     		if (getInputCatalogPath().isPresent() && getOutputCatalogPath().isPresent()) {
         		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
-        		final String outputFolderPath = getOutputCatalogPath().get().getParent();
 	    		Collection<File> outputFiles = new ArrayList<>(getInputFiles().getFiles().size()+1);
 	    		for (File inputFile : getInputFiles().getFiles()) {
 	    			String inputFileUri = inputFile.toURI().toString();
@@ -163,10 +156,6 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	    							int j = relativePath.lastIndexOf('.');
 	    							if (j != -1) {
 	    								relativePath = relativePath.substring(0, j);
-	    							}
-	    							if (!BUILT_IN_ONTOLOGIES_PATHS.contains(relativePath)) {
-		    							relativePath = relativePath+"."+getOutputFileExtension().getOrElse("owl");
-		    							outputFiles.add(new File(outputFolderPath+File.separator+relativePath));
 	    							}
 	    						}
 	    					}
@@ -218,7 +207,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
 		    args.add("-d");
 	    }
 	    try {
-    		Oml2OwlApp.main(args.toArray(new String[0]));
+    		Owl2OmlApp.main(args.toArray(new String[0]));
 		} catch (Exception e) {
 			throw new TaskExecutionException(this, e);
 		}

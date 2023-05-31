@@ -1,2 +1,4 @@
 include 'oml2owl'
 include 'oml2owl-gradle'
+include 'owl2oml'
+include 'owl2oml-gradle'
