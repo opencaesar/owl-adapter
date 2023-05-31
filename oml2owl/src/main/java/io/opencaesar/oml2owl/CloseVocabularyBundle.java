@@ -39,9 +39,9 @@ import io.opencaesar.closeworld.Taxonomy;
 import io.opencaesar.oml.Aspect;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.Ontology;
-import io.opencaesar.oml.SpecializableTerm;
 import io.opencaesar.oml.Vocabulary;
 import io.opencaesar.oml.util.OmlRead;
+import io.opencaesar.oml.util.OmlSearch;
 
 /**
  * An algorithm to close the world on a vocabulary bundle by adding disjointness axioms
@@ -70,35 +70,35 @@ public class CloseVocabularyBundle {
 	 * @return concept taxonomy
 	 */
 	private Taxonomy omlConceptTaxonomy(final Collection<Vocabulary> allVocabularies) {
-		final Map<Entity, ClassExpression.Unitary> unitaryMap = new HashMap<Entity, ClassExpression.Unitary>();
-		final List<ClassExpression>  vertexList = new ArrayList<ClassExpression>();
-		final List<ClassExpression>  edgeList = new ArrayList<ClassExpression>();
+		final Map<Entity, ClassExpression.Unitary> singletonMap = new HashMap<Entity, ClassExpression.Unitary>();
+		final List<ClassExpression> vertexList = new ArrayList<ClassExpression>();
+		final List<ClassExpression> edgeList = new ArrayList<ClassExpression>();
 
-		allVocabularies.stream().forEach(g -> {
-			g.getOwnedStatements().stream()
-				.filter(e -> e instanceof Entity && !(e instanceof Aspect))
-				.map(e -> (Entity)e)
-				.filter(e -> !e.isRef())
-				.forEach(entity -> {
+		allVocabularies.stream()
+			.flatMap(v -> OmlRead.getMembers(v).stream())
+			.filter(e -> e instanceof Entity && !(e instanceof Aspect))
+			.map(e -> (Entity)e)
+			.filter(e -> !e.isRef())
+			.forEach(entity -> {
 					final ClassExpression.Unitary s = new ClassExpression.Unitary((entity.getIri()));
-					unitaryMap.put(entity, s);
+					singletonMap.put(entity, s);
 					vertexList.add(s);
 			});
-		});
 
-		allVocabularies.stream().forEach(g -> {
-			g.getOwnedStatements().stream()
-				.filter(s -> s instanceof SpecializableTerm)
-				.flatMap(t -> ((SpecializableTerm)t).getOwnedSpecializations().stream())
-				.forEach(axiom -> {
-					final ClassExpression.Unitary superUnitary = unitaryMap.get(axiom.getSuperTerm());
-					final ClassExpression.Unitary subUnitary = unitaryMap.get(axiom.getSubTerm());
-					if (superUnitary != null && subUnitary != null) {
-						edgeList.add(superUnitary);
-						edgeList.add(subUnitary);
-					}
+		allVocabularies.stream()
+			.flatMap(v -> OmlRead.getMembers(v).stream())
+			.filter(e -> e instanceof Entity && !(e instanceof Aspect))
+			.map(e -> (Entity)e)
+			.forEach(term -> {
+					final ClassExpression.Unitary subSingleton = singletonMap.get(term);
+					OmlSearch.findSuperTerms(term).stream().forEach(superTerm -> {
+						final ClassExpression.Unitary superSingleton = singletonMap.get(superTerm);
+						if (superSingleton != null) {
+							edgeList.add(superSingleton);
+							edgeList.add(subSingleton);
+						}
+					});
 			});
-		});
 		
 		return new Taxonomy(vertexList, edgeList).transitiveReduction().rootAt(new ClassExpression.Universal());
 	}
