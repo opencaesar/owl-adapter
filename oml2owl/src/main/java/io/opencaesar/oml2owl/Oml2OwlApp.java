@@ -23,8 +23,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,7 +30,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -211,7 +208,7 @@ public class Oml2OwlApp {
 			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalog);
 			LOGGER.info(("Reading: " + rootUri));
 			Ontology rootOntology = OmlRead.getOntology(inputResourceSet.getResource(rootUri, true));
-			inputOntologies.addAll(OmlRead.getAllImportedOntologies(rootOntology, true));
+			inputOntologies.addAll(OmlRead.getImportedOntologyClosure(rootOntology, true));
 		} else {
 			final Collection<File> inputFiles = collectOMLFiles(inputCatalog);
 			for (File inputFile : inputFiles) {
@@ -310,7 +307,7 @@ public class Oml2OwlApp {
 	}
 
 	private void switchECrossReferenceAdapter(Resource r) {
-		final var allResoruces = OmlRead.getAllImportedOntologies(OmlRead.getOntology(r), true).stream()
+		final var allResoruces = OmlRead.getImportedOntologyClosure(OmlRead.getOntology(r), true).stream()
 				.map(i -> i.eResource())
 				.collect(Collectors.toSet());
         final var adapter = (ECrossReferenceAdapterEx) ECrossReferenceAdapter.getCrossReferenceAdapter(r.getResourceSet());
@@ -318,7 +315,7 @@ public class Oml2OwlApp {
 	}
 	
 	private URI resolveRootOntologyIri(String rootOntologyIri, OmlCatalog catalog) throws IOException {
-		final URI resolved = URI.createURI(catalog.resolveURI(rootOntologyIri));
+		final URI resolved = catalog.resolveUri(URI.createURI(rootOntologyIri));
 		
 		if (resolved.isFile()) {
 			final String filename = resolved.toFileString();
@@ -342,17 +339,12 @@ public class Oml2OwlApp {
 	 * @param inputCatalog The input Oml catalog
 	 * @return Collection of Files
 	 * @throws MalformedURLException error
-	 * @throws URISyntaxException error
+	 * @throws IOException error
 	 */
-	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
-		var fileExtensions = Arrays.asList(OmlConstants.OML_EXTENSIONS);
-		
-		final var omlFiles = new LinkedHashSet<File>();
-		for (URI uri : inputCatalog.getFileUris(fileExtensions)) {
-			File file = new File(new URL(uri.toString()).toURI().getPath());
-			omlFiles.add(file);
-		}
-		return omlFiles;
+	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws IOException {
+		return inputCatalog.getResolvedUris().stream()
+				.map(i -> new File(i.toFileString()))
+				.collect(Collectors.toList());
 	}
 	
 	private void createOutputCatalog(final File outputCatalogFile, Set<String> schemes) throws Exception {

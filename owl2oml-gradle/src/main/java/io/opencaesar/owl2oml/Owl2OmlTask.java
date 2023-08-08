@@ -24,8 +24,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.xml.resolver.Catalog;
-import org.apache.xml.resolver.CatalogEntry;
 import org.eclipse.emf.common.util.URI;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -132,44 +130,33 @@ public abstract class Owl2OmlTask extends DefaultTask {
     }
     
 	/**
-	 * The collection of output Owl files referenced by the output Owl catalog
+	 * The collection of output Oml files referenced by the output Oml catalog
 	 * 
 	 * @return ConfigurableFileCollection
 	 */
    @OutputFiles
    protected ConfigurableFileCollection getOutputFiles() {
-    	try {
-    		if (getInputCatalogPath().isPresent() && getOutputCatalogPath().isPresent()) {
-        		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
+	   	try {
+			if (getInputCatalogPath().isPresent() && getOutputCatalogPath().isPresent()) {
+	    		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
+	    		final String outputFileExtension = getOutputFileExtension().isPresent()? getOutputFileExtension().get() : "owl"; 
+	    		final String outputFolder = getOutputCatalogPath().get().getParent(); 
 	    		Collection<File> outputFiles = new ArrayList<>(getInputFiles().getFiles().size()+1);
 	    		for (File inputFile : getInputFiles().getFiles()) {
-	    			String inputFileUri = inputFile.toURI().toString();
 	    			if (!inputFile.equals(getInputCatalogPath().get())) {
-	    				for (CatalogEntry e : inputCatalog.getEntries()) {
-	    					if (e.getEntryType() == Catalog.REWRITE_URI) {
-	    						String uriStartString = e.getEntryArg(0);
-	    						String rewriteUri = e.getEntryArg(1);
-	    						int i =  inputFileUri.indexOf(rewriteUri);
-	    						if (i != -1) {
-	    							String relativePath = inputFileUri.replace(rewriteUri, uriStartString);
-	    							relativePath = relativePath.substring(7); // remove http://
-	    							int j = relativePath.lastIndexOf('.');
-	    							if (j != -1) {
-	    								relativePath = relativePath.substring(0, j);
-	    							}
-	    						}
-	    					}
-	    				}
+	    				var iri = inputCatalog.deresolveUri(URI.createFileURI(inputFile.toString()));
+	    				var outputUri = outputFolder + iri.toString().replace(iri.scheme()+":/", "")+"."+outputFileExtension;
+						outputFiles.add(new File(outputUri));
 	    			}
 	    		}
 	    		outputFiles.add(getOutputCatalogPath().get());
 	    		return getProject().files(outputFiles);
-    		}
-    		return getProject().files(Collections.EMPTY_LIST);
-    	} catch (Exception e) {
+			}
+			return getProject().files(Collections.EMPTY_LIST);
+		} catch (Exception e) {
 			throw new GradleException(e.getLocalizedMessage(), e);
-    	}
-    }
+		}
+}
     
    /**
     * The gradle task action logic.

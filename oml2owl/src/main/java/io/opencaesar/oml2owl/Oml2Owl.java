@@ -546,11 +546,11 @@ class Oml2Owl extends OmlSwitch<Void> {
 		} else if (axiom.getProperty() instanceof StructuredProperty) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
-					createIndividual(axiom.getStructureInstanceValue()));
+					createIndividual(axiom.getContainedValue()));
 		} else { //if (axiom.getProperty() instanceof Relation) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
-					axiom.getNamedInstanceValue().getIri());
+					axiom.getReferencedValue().getIri());
 		}
 	}
 
@@ -605,8 +605,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected OWLAnnotation createAnnotation(final Annotation annotation) {
-		if (annotation.getReferenceValue() != null) {
-			final IRI iri = owl.createIri(annotation.getReferenceValue().getIri());
+		if (annotation.getReferencedValue() != null) {
+			final IRI iri = owl.createIri(annotation.getReferencedValue().getIri());
 			return owl.getAnnotation(annotation.getProperty().getIri(), iri);
 		} if (annotation.getLiteralValue() != null) {
 			final OWLLiteral literal = getLiteral(annotation.getLiteralValue());
@@ -700,12 +700,12 @@ class Oml2Owl extends OmlSwitch<Void> {
 			owl.addObjectPropertyAssertion(ontology, 
 					individual, 
 					assertion.getProperty().getIri(),
-					createIndividual(assertion.getStructureInstanceValue()));
+					createIndividual(assertion.getContainedValue()));
 		} else if (assertion.getProperty() instanceof Relation && individual instanceof OWLNamedIndividual) {
 			owl.addObjectPropertyAssertion(ontology, 
 					((OWLNamedIndividual)individual).getIRI().getIRIString(),
 					assertion.getProperty().getIri(), 
-					assertion.getNamedInstanceValue().getIri());
+					assertion.getReferencedValue().getIri());
 		}
 	}
 

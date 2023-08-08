@@ -21,18 +21,16 @@ package io.opencaesar.owl2oml;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
@@ -102,14 +100,6 @@ public class Owl2OmlApp {
 			required = true, 
 			order = 2)
 	private String outputCatalogPath;
-
-	@Parameter(
-			names = { "--output-writable-path", "-w" }, 
-			description = "Path of the output writeable folders", 
-			validateWith = OutputFolderPath.class, 
-			required = false,
-			order = 3)
-	private List<String> outputWritablePaths;
 
 	@Parameter(
 			names = { "--input-file-extensions", "-if" },
@@ -239,12 +229,6 @@ public class Owl2OmlApp {
 		// save the output resources here instead of calling builder.save in order to log
 		for (URI outputResourceURI : outputResourceURIs) {
 			if (outputResourceURI.fileExtension().equals(outputFileExtension)) {
-				String filePath = outputResourceURI.toFileString();
-				if (!outputWritablePaths.isEmpty()) {
-					if (outputWritablePaths.stream().noneMatch(i -> filePath.startsWith(i))) {
-						continue;
-					}
-				}
 				LOGGER.info("Saving: "+outputResourceURI);
 				final Resource outputResource = outputResourceSet.getResource(outputResourceURI, false);
 				outputResource.save(Collections.EMPTY_MAP);
@@ -262,17 +246,12 @@ public class Owl2OmlApp {
 	 * @param inputCatalog The input Oml catalog
 	 * @return Collection of Files
 	 * @throws MalformedURLException error
-	 * @throws URISyntaxException error
+	 * @throws IOException error
 	 */
-	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws MalformedURLException, URISyntaxException {
-		var fileExtensions = Arrays.asList(OmlConstants.OML_EXTENSIONS);
-		
-		final var omlFiles = new LinkedHashSet<File>();
-		for (URI uri : inputCatalog.getFileUris(fileExtensions)) {
-			File file = new File(new URL(uri.toString()).toURI().getPath());
-			omlFiles.add(file);
-		}
-		return omlFiles;
+	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws IOException {
+		return inputCatalog.getResolvedUris().stream()
+				.map(i -> new File(i.toFileString()))
+				.collect(Collectors.toList());
 	}
 	
 	/**

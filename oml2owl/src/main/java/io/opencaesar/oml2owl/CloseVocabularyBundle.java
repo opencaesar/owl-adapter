@@ -143,7 +143,7 @@ public class CloseVocabularyBundle {
 		 */
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(resource);
-			final Collection<Ontology> allOntologies = OmlRead.getAllImportedOntologies(omlOntology, true);
+			final Collection<Ontology> allOntologies = OmlRead.getImportedOntologyClosure(omlOntology, true);
 			final Collection<Vocabulary> allVocabularies = allOntologies.stream().filter(o -> o instanceof Vocabulary).map(o -> (Vocabulary)o).collect(Collectors.toList());
 			final Taxonomy conceptTaxonomy = super.omlConceptTaxonomy(allVocabularies);
 			final Axiom.AxiomType axiomType = disjointUnions ? DISJOINT_UNION : DISJOINT_CLASSES;

@@ -367,7 +367,7 @@ public class CloseDescriptionBundle {
 		 */
 		public void run() {
 			final Ontology omlOntology = OmlRead.getOntology(this.resource);
-			final Collection<Ontology> allOntologies = OmlRead.getAllImportedOntologies(omlOntology, true);
+			final Collection<Ontology> allOntologies = OmlRead.getImportedOntologyClosure(omlOntology, true);
 			final Collection<Vocabulary> allVocabularies = allOntologies.stream().filter(o -> o instanceof Vocabulary).map(o -> (Vocabulary)o).collect(Collectors.toList());
 
 			final Map<Entity, Set<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allVocabularies);

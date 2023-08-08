@@ -21,7 +21,6 @@ package io.opencaesar.owl2oml;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,19 +32,38 @@ import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.rdf4j.model.vocabulary.DC;
+import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.HasAnnotations;
+import org.semanticweb.owlapi.model.HasIRI;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLAnnotationSubject;
 import org.semanticweb.owlapi.model.OWLAnnotationValue;
+import org.semanticweb.owlapi.model.OWLAsymmetricObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataProperty;
+import org.semanticweb.owlapi.model.OWLDataPropertyDomainAxiom;
+import org.semanticweb.owlapi.model.OWLDataPropertyRangeAxiom;
+import org.semanticweb.owlapi.model.OWLDatatype;
+import org.semanticweb.owlapi.model.OWLDisjointClassesAxiom;
+import org.semanticweb.owlapi.model.OWLDisjointUnionAxiom;
 import org.semanticweb.owlapi.model.OWLEntity;
+import org.semanticweb.owlapi.model.OWLFunctionalDataPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLFunctionalObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLInverseFunctionalObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLIrreflexiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLObjectPropertyDomainAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLReflexiveObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
+import org.semanticweb.owlapi.model.OWLSymmetricObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLTransitiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.model.SWRLRule;
 
 import io.opencaesar.oml.Description;
@@ -81,24 +99,48 @@ class Owl2Oml extends OmlSwitch<Void> {
 	}
 
 	private List<Ontology> createOntologies(OWLOntology owlOntology) throws IOException {
-		var iri = owlOntology.getOntologyID().getOntologyIRI().get();
-		var namespace = owlOntology.getFormat().asPrefixOWLDocumentFormat().getDefaultPrefix();
-		var prefix = getOntologyNamespacePrefix(owlOntology, namespace);
-		var uri = URI.createURI(catalog.resolveURI(iri.getIRIString()+"."+outputFileExtension));
+		var iri = owlOntology.getOntologyID().getOntologyIRI().get().getIRIString();
+		if (iri.endsWith("#") || iri.endsWith("/")) {
+			iri = iri.substring(0, iri.length()-1);
+		}
+		var namespace = getOntologyNamespace(owlOntology);
+		var prefix = getNamespacePrefix(owlOntology, namespace);
+		if (prefix == null) {
+			prefix = createNamespacePrefix(namespace);
+		}
+		var uri = catalog.resolveUri(URI.createURI(iri+"."+outputFileExtension));
 		
-		var type = getAnnotationValue(owlOntology, DC.TYPE).toString();
-		if (type != null) {
+		var ontologies = new ArrayList<Ontology>();
+		
+		var typeAnnot = getAnnotationValue(owlOntology, DC.TYPE);
+		if (typeAnnot != null) {
+			var type = typeAnnot.toString();
 			if (type.equals(OmlConstants.Vocabulary)) {
-				return Collections.singletonList(createVocabulary(owlOntology, uri, namespace, prefix)); 
+				ontologies.add(createVocabulary(owlOntology, uri, namespace, prefix)); 
 			} else if (type.equals(OmlConstants.VocabularyBundle)) {
-				return Collections.singletonList(createVocabularyBundle(owlOntology, uri, namespace, prefix)); 
+				ontologies.add(createVocabularyBundle(owlOntology, uri, namespace, prefix)); 
 			} else if (type.equals(OmlConstants.Description)) {
-				return Collections.singletonList(createDescription(owlOntology, uri, namespace, prefix)); 
+				ontologies.add(createDescription(owlOntology, uri, namespace, prefix)); 
 			} else if (type.equals(OmlConstants.DescriptionBundle)) {
-				return Collections.singletonList(createDescriptionBundle(owlOntology, uri, namespace, prefix)); 
+				ontologies.add(createDescriptionBundle(owlOntology, uri, namespace, prefix)); 
 			}
 		}
-		return Collections.emptyList();
+		
+		if (ontologies.isEmpty()) {
+			var isAbox = !owlOntology.getIndividualsInSignature().isEmpty();
+			var isTbox = listDeclaredEntitiesofType(owlOntology, OWLClass.class).count() > 0;
+			
+			if (isAbox && !isTbox) {
+				ontologies.add(createDescription(owlOntology, uri, namespace, prefix)); 
+			} else if (isTbox && !isAbox) {
+				ontologies.add(createVocabulary(owlOntology, uri, namespace, prefix)); 
+			} if (isAbox && isTbox) {
+				ontologies.add(createDescription(owlOntology, uri, namespace, prefix)); 
+				ontologies.add(createVocabulary(owlOntology, uri, namespace+"-instances", prefix+"-instances")); 
+			}
+		}
+		
+		return ontologies;
 	}
 	
 	private Vocabulary createVocabulary(OWLOntology owlOntology, URI uri, String namespace, String prefix) throws IOException {
@@ -111,6 +153,8 @@ class Owl2Oml extends OmlSwitch<Void> {
 		createStructures(owlOntology, vocabulary);
 		//createScalars(owlOntology, vocabulary);
 		creaAnnotationProperties(owlOntology, vocabulary);
+		createScalarProperties(owlOntology, vocabulary);
+		createRelations(owlOntology, vocabulary);
 		return vocabulary;
 	}
 	
@@ -137,58 +181,97 @@ class Owl2Oml extends OmlSwitch<Void> {
 	
 	private void createAspects(OWLOntology owlOntology, Vocabulary ontology) {
 		listDeclaredEntitiesofType(owlOntology, OWLClass.class).forEach(e -> {			
-			var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
-			if (type != null && type.toString().equals(OmlConstants.Aspect)) {
-				oml.addAspect(ontology, e.getIRI().getFragment());
-				createAnnotations(owlOntology, e.getIRI(), ontology);
+			if (isLocal(e, owlOntology)) {
+				var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
+				if (type != null && type.toString().equals(OmlConstants.Aspect)) {
+					oml.addAspect(ontology, e.getIRI().getFragment());
+					createAnnotations(owlOntology, e.getIRI(), ontology);
+					createSpecializations(owlOntology, e, ontology);
+				}
 			}
 		});
 	}
 	
 	private void createConcepts(OWLOntology owlOntology, Vocabulary ontology) {
 		listDeclaredEntitiesofType(owlOntology, OWLClass.class).forEach(e -> {			
-			var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
-			if (type != null && type.toString().equals(OmlConstants.Concept)) {
-				oml.addConcept(ontology, e.getIRI().getFragment());
-				createAnnotations(owlOntology, e.getIRI(), ontology);
+			if (isLocal(e, owlOntology)) {
+				var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
+				if (type == null || type.toString().equals(OmlConstants.Concept)) {
+					oml.addConcept(ontology, e.getIRI().getFragment());
+					createAnnotations(owlOntology, e.getIRI(), ontology);
+					createSpecializations(owlOntology, e, ontology);
+					
+					owlOntology.axioms(e)
+						.filter(i -> i instanceof OWLDisjointClassesAxiom)
+						.flatMap(i -> ((OWLDisjointClassesAxiom)i).getClassExpressions().stream())
+						.filter(i -> i instanceof OWLClass)
+						.map(i -> (OWLClass)i)
+						.filter(i -> i != e)
+						.forEach(disjointClass -> {
+							var propertyIri = manager.getOWLDataFactory().getOWLAnnotationProperty(RDFS.COMMENT.stringValue());
+							oml.addAnnotation(
+									ontology,
+									e.getIRI().getIRIString(),
+									getIriAndImportIfNeeded(ontology, owlOntology, propertyIri.getIRI()), 
+									createLiteral(manager.getOWLDataFactory().getOWLLiteral("disjointWith "+disjointClass.getIRI().getFragment()), owlOntology, ontology), 
+									null);
+						});
+						
+					owlOntology.axioms(e)
+					.filter(i -> i instanceof OWLDisjointUnionAxiom)
+					.map(i -> ((OWLDisjointUnionAxiom)i).getClassExpressions().stream().filter(j -> j instanceof OWLClass).map(j -> (OWLClass)j).filter(j -> j != e).collect(Collectors.toList()))
+					.forEach(disjointClass -> {
+						var propertyIri = manager.getOWLDataFactory().getOWLAnnotationProperty(RDFS.COMMENT.stringValue());
+						var s = String.join(", ", disjointClass.stream().map(i -> i.getIRI().getFragment()).collect(Collectors.toList()));
+						oml.addAnnotation(
+								ontology,
+								e.getIRI().getIRIString(),
+								getIriAndImportIfNeeded(ontology, owlOntology, propertyIri.getIRI()), 
+								createLiteral(manager.getOWLDataFactory().getOWLLiteral("disjointUnionOf "+String.join("", s)), owlOntology, ontology), 
+								null);
+					});
+				}
 			}
 		});
 	}
 
 	private void createRelationEntities(OWLOntology owlOntology, Vocabulary ontology) {
 		listDeclaredEntitiesofType(owlOntology, OWLClass.class).forEach(e -> {			
-			var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
-			if (type != null && type.toString().equals(OmlConstants.RelationEntity)) {
-				var forwardIri = getForwardRelationIri(owlOntology, e.getIRI());
-				if (forwardIri != null) {
-					var forwardProperty = manager.getOWLDataFactory().getOWLObjectProperty(forwardIri);
-					var sourceIris = new ArrayList<String>(owlOntology.getObjectPropertyDomainAxioms(forwardProperty).stream()
-						.map(i -> i.getDomain())
-						.filter(i -> i.isNamed())
-						.map(i -> i.asOWLClass().getIRI().toString())
-						.collect(Collectors.toList()));
-					var targetIris = new ArrayList<String>(owlOntology.getObjectPropertyRangeAxioms(forwardProperty).stream()
-							.map(i -> i.getRange())
+			if (isLocal(e, owlOntology)) {
+				var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
+				if (type != null && type.toString().equals(OmlConstants.RelationEntity)) {
+					var forwardIri = getForwardRelationIri(owlOntology, e.getIRI());
+					if (forwardIri != null) {
+						var forwardProperty = manager.getOWLDataFactory().getOWLObjectProperty(forwardIri);
+						var sourceIris = new ArrayList<String>(owlOntology.getObjectPropertyDomainAxioms(forwardProperty).stream()
+							.map(i -> i.getDomain())
 							.filter(i -> i.isNamed())
 							.map(i -> i.asOWLClass().getIRI().toString())
 							.collect(Collectors.toList()));
-					var functional = !owlOntology.getFunctionalObjectPropertyAxioms(forwardProperty).isEmpty(); 
-					var inverseFunctional = !owlOntology.getInverseFunctionalObjectPropertyAxioms(forwardProperty).isEmpty();
-					var symmetric = !owlOntology.getSymmetricObjectPropertyAxioms(forwardProperty).isEmpty();
-					var asymmetric = !owlOntology.getAsymmetricObjectPropertyAxioms(forwardProperty).isEmpty();
-					var reflexive = !owlOntology.getReflexiveObjectPropertyAxioms(forwardProperty).isEmpty();
-					var irreflexive = !owlOntology.getIrreflexiveObjectPropertyAxioms(forwardProperty).isEmpty();
-					var transitive = !owlOntology.getTransitiveObjectPropertyAxioms(forwardProperty).isEmpty();
-					var entity = oml.addRelationEntity(ontology, e.getIRI().getFragment(), sourceIris, targetIris, functional, inverseFunctional, symmetric, asymmetric, reflexive, irreflexive, transitive);
-					createAnnotations(owlOntology, e.getIRI(), ontology);
-					if (!(forwardIri.getFragment().startsWith("has") && forwardIri.getFragment().endsWith("Forward"))) {
-						oml.addForwardRelation(entity, forwardIri.getFragment());
-						createAnnotations(owlOntology, forwardIri, ontology);
-					}
-					var reverseProperty = forwardProperty.getInverseProperty();
-					if (reverseProperty != null && reverseProperty.isNamed()) {
-						oml.addReverseRelation(entity, reverseProperty.asOWLObjectProperty().getIRI().getFragment());
-						createAnnotations(owlOntology, reverseProperty.asOWLObjectProperty().getIRI(), ontology);
+						var targetIris = new ArrayList<String>(owlOntology.getObjectPropertyRangeAxioms(forwardProperty).stream()
+								.map(i -> i.getRange())
+								.filter(i -> i.isNamed())
+								.map(i -> i.asOWLClass().getIRI().toString())
+								.collect(Collectors.toList()));
+						var functional = !owlOntology.getFunctionalObjectPropertyAxioms(forwardProperty).isEmpty(); 
+						var inverseFunctional = !owlOntology.getInverseFunctionalObjectPropertyAxioms(forwardProperty).isEmpty();
+						var symmetric = !owlOntology.getSymmetricObjectPropertyAxioms(forwardProperty).isEmpty();
+						var asymmetric = !owlOntology.getAsymmetricObjectPropertyAxioms(forwardProperty).isEmpty();
+						var reflexive = !owlOntology.getReflexiveObjectPropertyAxioms(forwardProperty).isEmpty();
+						var irreflexive = !owlOntology.getIrreflexiveObjectPropertyAxioms(forwardProperty).isEmpty();
+						var transitive = !owlOntology.getTransitiveObjectPropertyAxioms(forwardProperty).isEmpty();
+						var entity = oml.addRelationEntity(ontology, e.getIRI().getFragment(), sourceIris, targetIris, functional, inverseFunctional, symmetric, asymmetric, reflexive, irreflexive, transitive);
+						createAnnotations(owlOntology, e.getIRI(), ontology);
+						if (!(forwardIri.getFragment().startsWith("has") && forwardIri.getFragment().endsWith("Forward"))) {
+							oml.addForwardRelation(entity, forwardIri.getFragment());
+							createAnnotations(owlOntology, forwardIri, ontology);
+						}
+						var reverseProperty = forwardProperty.getInverseProperty();
+						if (reverseProperty != null && reverseProperty.isNamed()) {
+							oml.addReverseRelation(entity, reverseProperty.asOWLObjectProperty().getIRI().getFragment());
+							createAnnotations(owlOntology, reverseProperty.asOWLObjectProperty().getIRI(), ontology);
+							createSpecializations(owlOntology, e, ontology);
+						}
 					}
 				}
 			}
@@ -197,10 +280,12 @@ class Owl2Oml extends OmlSwitch<Void> {
 
 	private void createStructures(OWLOntology owlOntology, Vocabulary ontology) {
 		listDeclaredEntitiesofType(owlOntology, OWLClass.class).forEach(e -> {			
-			var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
-			if (type != null && type.toString().equals(OmlConstants.Structure)) {
-				oml.addStructure(ontology, e.getIRI().getFragment());
-				createAnnotations(owlOntology, e.getIRI(), ontology);
+			if (isLocal(e, owlOntology)) {
+				var type = getAnnotationValue(owlOntology, e.getIRI(), DC.TYPE);
+				if (type != null && type.toString().equals(OmlConstants.Structure)) {
+					oml.addStructure(ontology, e.getIRI().getFragment());
+					createAnnotations(owlOntology, e.getIRI(), ontology);
+				}
 			}
 		});
 	}
@@ -217,8 +302,60 @@ class Owl2Oml extends OmlSwitch<Void> {
 
 	private void creaAnnotationProperties(OWLOntology owlOntology, Vocabulary ontology) {
 		listDeclaredEntitiesofType(owlOntology, OWLAnnotationProperty.class).forEach(e -> {
-			oml.addAnnotationProperty(ontology, e.getIRI().getFragment());
-			createAnnotations(owlOntology, e.getIRI(), ontology);
+			if (isLocal(e, owlOntology)) {
+				oml.addAnnotationProperty(ontology, e.getIRI().getFragment());
+				createAnnotations(owlOntology, e.getIRI(), ontology);
+			}
+		});
+	}
+
+	private void createScalarProperties(OWLOntology owlOntology, Vocabulary ontology) {
+		listDeclaredEntitiesofType(owlOntology, OWLDataProperty.class).forEach(e -> {
+			if (isLocal(e, owlOntology)) {
+				oml.addScalarProperty(ontology, e.getIRI().getFragment(),
+					owlOntology.axioms(e)
+						.filter(i -> i instanceof OWLDataPropertyDomainAxiom)
+						.map(i -> ((OWLDataPropertyDomainAxiom)i).getDomain())
+						.filter(i -> i instanceof OWLClass)
+						.map(i -> getIriAndImportIfNeeded(ontology, owlOntology, ((OWLClass)i).getIRI()))
+						.collect(Collectors.toList()),
+					owlOntology.axioms(e)
+						.filter(i -> i instanceof OWLDataPropertyRangeAxiom)
+						.map(i -> ((OWLDataPropertyRangeAxiom)i).getRange())
+						.filter(i -> i instanceof OWLDatatype)
+						.map(i -> getIriAndImportIfNeeded(ontology, owlOntology, ((OWLDatatype)i).getIRI()))
+						.collect(Collectors.toList()),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLFunctionalDataPropertyAxiom));
+				createAnnotations(owlOntology, e.getIRI(), ontology);
+			}
+		});
+	}
+
+	private void createRelations(OWLOntology owlOntology, Vocabulary ontology) {
+		listDeclaredEntitiesofType(owlOntology, OWLObjectProperty.class).forEach(e -> {
+			if (isLocal(e, owlOntology)) {
+				oml.addUnreifiedRelation(ontology, e.getIRI().getFragment(),
+					owlOntology.axioms(e)
+						.filter(i -> i instanceof OWLObjectPropertyDomainAxiom)
+						.map(i -> ((OWLObjectPropertyDomainAxiom)i).getDomain())
+						.filter(i -> i instanceof OWLClass)
+						.map(i -> getIriAndImportIfNeeded(ontology, owlOntology, ((OWLClass)i).getIRI()))
+						.collect(Collectors.toList()),
+					owlOntology.axioms(e)
+						.filter(i -> i instanceof OWLDataPropertyRangeAxiom)
+						.map(i -> ((OWLDataPropertyRangeAxiom)i).getRange())
+						.filter(i -> i instanceof OWLClass)
+						.map(i -> getIriAndImportIfNeeded(ontology, owlOntology, ((OWLClass)i).getIRI()))
+						.collect(Collectors.toList()),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLFunctionalObjectPropertyAxiom),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLInverseFunctionalObjectPropertyAxiom),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLSymmetricObjectPropertyAxiom),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLAsymmetricObjectPropertyAxiom),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLReflexiveObjectPropertyAxiom),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLIrreflexiveObjectPropertyAxiom),
+					owlOntology.axioms(e).anyMatch(i -> i instanceof OWLTransitiveObjectPropertyAxiom));
+				createAnnotations(owlOntology, e.getIRI(), ontology);
+			}
 		});
 	}
 
@@ -247,7 +384,7 @@ class Owl2Oml extends OmlSwitch<Void> {
 
 	private void createOntologyImports(OWLOntology owlOntology, Ontology ontology) {
 		owlOntology.directImports().forEach(i -> {
-			var namespace = i.getFormat().asPrefixOWLDocumentFormat().getDefaultPrefix();
+			var namespace = getOntologyNamespace(i);
 			var importingType = getAnnotationValue(owlOntology, DC.TYPE).toString();
 			var importedType = getAnnotationValue(i, DC.TYPE).toString();
 			
@@ -284,37 +421,70 @@ class Owl2Oml extends OmlSwitch<Void> {
 	}
 	
 	private void createOntologyAnnotations(OWLOntology owlOntology, Ontology ontology) {
-		var axioms = owlOntology.annotationsAsList();
+		/*var axioms = owlOntology.annotationsAsList();
 		axioms.forEach(a -> {
 			var propertyIri = a.getProperty().getIRI();
 			var value = a.getValue();
 			if (!(propertyIri.toString().equals(DC.TYPE.toString()) && value.toString().startsWith(OmlConstants.OML_NS))) {
+				var isLiteral = value.isLiteral();
+				var isIRI = value.isIRI();
+				if (isIRI) {
+					var namespace = value.asIRI().get().getNamespace();
+					var prefix = getNamespacePrefix(owlOntology, namespace);
+					if (prefix == null) {
+						isLiteral = true;
+						isIRI = false;
+						value = manager.getOWLDataFactory().getOWLLiteral(value.asIRI().get().getIRIString());
+					}
+				}
 				oml.addAnnotation(
 					ontology,
-					getIriAndImportIfNeeded(ontology, propertyIri), 
-					value.isLiteral() ? createLiteral(value.asLiteral().get(), ontology) : null,
-					value.isIRI() ? getIriAndImportIfNeeded(ontology, (IRI)value) : null);
+					getIriAndImportIfNeeded(ontology, owlOntology, propertyIri), 
+					isLiteral ? createLiteral(value.asLiteral().get(), owlOntology, ontology) : null,
+					isIRI ? getIriAndImportIfNeeded(ontology, owlOntology, value.asIRI().get()) : null);
 			}
-		});
+		});*/
 	}
 
 	private void createAnnotations(OWLOntology owlOntology, IRI subjectIri, Ontology ontology) {
-        owlOntology.annotationAssertionAxioms(subjectIri).forEach(axiom -> {
+        /*owlOntology.annotationAssertionAxioms(subjectIri).forEach(axiom -> {
 			var a = axiom.getAnnotation();
 			var propertyIri = a.getProperty().getIRI();
 			var value = a.getValue();
 			if (!(propertyIri.toString().equals(DC.TYPE.toString()) && value.toString().startsWith(OmlConstants.OML_NS))) {
+				var isLiteral = value.isLiteral();
+				var isIRI = value.isIRI();
+				if (isIRI) {
+					var namespace = value.asIRI().get().getNamespace();
+					var prefix = getNamespacePrefix(owlOntology, namespace);
+					if (prefix == null) {
+						isLiteral = true;
+						isIRI = false;
+						value = manager.getOWLDataFactory().getOWLLiteral(value.asIRI().get().getIRIString());
+					}
+				}
 				oml.addAnnotation(
 					ontology,
 					subjectIri.toString(),
-					getIriAndImportIfNeeded(ontology, propertyIri), 
-					value.isLiteral() ? createLiteral(value.asLiteral().get(), ontology) : null,
-					value.isIRI() ? getIriAndImportIfNeeded(ontology, (IRI)value) : null);
+					getIriAndImportIfNeeded(ontology, owlOntology, propertyIri), 
+					isLiteral ? createLiteral(value.asLiteral().get(), owlOntology, ontology) : null,
+					isIRI ? getIriAndImportIfNeeded(ontology, owlOntology, (IRI)value) : null);
 			}
-		});
+		});*/
 	}
 
-	private Literal createLiteral(OWLLiteral literal, Ontology ontology) {
+	private void createSpecializations(OWLOntology owlOntology, OWLClass subClass, Vocabulary vocabulary) {
+        owlOntology.axioms(subClass)
+        	.filter(i -> i instanceof OWLSubClassOfAxiom)
+        	.map(i -> ((OWLSubClassOfAxiom)i).getSuperClass())
+        	.filter(i -> i instanceof OWLClass)
+        	.map(i -> (OWLClass)i)
+        	.forEach(superClass -> {
+        		oml.addSpecializationAxiom(vocabulary, subClass.getIRI().getIRIString(), superClass.getIRI().getIRIString());
+        	});
+	}
+
+	private Literal createLiteral(OWLLiteral literal, OWLOntology owlOntology, Ontology ontology) {
 		if (literal.isBoolean()) {
 			return oml.createBooleanLiteral(literal.parseBoolean());
 		} else if (literal.isInteger()) {
@@ -333,19 +503,21 @@ class Owl2Oml extends OmlSwitch<Void> {
 				return oml.createQuotedLiteral(
 					ontology,
 					literal.getLiteral(),
-					!type.toString().equals(XSD.STRING.toString()) 
-						? getIriAndImportIfNeeded(ontology, type) 
-						: null,
+					(type.toString().equals(XSD.STRING.toString()) || type.toString().equals(RDF.LANGSTRING.toString())) 
+						? null 
+						: getIriAndImportIfNeeded(ontology, owlOntology, type),
 					lang.length() > 0 ? lang : null);
 			}
 		}
 	}
 
-	private String getIriAndImportIfNeeded(Ontology ontology, IRI termIRI) {
+	private String getIriAndImportIfNeeded(Ontology ontology, OWLOntology owlOntology, IRI termIRI) {
 		String namespace = termIRI.getNamespace();
 		if (!namespace.equals(ontology.getNamespace())) {
-			var owlOntology = manager.getOntology(IRI.create(ontology.getIri()));
-			var prefix = getOntologyNamespacePrefix(owlOntology, namespace);
+			var prefix = getNamespacePrefix(owlOntology, namespace);
+			if (prefix == null) {
+				prefix = createNamespacePrefix(namespace);
+			}
 			Optional<Import> imp = ontology.getOwnedImports().stream().filter(i -> i.getNamespace().equals(namespace)).findAny();
 			if (imp.isPresent()) {
 				if (imp.get().getPrefix() == null) {
@@ -397,16 +569,20 @@ class Owl2Oml extends OmlSwitch<Void> {
 				.map(i -> type.cast(i.getEntity()));
 	}
 	
-	private String getOntologyNamespacePrefix(OWLOntology owlOntology, String namespace) {
+	private String getNamespacePrefix(OWLOntology owlOntology, String namespace) {
 		Map<String, String> map = owlOntology.getFormat().asPrefixOWLDocumentFormat().getPrefixName2PrefixMap();
-		String prefix = reverse(map).get(namespace);
-		prefix = prefix.substring(0, prefix.length()-1);
-		if (prefix.length() == 0) {
-			prefix = URI.createURI(namespace).lastSegment();
+		var prefix = reverse(map).get(namespace);
+		if (prefix != null) {
+			prefix = prefix.substring(0, prefix.length()-1);
 		}
 		return prefix;
 	}
 	
+	private String createNamespacePrefix(String namespace) {
+		var prefix = URI.createURI(namespace).path().replace("/", "_");
+		return prefix.substring(1, prefix.length()-1);
+	}
+
 	private OWLAnnotationValue getAnnotationValue(HasAnnotations objectWithAnnotations, org.eclipse.rdf4j.model.IRI propertyIri) {
 		var property = manager.getOWLDataFactory().getOWLAnnotationProperty(propertyIri.stringValue());
 		var value = objectWithAnnotations.annotations(property).findFirst();
@@ -425,4 +601,13 @@ class Owl2Oml extends OmlSwitch<Void> {
 	        mapInv.put(map.get(key), key);
 		return mapInv;
 	}
+	
+	private String getOntologyNamespace(OWLOntology owlOntology) {
+		return owlOntology.getFormat().asPrefixOWLDocumentFormat().getDefaultPrefix();
+	}
+	
+	private boolean isLocal(HasIRI hasIri, OWLOntology owlOntology) {
+		return hasIri.getIRI().getNamespace().equals(getOntologyNamespace(owlOntology));
+	}
+	
 }
