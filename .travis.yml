@@ -10,11 +10,11 @@ cache:
     - $HOME/.gradle
 
 script:
-  - ./gradlew build
+  - ./gradlew build --refresh-dependencies
 
 deploy:
   - provider: script
-    script: ./gradlew publish --refresh-dependencies
+    script: ./gradlew publish
     skip_cleanup: true
     on:
       tags: true

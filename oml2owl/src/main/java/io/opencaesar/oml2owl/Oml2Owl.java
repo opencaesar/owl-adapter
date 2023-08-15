@@ -612,7 +612,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 			final OWLLiteral literal = getLiteral(annotation.getLiteralValue());
 			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
 		} else {
-			final OWLLiteral literal = owl.getLiteral("true");
+			final OWLLiteral literal = owl.getLiteral(true); // boolean literal true
 			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
 		}
 	}
