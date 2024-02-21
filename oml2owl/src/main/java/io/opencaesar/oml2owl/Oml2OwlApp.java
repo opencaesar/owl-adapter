@@ -23,15 +23,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -42,8 +41,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -139,27 +136,43 @@ public class Oml2OwlApp {
 	private boolean annotationsOnAxioms = false;
 
 	@Parameter(
+			names = { "--generate-rules", "-rl" }, 
+			description = "Whether to generate Jena rules files (Optional)", 
+			required = false, 
+			order = 7)
+	private boolean generateRules;
+	
+	@Parameter(
 			names = { "--debug", "-d" },
 			description = "Shows debug logging statements",
-			order = 7)
+			order = 8)
 	private boolean debug;
 
 	@Parameter(
 			names = { "--help", "-h" },
 			description = "Displays summary of options",
 			help = true,
-			order = 8)
+			order = 9)
 	private boolean help;
 
 	private final Logger LOGGER = LogManager.getLogger(Oml2OwlApp.class);
 
-	/**
-	 * Main method
-	 * 
-	 * @param args command line arguments for the app
-	 * @throws Exception when template instantiation has a problem
-	 */
-	public static void main(final String... args) throws Exception {
+    /**
+     * Main Method
+     * @param args Application arguments.
+     * @throws Exception Error
+     */
+    public static void main(final String... args) throws Exception {
+    	mainWithDeltas(null, args);
+    }
+
+    /**
+     * Main Method with Deltas
+     * @param deltas The set of changed files
+     * @param args Application arguments.
+     * @throws Exception Error
+     */
+    public static void mainWithDeltas(Collection<File> deltas, final String... args) throws Exception {
 		final Oml2OwlApp app = new Oml2OwlApp();
 		final JCommander builder = JCommander.newBuilder().addObject(app).build();
 		builder.parse(args);
@@ -171,7 +184,7 @@ public class Oml2OwlApp {
 			final Appender appender = LogManager.getRootLogger().getAppender("stdout");
 			((AppenderSkeleton) appender).setThreshold(Level.DEBUG);
 		}
-		app.run();
+		app.run(deltas);
 	}
 
 	/**
@@ -180,12 +193,7 @@ public class Oml2OwlApp {
 	public Oml2OwlApp() {
 	}
 	
-	/**
-	 * Runs the application
-	 * 
-	 * @throws Exception error
-	 */
-	public void run() throws Exception {
+	private void run(Collection<File> deltas) throws Exception {
 		LOGGER.info("=================================================================");
 		LOGGER.info("                        S T A R T");
 		LOGGER.info("                      Oml to Owl "+getAppVersion());
@@ -197,31 +205,32 @@ public class Oml2OwlApp {
 		OmlXMIResourceFactory.register();
 		OmlJsonResourceFactory.register();
 		final ResourceSet inputResourceSet = new ResourceSetImpl();
-		inputResourceSet.eAdapters().add(new ECrossReferenceAdapterEx());
+		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
 		
 		final File inputCatalogFile = new File(inputCatalogPath);
 		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
 
 		// load the OML ontologies
-		List<Ontology> inputOntologies = new ArrayList<>(); 
+		Set<String> inputIris = new LinkedHashSet<>(); 
 		if (rootOntologyIri != null) {
 			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalog);
 			LOGGER.info(("Reading: " + rootUri));
 			Ontology rootOntology = OmlRead.getOntology(inputResourceSet.getResource(rootUri, true));
-			inputOntologies.addAll(OmlRead.getImportedOntologyClosure(rootOntology, true));
+			inputIris.addAll(OmlRead.getImportedOntologyClosure(rootOntology, true).stream().map(i -> i.getIri()).collect(Collectors.toList()));
 		} else {
 			final Collection<File> inputFiles = collectOMLFiles(inputCatalog);
 			for (File inputFile : inputFiles) {
 				final URI ontologyUri = URI.createFileURI(inputFile.getAbsolutePath());
 				LOGGER.info(("Reading: " + ontologyUri));
 				Ontology ontology = OmlRead.getOntology(inputResourceSet.getResource(ontologyUri, true));
-				inputOntologies.add(ontology);  
+				inputIris.add(ontology.getIri());  
 			}
 		}
 		
 		// validate resources
 		StringBuffer problems = new StringBuffer();
 		for (Resource resource : inputResourceSet.getResources()) {
+			LOGGER.info(("Validating: " + resource.getURI()));
 			String results = OmlValidator.validate(resource);
 	        if (results.length()>0) {
 	        	if (problems.length()>0)
@@ -232,9 +241,25 @@ public class Oml2OwlApp {
 		if (problems.length()>0) {
 			throw new IllegalStateException("\n"+problems.toString());
 		}
-		
+
+		// remove builtin ontologies
+		inputIris = inputIris.stream().filter(i -> !Oml2Owl.isBuiltInOntology(i)).collect(Collectors.toSet());
+
+		// Calculate the delta IRIs
+		Set<String> changed_iris = (deltas == null) ? inputIris
+			: deltas.stream()
+					.map(i -> URI.createFileURI(i.getAbsolutePath()))
+					.map(i -> inputResourceSet.getResource(i, false))
+					.filter(Objects::nonNull)
+					.map(i -> OmlRead.getOntology(i))
+					.map(i -> i.getIri())
+					.collect(Collectors.toSet());
+		System.out.println(changed_iris.size()+" oml file(s) have changed");
+
 		// create OWL manager
 		final OWLOntologyManager ontologyManager = OWLManager.createOWLOntologyManager();
+		
+		// create OWL API
 		final OwlApi owl2api = new OwlApi(ontologyManager, annotationsOnAxioms);
 		final Map<File, OWLOntology> outputFiles = new LinkedHashMap<>();
 		final Map<Resource, OWLOntology> oml2owl = new LinkedHashMap<>();
@@ -243,40 +268,62 @@ public class Oml2OwlApp {
 		final File outputCatalogFile = new File(outputCatalogPath);
 		final String outputFolderPath = outputCatalogFile.getParent();
 		final Set<String> outputSchemes = new HashSet<>();
+
+		// the Jena rule files
+		final Set<Oml2Rules> rules = new LinkedHashSet<>();
 		
 		// create the equivalent OWL ontologies
-        for (Ontology ontology : inputOntologies) {
-			if (ontology != null && !Oml2Owl.isBuiltInOntology(ontology.getIri())) {
-	            var uri = URI.createURI(ontology.getIri());
-	            if (uri.scheme() != null) { 
-	            	outputSchemes.add(uri.scheme());
-	            }
-	            var relativePath = uri.authority()+uri.path();
-				final File outputFile = new File(outputFolderPath+File.separator+relativePath+"."+outputFileExtension);
-				LOGGER.info(("Creating: " + outputFile));
-				final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api).run();
-				outputFiles.put(outputFile, owlOntology);
+        for (String inputIri : inputIris) {
+            var uri = URI.createURI(inputIri);
+            if (uri.scheme() != null) { 
+            	outputSchemes.add(uri.scheme());
+            }
+            var relativePath = uri.authority()+uri.path();
+			final File outputFile = new File(outputFolderPath+File.separator+relativePath+"."+outputFileExtension);
+			
+			LOGGER.info(("Creating: " + outputFile));
+			final Ontology ontology = OmlRead.getOntologyByIri(inputResourceSet, inputIri);
+			final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api).run();
+
+			// Only save resources when needed
+			boolean needToSave = changed_iris == null || changed_iris.contains(ontology.getIri());
+			if (!needToSave && (ontology instanceof VocabularyBundle || ontology instanceof DescriptionBundle)) {
+				// any change in the import closure?
+				var importedIris = OmlRead.getImportedOntologyClosure(ontology, false).stream()
+						.map(i -> i.getIri()).collect(Collectors.toSet());
+				importedIris.retainAll(changed_iris);
+				if (!importedIris.isEmpty()) {
+					needToSave = true;
+				}
+			}
+			if (needToSave) {
 				oml2owl.put(ontology.eResource(), owlOntology);
-				LOGGER.info(("Created: " + outputFile));
+				outputFiles.put(outputFile, owlOntology);
+				
+				// generate rule files
+				if (generateRules && ontology instanceof VocabularyBundle) {
+					final File ruleFile = new File(outputFolderPath+File.separator+relativePath+".rules");
+					rules.add(new Oml2Rules((VocabularyBundle)ontology, ruleFile).run());
+				}
 			}
 		}
 		
 		// run the vocabulary bundle closure algorithm
 		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof VocabularyBundle).forEach(entry -> {
 			LOGGER.info("Closing vocabulary bundle: "+entry.getKey().getURI());
-			switchECrossReferenceAdapter(entry.getKey());
-			new CloseVocabularyBundleToOwl(entry.getKey(), entry.getValue(), disjointUnions, owl2api).run();
+			new CloseVocabularyBundleToOwl((VocabularyBundle) OmlRead.getOntology(entry.getKey()), entry.getValue(), disjointUnions, owl2api).run();
 		});
 		
 		// run the description bundle closure algorithm
 		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof DescriptionBundle).forEach(entry -> {
 			LOGGER.info("Closing description bundle: "+entry.getKey().getURI());
-			switchECrossReferenceAdapter(entry.getKey());
-			new CloseDescriptionBundleToOwl(entry.getKey(), entry.getValue(), owl2api).run();
+			new CloseDescriptionBundleToOwl((DescriptionBundle)OmlRead.getOntology(entry.getKey()), entry.getValue(), owl2api).run();
 		});
 		
-		// save the output resources
-		outputFiles.forEach((file, owlOntology) -> {
+		// save the output OWL ontologies
+		System.out.println(outputFiles.size()+" owl file(s) are saved");
+		outputFiles.keySet().parallelStream().forEach(file -> {
+			var owlOntology = outputFiles.get(file);
 			LOGGER.info("Saving: "+file);
 			try {
 				OWLDocumentFormat format = FileExtensionValidator.extensions.get(outputFileExtension).getDeclaredConstructor().newInstance();
@@ -300,20 +347,22 @@ public class Oml2OwlApp {
 		
 		// create the output OWL catalog
 		createOutputCatalog(outputCatalogFile, outputSchemes);
+				
+		// create rule files
+		System.out.println(rules.size()+" rules file(s) are saved");
+		rules.parallelStream().forEach(r -> {
+			try {
+				r.save();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		});
 		
 		LOGGER.info("=================================================================");
 		LOGGER.info("                          E N D");
 		LOGGER.info("=================================================================");
 	}
 
-	private void switchECrossReferenceAdapter(Resource r) {
-		final var allResoruces = OmlRead.getImportedOntologyClosure(OmlRead.getOntology(r), true).stream()
-				.map(i -> i.eResource())
-				.collect(Collectors.toSet());
-        final var adapter = (ECrossReferenceAdapterEx) ECrossReferenceAdapter.getCrossReferenceAdapter(r.getResourceSet());
-        adapter.setAllResources(allResoruces);
-	}
-	
 	private URI resolveRootOntologyIri(String rootOntologyIri, OmlCatalog catalog) throws IOException {
 		final URI resolved = catalog.resolveUri(URI.createURI(rootOntologyIri));
 		
@@ -463,29 +512,6 @@ public class Oml2OwlApp {
 			storers.put("trig", owlOntology -> createQuadOntologyStorer(new TrigDocumentFormatFactory(), owlOntology));
 			storers.put("trix", owlOntology -> createQuadOntologyStorer(new TrixDocumentFormatFactory(), owlOntology));
 			storers.put("nq", owlOntology -> createQuadOntologyStorer(new NQuadsDocumentFormatFactory(), owlOntology));
-		}
-	}
-
-	private class ECrossReferenceAdapterEx extends ECrossReferenceAdapter {
-		
-		private Set<Resource> allResources = Collections.emptySet();
-		
-		public void setAllResources(Set<Resource> allResources) {
-			this.allResources = allResources;
-		}
-
-		@Override
-		public Collection<EStructuralFeature.Setting> getInverseReferences(EObject eObject) {
-			var references = super.getInverseReferences(eObject);
-			if (!allResources.isEmpty()) {
-				for (var i = references.iterator(); i.hasNext();) {
-					var setting = i.next();
-					if (!allResources.contains(setting.getEObject().eResource())) {
-						i.remove();
-					}
-				}
-			}
-			return references;
 		}
 	}
 	

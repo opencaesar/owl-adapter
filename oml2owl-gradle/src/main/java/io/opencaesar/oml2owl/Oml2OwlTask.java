@@ -21,22 +21,27 @@ package io.opencaesar.oml2owl;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.emf.common.util.URI;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.Task;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Optional;
-import org.gradle.api.tasks.OutputFiles;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
 import org.gradle.work.Incremental;
+import org.gradle.work.InputChanges;
 
+import groovy.lang.Closure;
 import io.opencaesar.oml.util.OmlCatalog;
 
 /**
@@ -49,6 +54,22 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	 */
 	public Oml2OwlTask() {
 	}
+
+    @SuppressWarnings("rawtypes")
+	@Override
+    public Task configure(Closure closure) {
+        Task task = super.configure(closure);
+		try {
+			final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
+			Collection<File> inputFiles = inputCatalog.getRewriteUris().stream()
+					.map(i -> new File(java.net.URI.create(i)))
+					.collect(Collectors.toList());
+			getInputFiles().setFrom(inputFiles);
+		} catch (Exception e) {
+			throw new GradleException(e.getLocalizedMessage(), e);
+		}
+        return task;
+    }
 
 	/**
 	 * Path of the input OML catalog.
@@ -103,6 +124,15 @@ public abstract class Oml2OwlTask extends DefaultTask {
     public abstract Property<Boolean> getAnnotationsOnAxioms();
 
 	/**
+	 * Whether to generate Jena rules files.
+	 * 
+	 * @return Boolean Property
+	 */
+    @Optional
+    @Input
+    public abstract Property<Boolean> getGenerateRules();
+
+    /**
 	 * The debug flag
 	 * 
 	 * @return Boolean Property
@@ -118,53 +148,32 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	 */
 	@Incremental
 	@InputFiles
-    protected ConfigurableFileCollection getInputFiles() {
-    	try {
-    		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
-    		Collection<File> inputFiles = Oml2OwlApp.collectOMLFiles(inputCatalog);
-    		inputFiles.add(getInputCatalogPath().get());
-    		return getProject().files(inputFiles);
-    	} catch (Exception e) {
-			throw new GradleException(e.getLocalizedMessage(), e);
-    	}
-    }
-    
+	protected abstract ConfigurableFileCollection getInputFiles();
+
 	/**
 	 * The collection of output Owl files referenced by the output Owl catalog
 	 * 
 	 * @return ConfigurableFileCollection
 	 */
-   @OutputFiles
-   protected ConfigurableFileCollection getOutputFiles() {
-   	try {
-		if (getInputCatalogPath().isPresent() && getOutputCatalogPath().isPresent()) {
-    		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
-    		final String outputFileExtension = getOutputFileExtension().isPresent()? getOutputFileExtension().get() : "owl"; 
-    		final String outputFolder = getOutputCatalogPath().get().getParent(); 
-    		Collection<File> outputFiles = new ArrayList<>(getInputFiles().getFiles().size()+1);
-    		for (File inputFile : getInputFiles().getFiles()) {
-    			if (!inputFile.equals(getInputCatalogPath().get())) {
-    				var iri = inputCatalog.deresolveUri(URI.createFileURI(inputFile.toString()));
-					if (!Oml2Owl.BUILT_IN_ONTOLOGIES.contains(iri.toString())) {
-	    				var outputUri = outputFolder + iri.toString().replace(iri.scheme()+":/", "")+"."+outputFileExtension;
-						outputFiles.add(new File(outputUri));
-					}
-    			}
-    		}
-    		outputFiles.add(getOutputCatalogPath().get());
-    		return getProject().files(outputFiles);
+	@OutputDirectory
+	protected File getOutputFiles() {
+		try {
+			if (getOutputCatalogPath().isPresent()) {
+				return getProject().file(getOutputCatalogPath().get().getParentFile());
+			}
+			return null;
+		} catch (Exception e) {
+			throw new GradleException(e.getLocalizedMessage(), e);
 		}
-		return getProject().files(Collections.EMPTY_LIST);
-	} catch (Exception e) {
-		throw new GradleException(e.getLocalizedMessage(), e);
 	}
-}
-    
-   /**
-    * The gradle task action logic.
-    */
+
+    /**
+     * The gradle task action logic.
+     * 
+     * @param inputChanges The input changes
+     */
     @TaskAction
-    public void run() {
+    public void run(InputChanges inputChanges) {
         List<String> args = new ArrayList<>();
         if (getInputCatalogPath().isPresent()) {
 		    args.add("-i");
@@ -187,6 +196,11 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	    		args.add("-u");
 	    	}
 	    }
+	    if (getGenerateRules().isPresent()) {
+	    	if (getGenerateRules().get()) {
+	    		args.add("-rl");
+	    	}
+	    }
 	    if (getAnnotationsOnAxioms().isPresent()) {
 	    	if (getAnnotationsOnAxioms().get()) {
 	    		args.add("-a");
@@ -196,7 +210,13 @@ public abstract class Oml2OwlTask extends DefaultTask {
 		    args.add("-d");
 	    }
 	    try {
-    		Oml2OwlApp.main(args.toArray(new String[0]));
+	    	if (inputChanges.isIncremental()) {
+	    		final Set<File> deltas = new HashSet<>();
+	        	inputChanges.getFileChanges(getInputFiles()).forEach(f -> deltas.add(f.getFile()));
+	        	Oml2OwlApp.mainWithDeltas(deltas, args.toArray(new String[0]));
+	    	} else {
+	        	Oml2OwlApp.mainWithDeltas(null, args.toArray(new String[0]));
+	    	}
 		} catch (Exception e) {
 			throw new TaskExecutionException(this, e);
 		}
