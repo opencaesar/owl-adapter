@@ -349,7 +349,9 @@ public class Oml2OwlApp {
 		createOutputCatalog(outputCatalogFile, outputSchemes);
 				
 		// create rule files
-		System.out.println(rules.size()+" rules file(s) are saved");
+		if (generateRules) {
+			System.out.println(rules.size()+" rules file(s) are saved");
+		}
 		rules.parallelStream().forEach(r -> {
 			try {
 				r.save();
