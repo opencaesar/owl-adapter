@@ -1,7 +1,7 @@
 # OWL Adapter
 
-[![Build Status](https://app.travis-ci.com/opencaesar/owl-adapter.svg?branch=master)](https://app.travis-ci.com/github/opencaesar/owl-adapter)
-[![Release](https://img.shields.io/github/v/tag/opencaesar/owl-adapter?label=release)](https://github.com/opencaesar/owl-adapter/releases/latest)
+[![Build Status](https://github.com/opencaesar/owl-adapter/actions/workflows/ci.yml/badge.svg)](https://github.com/opencaesar/owl-adapter/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/opencaesar/owl-adapter?label=Release)](https://github.com/opencaesar/owl-adapter/releases/latest)
 
 An [OML](https://github.com/opencaesar/oml) adapter for [OWL2-DL](https://www.w3.org/TR/owl2-syntax/) + [SWRL Rules](https://www.w3.org/Submission/SWRL/)
 
