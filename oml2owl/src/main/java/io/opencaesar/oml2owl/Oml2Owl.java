@@ -272,6 +272,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 			owl.addAnnotationAssertion(ontology, forwardIri, owl.getAnnotation(OmlConstants.type, owl.createIri(relationKindIri)));
 			// derivation rule for forward relation
 			if (base instanceof RelationEntity) {
+				owl.addAnnotationAssertion(ontology, forwardIri, owl.getAnnotation(OmlConstants.relationEntity, owl.createIri(base.getIri())));
 				final ArrayList<SWRLAtom> antedecents = new ArrayList<SWRLAtom>();
 				antedecents.add(owl.getClassAtom(base.getIri(), owl.getSWRLVariable("r")));
 				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, owl.getSWRLVariable("r"), owl.getSWRLVariable("s")));

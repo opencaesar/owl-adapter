@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.emf.ecore.resource.Resource;
@@ -38,8 +39,8 @@ import io.opencaesar.closeworld.OwlApi;
 import io.opencaesar.closeworld.Taxonomy;
 import io.opencaesar.oml.Aspect;
 import io.opencaesar.oml.Entity;
-import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.Vocabulary;
+import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.util.OmlSearch;
 
@@ -50,17 +51,17 @@ import io.opencaesar.oml.util.OmlSearch;
 public class CloseVocabularyBundle {
 
 	/**
-	 * The vocabulary bundle resource
+	 * The bundle's import scope
 	 */
-	protected final Resource resource;
+	protected final Set<Resource> scope;
 
 	/**
 	 * Creates a new CloseVocabularyBundle object
 	 * 
-	 * @param resource The vocabulary bundle resource
+	 * @param bundle The vocabulary bundle
 	 */
-	public CloseVocabularyBundle(final Resource resource) {
-		this.resource = resource;
+	public CloseVocabularyBundle(final VocabularyBundle bundle) {
+		scope = OmlRead.getImportScope(bundle);
 	}
 
 	/**
@@ -91,7 +92,7 @@ public class CloseVocabularyBundle {
 			.map(e -> (Entity)e)
 			.forEach(term -> {
 					final ClassExpression.Unitary subSingleton = singletonMap.get(term);
-					OmlSearch.findSuperTerms(term).stream().forEach(superTerm -> {
+					OmlSearch.findSuperTerms(term, scope).stream().forEach(superTerm -> {
 						final ClassExpression.Unitary superSingleton = singletonMap.get(superTerm);
 						if (superSingleton != null) {
 							edgeList.add(superSingleton);
@@ -126,13 +127,13 @@ public class CloseVocabularyBundle {
 		/**
 		 * Creates a new CloseVocabularyBundleToOwl object
 		 * 
-		 * @param resource The vocabulary bundle resource
+		 * @param bundle The vocabulary bundle
 		 * @param ontology The Owl ontology
 		 * @param disjointUnions Whether to add djsjointUnion axioms
 		 * @param owlApi The Owl API
 		 */
-		public CloseVocabularyBundleToOwl(final Resource resource, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
-			super(resource);
+		public CloseVocabularyBundleToOwl(final VocabularyBundle bundle, final OWLOntology ontology, final boolean disjointUnions, final OwlApi owlApi) {
+			super(bundle);
 			this.ontology = ontology;
 			this.disjointUnions = disjointUnions;
 			this.owlApi = owlApi;
@@ -142,9 +143,11 @@ public class CloseVocabularyBundle {
 		 * Runs the algorithm
 		 */
 		public void run() {
-			final Ontology omlOntology = OmlRead.getOntology(resource);
-			final Collection<Ontology> allOntologies = OmlRead.getImportedOntologyClosure(omlOntology, true);
-			final Collection<Vocabulary> allVocabularies = allOntologies.stream().filter(o -> o instanceof Vocabulary).map(o -> (Vocabulary)o).collect(Collectors.toList());
+			final Collection<Vocabulary> allVocabularies = scope.stream()
+					.map(r -> OmlRead.getOntology(r))
+					.filter(o -> o instanceof Vocabulary)
+					.map(o -> (Vocabulary)o)
+					.collect(Collectors.toList());
 			final Taxonomy conceptTaxonomy = super.omlConceptTaxonomy(allVocabularies);
 			final Axiom.AxiomType axiomType = disjointUnions ? DISJOINT_UNION : DISJOINT_CLASSES;
 

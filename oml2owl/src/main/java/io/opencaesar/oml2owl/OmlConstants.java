@@ -22,7 +22,9 @@ interface OmlConstants extends io.opencaesar.oml.util.OmlConstants {
 	
 	static final String omlPath = "opencaesar.io/oml";
 
-	static final String type = DC_NS + "type";
+	static final String type = OML_NS + "type";
+
+	static final String relationEntity = OML_NS + "relationEntity";
 
 	static final String Vocabulary = OML_NS + "Vocabulary";
 

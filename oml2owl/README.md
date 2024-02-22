@@ -22,6 +22,7 @@ Args:
 --output-file-extension | -f [optional, default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss]
 --disjoint-unions | -u [Optional]
 --annotations-on-axioms | -a [Optional]
+--generateRules | -rl [Optional]
 ```
 
 ## Run as Gradle Task
@@ -41,4 +42,5 @@ task oml2owl(type:io.opencaesar.oml2owl.Oml2OwlTask) {
     outputFileExtension = 'owl' [Optional, default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss]
     disjointUnions = true [Optional, false by default]
     annotationsOnAxioms = true [Optional, false by default]
+    generateRules = true [Optional, false by default] // generates Jena rules files
 }

@@ -38,10 +38,10 @@ import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 
+import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.Element;
 import io.opencaesar.oml.Entity;
 import io.opencaesar.oml.NamedInstance;
-import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.Property;
 import io.opencaesar.oml.PropertyCardinalityRestrictionAxiom;
 import io.opencaesar.oml.PropertyPredicate;
@@ -65,17 +65,17 @@ import io.opencaesar.oml.util.OmlSearch;
 public class CloseDescriptionBundle {
 
 	/**
-	 * The description bundle resource
+	 * The bundle's import scope
 	 */
-	protected final Resource resource;
+	protected final Set<Resource> scope;
 
 	/**
 	 * Creates a new CloseDescriptionBundle object
 	 * 
-	 * @param resource The OML resource of the description bundle
+	 * @param bundle The description bundle
 	 */
-	public CloseDescriptionBundle(final Resource resource) {
-		this.resource = resource;
+	public CloseDescriptionBundle(final DescriptionBundle bundle) {
+		scope = OmlRead.getImportScope(bundle);
 	}
 
 	/**
@@ -84,10 +84,10 @@ public class CloseDescriptionBundle {
 	 *
 	 * Derived properties are those that appear in a consequent of a SWRL rule.
 	 * 
-	 * @param allVocabularies
+	 * @param allVocabularies The vocabularies to iterate over
 	 * @return map from entity to set of restricted properties
 	 */
-	private final static Map<Entity, Set<Property>> getEntitiesWithRestrictedProperties(final Collection<Vocabulary> allVocabularies) {
+	protected final Map<Entity, Set<Property>> getEntitiesWithRestrictedProperties(final Collection<Vocabulary> allVocabularies) {
 
 		/**
 		 * This map indicates whether a property is derived via SWRL rules.
@@ -133,7 +133,7 @@ public class CloseDescriptionBundle {
 			.filter(s -> s instanceof Entity)
 			.map(s -> (Entity)s)
 			.forEach(entity -> {
-				OmlSearch.findPropertyRestrictionAxioms(entity).forEach(r -> {
+				OmlSearch.findPropertyRestrictionAxioms(entity, scope).forEach(r -> {
 					if (r instanceof PropertyCardinalityRestrictionAxiom) {
 						final var restriction = (PropertyCardinalityRestrictionAxiom) r;
 						switch (restriction.getKind()) {
@@ -175,7 +175,7 @@ public class CloseDescriptionBundle {
 		return map;
 	}
 
-	private static void addDerivedPropertyViaRule(final Map<Property, Set<Rule>> derivedProperties, final Property p, final Rule rule) {
+	private void addDerivedPropertyViaRule(final Map<Property, Set<Rule>> derivedProperties, final Property p, final Rule rule) {
 		final Set<Rule> rs = derivedProperties.getOrDefault(p, new HashSet<>());
 		rs.add(rule);
 		derivedProperties.put(p, rs);
@@ -184,11 +184,11 @@ public class CloseDescriptionBundle {
 	/**
 	 * Creates a map from each property to the tree of its specializations.
 	 * 
-	 * @param allVocabularies
+	 * @param allVocabularies The vocabularies to iterate over
 	 * @return map from property to property graph
-	 * @throws UnsupportedOperationException
+	 * @throws UnsupportedOperationException when an unsupported operation is called
 	 */
-	private final static Map<Property, Set<Property>> getPropertyTrees(
+	protected final Map<Property, Set<Property>> getPropertyTrees(
 			final Collection<Vocabulary> allVocabularies) throws UnsupportedOperationException {
 		final Map<Property, Set<Property>> map = new HashMap<>();
 		final SimpleDirectedGraph<Property, DefaultEdge> graph = new SimpleDirectedGraph<>(DefaultEdge.class);
@@ -199,7 +199,7 @@ public class CloseDescriptionBundle {
 			.map(s -> (Property)s)
 			.forEach(p -> {
 					graph.addVertex(p);
-					OmlSearch.findSuperTerms(p).forEach(s -> {
+					OmlSearch.findSuperTerms(p, scope).forEach(s -> {
 						final Property sp = (Property) s;
 						graph.addVertex(sp);
 						graph.addEdge(sp, p);
@@ -222,16 +222,14 @@ public class CloseDescriptionBundle {
 	/**
 	 * Creates a map from entity to all instances of that entity or its specializations.
 	 * 
-	 * @param allOntologies
-	 * @param entities
-	 * @param neighborCache
+	 * @param entities The set of entities
 	 * @return map from entity to instances
 	 */
-	private final static Map<Entity, Set<NamedInstance>> getEntityInstances(final Set<Entity> entities) {
+	protected final Map<Entity, Set<NamedInstance>> getEntityInstances(final Set<Entity> entities) {
 		final Map<Entity, Set<NamedInstance>> map = new HashMap<>();
 
 		entities.forEach(entity -> {
-			final Set<NamedInstance> instances = OmlSearch.findInstancesOfKind(entity).stream()
+			final Set<NamedInstance> instances = OmlSearch.findInstancesOfKind(entity, scope).stream()
 				.filter(i -> i instanceof NamedInstance)
 				.map(i -> (NamedInstance)i)
 				.collect(Collectors.toSet());
@@ -245,13 +243,12 @@ public class CloseDescriptionBundle {
 	 * Returns a map from subject to a map from property to usage count
 	 * for generating cardinality restrictions on properties.
 	 * 
-	 * @param entitiesWithRestrictedProperties
-	 * @param entityInstances
-	 * @param neighborCache
-	 * @param propertyTrees
+	 * @param entitiesWithRestrictedProperties The entities to consider
+	 * @param entityInstances The entity instances
+	 * @param propertyTrees A map from a property to a set of its sub properties
 	 * @return map from subject to map from property to usage count
 	 */
-	private static Map<NamedInstance, Map<Property, Integer>> getPropertyCounts(
+	protected Map<NamedInstance, Map<Property, Integer>> getPropertyCounts(
 			final Map<Entity, Set<Property>> entitiesWithRestrictedProperties,
 			final Map<Entity, Set<NamedInstance>> entityInstances,
 			final Map<Property, Set<Property>> propertyTrees) {
@@ -275,14 +272,14 @@ public class CloseDescriptionBundle {
 					if (!subj_vals_map.containsKey(property)) subj_vals_map.put(property, new HashSet<Element>());
 				});
 				
-				OmlSearch.findPropertyValueAssertionsWithSubject(subj).forEach(pva -> {
+				OmlSearch.findPropertyValueAssertionsWithSubject(subj, scope).forEach(pva -> {
 					final var prop = pva.getProperty();
 					if (all_properties.contains(prop)) {
 						subj_vals_map.get(prop).add(pva.getValue());
 					}
 				});
 
-				OmlSearch.findRelationInstancesWithSource(subj).forEach(ri -> {
+				OmlSearch.findRelationInstancesWithSource(subj, scope).forEach(ri -> {
 					ri.getOwnedTypes().forEach(rta ->{
 						if (rta.getType() instanceof RelationEntity) {
 							final Relation rel = ((RelationEntity)rta.getType()).getForwardRelation();
@@ -293,7 +290,7 @@ public class CloseDescriptionBundle {
 					});
 				});
 
-				OmlSearch.findPropertyValueAssertionsWithObject(subj).forEach(li -> {
+				OmlSearch.findPropertyValueAssertionsWithObject(subj, scope).forEach(li -> {
 					if (li.getProperty() instanceof Relation) {
 						final Relation rel = ((Relation)li.getProperty()).getInverse();
 						if (all_properties.contains(rel)) {
@@ -302,7 +299,7 @@ public class CloseDescriptionBundle {
 					}
 				});
 
-				OmlSearch.findRelationInstancesWithTarget(subj).forEach(ri -> {
+				OmlSearch.findRelationInstancesWithTarget(subj, scope).forEach(ri -> {
 					ri.getOwnedTypes().forEach(rta ->{
 						if (rta.getType() instanceof RelationEntity) {
 							final Relation rel = ((RelationEntity)rta.getType()).getReverseRelation();
@@ -313,7 +310,7 @@ public class CloseDescriptionBundle {
 					});
 				});
 
-				OmlSearch.findAllTypes(subj).stream()
+				OmlSearch.findAllTypes(subj, scope).stream()
 					.filter(r -> r instanceof Entity)
 					.flatMap(r -> ((Entity)r).getOwnedPropertyRestrictions().stream())
 					.filter(r -> r instanceof PropertyValueRestrictionAxiom)
@@ -352,12 +349,12 @@ public class CloseDescriptionBundle {
 		/**
 		 * Creates a new CloseDescriptionBundleToOwl object
 		 * 
-		 * @param resource the description bundle resource
+		 * @param bundle the description bundle
 		 * @param ontology the Owl ontology
 		 * @param owlApi the Owl API
 		 */
-		public CloseDescriptionBundleToOwl(final Resource resource, final OWLOntology ontology, final OwlApi owlApi) {
-			super(resource);
+		public CloseDescriptionBundleToOwl(final DescriptionBundle bundle, final OWLOntology ontology, final OwlApi owlApi) {
+			super(bundle);
 			this.ontology = ontology;
 			this.owlApi = owlApi;
 		}
@@ -366,9 +363,11 @@ public class CloseDescriptionBundle {
 		 * Runs the algorithm
 		 */
 		public void run() {
-			final Ontology omlOntology = OmlRead.getOntology(this.resource);
-			final Collection<Ontology> allOntologies = OmlRead.getImportedOntologyClosure(omlOntology, true);
-			final Collection<Vocabulary> allVocabularies = allOntologies.stream().filter(o -> o instanceof Vocabulary).map(o -> (Vocabulary)o).collect(Collectors.toList());
+			final Collection<Vocabulary> allVocabularies = scope.stream()
+					.map(r -> OmlRead.getOntology(r))
+					.filter(o -> o instanceof Vocabulary)
+					.map(o -> (Vocabulary)o)
+					.collect(Collectors.toList());
 
 			final Map<Entity, Set<Property>> entitiesWithRestrictedProperties = getEntitiesWithRestrictedProperties(allVocabularies);
 			
