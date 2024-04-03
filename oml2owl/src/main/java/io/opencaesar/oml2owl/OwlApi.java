@@ -145,6 +145,12 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return class_;
 	}
 
+	public OWLSubClassOfAxiom addSubClassOfAxiom(final OWLOntology ontology, final OWLClassExpression subclass, final OWLClassExpression superclass) {
+		final OWLSubClassOfAxiom axiom = factory.getOWLSubClassOfAxiom(subclass, superclass);
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
 	public OWLDatatype addDatatype(final OWLOntology ontology, final String iri) {
 		final OWLDatatype datatype = factory.getOWLDatatype(iri);
 		final OWLDeclarationAxiom axiom = factory.getOWLDeclarationAxiom(datatype);
