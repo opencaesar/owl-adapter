@@ -65,7 +65,7 @@ public class CloseVocabularyBundle {
 	}
 
 	/**
-	 * Returns a transitively-reduced concept taxonomy, rooted at Universal, from a collection of OML ontologies.
+	 * Returns a transitively-reduced concept taxonomy, rooted at Universal, from a collection of Oml ontologies.
 	 * 
 	 * @param allVocabularies
 	 * @return concept taxonomy

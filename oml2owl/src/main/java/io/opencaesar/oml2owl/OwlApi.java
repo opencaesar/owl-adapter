@@ -104,6 +104,7 @@ import org.semanticweb.owlapi.model.SWRLObjectPropertyAtom;
 import org.semanticweb.owlapi.model.SWRLRule;
 import org.semanticweb.owlapi.model.SWRLSameIndividualAtom;
 import org.semanticweb.owlapi.model.SWRLVariable;
+import org.semanticweb.owlapi.vocab.Namespaces;
 import org.semanticweb.owlapi.vocab.OWLFacet;
 
 class OwlApi extends io.opencaesar.closeworld.OwlApi {
@@ -277,7 +278,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLAnonymousIndividual();
 	}
 
-	public SWRLRule addRule(final OWLOntology ontology, final List<SWRLAtom> head, final List<SWRLAtom> body, final OWLAnnotation... annotations) {
+	public SWRLRule addRule(final OWLOntology ontology, final List<SWRLAtom> body, final List<SWRLAtom> head, final OWLAnnotation... annotations) {
 		final SWRLRule axiom = factory.getSWRLRule(body, head, Arrays.asList(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
@@ -343,19 +344,16 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 	}
 
 	public OWLEquivalentClassesAxiom addEquivalentClasses(final OWLOntology ontology, final String classIri, OWLClassExpression equivalentClass, final OWLAnnotation... annotations) {
-		final List<OWLClassExpression> classes = new ArrayList<>();
-		classes.add(factory.getOWLClass(classIri));
-		classes.add(equivalentClass);
-		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(classes, checkIfNeeded(annotations));
+		final OWLClass class1 = factory.getOWLClass(classIri);
+		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(class1, equivalentClass, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
 	}
 
 	public OWLEquivalentClassesAxiom addEquivalentClasses(final OWLOntology ontology, final String classIri, String equivalentClassIri, final OWLAnnotation... annotations) {
-		final List<OWLClassExpression> classes = new ArrayList<>();
-		classes.add(factory.getOWLClass(classIri));
-		classes.add(factory.getOWLClass(equivalentClassIri));
-		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(classes, checkIfNeeded(annotations));
+		final OWLClass class1 = (factory.getOWLClass(classIri));
+		final OWLClass class2 = factory.getOWLClass(equivalentClassIri);
+		final OWLEquivalentClassesAxiom axiom = factory.getOWLEquivalentClassesAxiom(class1, class2, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
 		return axiom;
 	}
@@ -555,6 +553,13 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
+	public OWLClassAssertionAxiom addClassAssertion(final OWLOntology ontology, final OWLIndividual individual, final String classIri, final OWLAnnotation... annotations) {
+		final OWLClass class_ = factory.getOWLClass(classIri);
+		final OWLClassAssertionAxiom axiom = factory.getOWLClassAssertionAxiom(class_, individual, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
 	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final String individualIri, final String propertyIri, final String objectIri, final OWLAnnotation... annotations) {
 		final OWLNamedIndividual object = factory.getOWLNamedIndividual(objectIri);
 		final OWLNamedIndividual individual = factory.getOWLNamedIndividual(individualIri);
@@ -599,6 +604,12 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return axiom;
 	}
 
+	public OWLAnnotationAssertionAxiom addAnnotationAssertion(final OWLOntology ontology, final OWLAnonymousIndividual individual, final OWLAnnotation annotation) {
+		final OWLAnnotationAssertionAxiom axiom = factory.getOWLAnnotationAssertionAxiom(individual, annotation);
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
 	public OWLFacetRestriction getFacetRestriction(final OWLFacet facet, final OWLLiteral value) {
 		return factory.getOWLFacetRestriction(facet, value);
 	}
@@ -620,7 +631,7 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 	}
 
 	public OWLLiteral getLiteral(final BigDecimal value) {
-		return getLiteralWithDatatype(value.toString(), (OmlConstants.XSD_NS + "decimal"));
+		return getLiteralWithDatatype(value.toString(), (Namespaces.XSD.getPrefixIRI() + "decimal"));
 	}
 
 	public OWLLiteral getLiteralWithDatatype(final String value, final String datatypeIri) {

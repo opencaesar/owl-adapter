@@ -43,7 +43,7 @@ import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.util.OmlRead;
 
 /**
- * Converts OML Rules to Jena Rules (*.rules) files 
+ * Converts Oml Rules to Jena Rules (*.rules) files 
  */
 public class Oml2Rules {
 

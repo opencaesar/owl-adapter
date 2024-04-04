@@ -1,5 +1,7 @@
 apply plugin: 'application'
 
+apply from: "${rootDir}/gradle/maven-deployment.gradle"
+
 ext.title = 'Owl to Oml'
 description = 'Owl to Oml Interface'
 mainClassName = 'io.opencaesar.owl2oml.Owl2OmlApp'
