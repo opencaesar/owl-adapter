@@ -1,27 +1,26 @@
-# OML to OWL
+# OWL to OML
 
 [![Release](https://img.shields.io/github/v/tag/opencaesar/owl-adapter?label=release)](https://github.com/opencaesar/owl-adapter/releases/latest)
 
-A tool to translate ontologies from an OML to an OWL representation
+A tool to translate ontologies from an OWL to an OML representation
 
 ## Run as CLI
 
 MacOS/Linux:
 ```
-./gradlew oml2owl:run --args="..."
+./gradlew owl2oml:run --args="..."
 ```
 Windows:
 ```
-gradlew.bat oml2owl:run --args="..."
+gradlew.bat owl2oml:run --args="..."
 ```
 Args:
 ```
 --input-catalog-path | -i path/to/input/oml/catalog.xml [Required]
---root-ontology-iri | -r http://... [Optional]
 --output-catalog-path | -o path/to/output/owl/catalog.xml [Required]
---output-file-extension | -f [optional, default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss]
---disjoint-unions | -u [Optional]
---annotations-on-axioms | -a [Optional]
+--do-not-update-path | -u path/to/oml/folder [Optional]
+--input-file-extension | -if [optional, default=ttl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld]
+--output-file-extension | -of [optional, default=oml, options: oml, omlxmi, omljson]
 ```
 
 ## Run as Gradle Task
@@ -31,14 +30,13 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'io.opencaesar.owl:oml2owl-gradle:+'
+        classpath 'io.opencaesar.adapters:owl2oml-gradle:+'
     }
 }
-task oml2owl(type:io.opencaesar.owl2oml.Oml2OwlTask) {
+task owl2oml(type:io.opencaesar.owl2oml.Owl2OmlTask) {
     inputCatalogPath = file('path/to/input/oml/catalog.xml') [Required]
-    rootOntologyIri = 'http://...' [Optional]
     outputCatalogPath = file('path/to/output/owl/catalog.xml') [Required]
-    outputFileExtension = 'owl' [Optional, default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss]
-    disjointUnions = true [Optional, false by default]
-    annotationsOnAxioms = true [Optional, false by default]
+    doNotUpdatePaths = [ file('build/oml') ] [Optional]
+    inputFileExtensions = ['ttl'] [Optional, default=ttl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld]
+    outputFileExtension = 'oml' [Optional, default=oml, options: oml, omlxmi, omljson]
 }

@@ -72,7 +72,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     }
 
 	/**
-	 * Path of the input OML catalog.
+	 * Path of the input Oml catalog.
 	 * 
 	 * @return File Property
 	 */
@@ -80,7 +80,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     public abstract Property<File> getInputCatalogPath();
 
 	/**
-	 * Root OML ontology IRI.
+	 * Root Oml ontology IRI.
 	 * 
 	 * @return String Property
 	 */
@@ -142,7 +142,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
     public abstract Property<Boolean> getDebug();
 
 	/**
-	 * The collection of input OML files referenced by the input Oml catalog
+	 * The collection of input Oml files referenced by the input Oml catalog
 	 * 
 	 * @return ConfigurableFileCollection
 	 */
@@ -215,7 +215,7 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	        	inputChanges.getFileChanges(getInputFiles()).forEach(f -> deltas.add(f.getFile()));
 	        	Oml2OwlApp.mainWithDeltas(deltas, args.toArray(new String[0]));
 	    	} else {
-	        	Oml2OwlApp.mainWithDeltas(null, args.toArray(new String[0]));
+	        	Oml2OwlApp.main(args.toArray(new String[0]));
 	    	}
 		} catch (Exception e) {
 			throw new TaskExecutionException(this, e);

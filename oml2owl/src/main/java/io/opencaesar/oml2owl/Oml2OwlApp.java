@@ -82,6 +82,7 @@ import io.opencaesar.oml.dsl.OmlStandaloneSetup;
 import io.opencaesar.oml.resource.OmlJsonResourceFactory;
 import io.opencaesar.oml.resource.OmlXMIResourceFactory;
 import io.opencaesar.oml.util.OmlCatalog;
+import io.opencaesar.oml.util.OmlConstants;
 import io.opencaesar.oml.util.OmlRead;
 import io.opencaesar.oml.validate.OmlValidator;
 import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl;
@@ -94,7 +95,7 @@ public class Oml2OwlApp {
 
 	@Parameter(
 			names = { "--input-catalog-path", "-i" }, 
-			description = "Path of the input OML catalog (Required)", 
+			description = "Path of the input Oml catalog (Required)", 
 			validateWith = InputCatalogPath.class, 
 			required = true, 
 			order = 1)
@@ -102,7 +103,7 @@ public class Oml2OwlApp {
 
 	@Parameter(
 			names= { "--root-ontology-iri", "-r" }, 
-			description="Root OML ontology IRI (Optional)",
+			description="Root ontology IRI (Optional)",
 			required=false, 
 			order=2)
 	private String rootOntologyIri = null;
@@ -210,7 +211,7 @@ public class Oml2OwlApp {
 		final File inputCatalogFile = new File(inputCatalogPath);
 		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
 
-		// load the OML ontologies
+		// load the Oml ontologies
 		Set<String> inputIris = new LinkedHashSet<>(); 
 		if (rootOntologyIri != null) {
 			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalog);
@@ -385,7 +386,7 @@ public class Oml2OwlApp {
 	}
 
 	/**
-	 * Collects OML files referenced by the given Oml catalog
+	 * Collects Oml files referenced by the given Oml catalog
 	 * 
 	 * @param inputCatalog The input Oml catalog
 	 * @return Collection of Files
@@ -433,7 +434,7 @@ public class Oml2OwlApp {
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
 			if (!file.exists() || !file.getName().endsWith("catalog.xml")) {
-				throw new ParameterException((("Parameter " + name) + " should be a valid OML catalog path"));
+				throw new ParameterException((("Parameter " + name) + " should be a valid Oml catalog path"));
 			}
 		}
 	}

@@ -32,7 +32,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'io.opencaesar.owl:oml2owl-gradle:+'
+        classpath 'io.opencaesar.adapters:oml2owl-gradle:+'
     }
 }
 task oml2owl(type:io.opencaesar.oml2owl.Oml2OwlTask) {

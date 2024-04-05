@@ -1,6 +1,6 @@
 /**
  * 
- * Copyright 2019-2021 California Institute of Technology ("Caltech").
+ * Copyright 2024 California Institute of Technology ("Caltech").
  * U.S. Government sponsorship acknowledged.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,6 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat;
 import org.semanticweb.owlapi.formats.N3DocumentFormat;
 import org.semanticweb.owlapi.formats.NQuadsDocumentFormat;
 import org.semanticweb.owlapi.formats.NQuadsDocumentFormatFactory;
@@ -64,8 +63,6 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDocumentFormat;
 import org.semanticweb.owlapi.model.OWLDocumentFormatFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyCreationException;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLStorer;
 import org.semanticweb.owlapi.rio.RioStorer;
 
@@ -74,11 +71,13 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 
+import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.dsl.OmlStandaloneSetup;
 import io.opencaesar.oml.resource.OmlJsonResourceFactory;
 import io.opencaesar.oml.resource.OmlXMIResourceFactory;
 import io.opencaesar.oml.util.OmlBuilder;
 import io.opencaesar.oml.util.OmlCatalog;
+import io.opencaesar.oml.util.OmlConstants;
 
 /**
  * An application to transform Owl resources into Oml resources
@@ -102,17 +101,24 @@ public class Owl2OmlApp {
 	private String outputCatalogPath;
 
 	@Parameter(
-			names = { "--input-file-extensions", "-if" },
-			description = "Extensions for the input OWL files (default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss)",
-			validateWith = FileExtensionValidator.class,
+			names = { "--do-not-update-path", "-u" }, 
+			description = "Paths of output folders that should not be updated", 
+			required = false, 
+			order = 3)
+	private List<File> doNotUpdatePaths;
+	
+	@Parameter(
+			names = { "--input-file-extension", "-if" },
+			description = "Extensions for the input OWL files (default=ttl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld)",
+			validateWith = InputFileExtensionValidator.class,
 			required = false,
 			order = 4)
-	private List<String> inputFileExtensions = Arrays.asList("owl");
+	private List<String> inputFileExtensions = Arrays.asList("ttl");
 
 	@Parameter(
 			names = { "--output-file-extension", "-of" },
-			description = "Extension for the output OML files (default=oml, options: oml, omlxmmi, omljson)",
-			validateWith = FileExtensionValidator.class,
+			description = "Extension for the output Oml files (default=oml, options: oml, omlxmmi, omljson)",
+			validateWith = OutputFileExtensionValidator.class,
 			required = false,
 			order = 5)
 	private String outputFileExtension = "oml";
@@ -139,6 +145,16 @@ public class Owl2OmlApp {
 	 * @throws Exception when template instantiation has a problem
 	 */
 	public static void main(final String... args) throws Exception {
+    	mainWithDeltas(null, args);
+    }
+
+    /**
+     * Main Method with Deltas
+     * @param deltas The set of changed files
+     * @param args Application arguments.
+     * @throws Exception Error
+     */
+    public static void mainWithDeltas(Collection<File> deltas, final String... args) throws Exception {
 		final Owl2OmlApp app = new Owl2OmlApp();
 		final JCommander builder = JCommander.newBuilder().addObject(app).build();
 		builder.parse(args);
@@ -150,7 +166,7 @@ public class Owl2OmlApp {
 			final Appender appender = LogManager.getRootLogger().getAppender("stdout");
 			((AppenderSkeleton) appender).setThreshold(Level.DEBUG);
 		}
-		app.run();
+		app.run(deltas);
 	}
 
 	/**
@@ -164,34 +180,43 @@ public class Owl2OmlApp {
 	 * 
 	 * @throws Exception error
 	 */
-	public void run() throws Exception {
+	private void run(Collection<File> deltas) throws Exception {
 		LOGGER.info("=================================================================");
 		LOGGER.info("                        S T A R T");
 		LOGGER.info("                      Owl to Oml "+getAppVersion());
 		LOGGER.info("=================================================================");
 		LOGGER.info("Input catalog path= " + inputCatalogPath);
 		LOGGER.info("Output catalog path= " + outputCatalogPath);
+		LOGGER.info("Do not update paths= " + doNotUpdatePaths);
+		LOGGER.info("Input file extensions= " + inputFileExtensions);
+		LOGGER.info("Output file extension= " + outputFileExtension);
 
-        // Create the ontology manager and configure it with catalog-based IRI mapper
-        LOGGER.info("create ontology manager");
-        final OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        // Create the ontology manager
+        final var manager = OWLManager.createOWLOntologyManager();
         if (manager == null) {
             throw new RuntimeException("couldn't create owl ontology manager");
         }
-        LOGGER.debug("add location mappers");
-        XMLCatalogIRIMapper mapper = new XMLCatalogIRIMapper(new File(inputCatalogPath), inputFileExtensions);
+
+        // Configure manager with catalog-based IRI mapper
+        var mapper = new OwlCatalog.IRIMapper(new File(inputCatalogPath), inputFileExtensions);
         manager.getIRIMappers().add(mapper);
 
+        // Determine the files to load
+        Collection<File> files = (deltas != null) ? deltas : mapper.getFiles();
+		System.out.println(files.size()+" owl file(s) have changed");
+        
         // Load the input ontologies in memory
-        var iris = mapper.getFileUriMap(inputFileExtensions).keySet();
-        iris.forEach(iri -> {
-            LOGGER.info("load ontology " + iri);
+        files.forEach(file -> {
             try {
-                final OWLOntology ont = manager.loadOntology(IRI.create(iri));
-                if (ont == null) {
-                    throw new RuntimeException("couldn't load ontology at IRI=" + iri);
+                LOGGER.info("Loading " + file.getAbsolutePath());
+                // Do not load a doc again if it's transitively loaded through impact
+                if (!mapper.isDocumentIRIMapped(IRI.create(file))) {
+	                final OWLOntology ontology = manager.loadOntologyFromOntologyDocument(file);
+	                if (ontology == null) {
+	                    throw new RuntimeException("couldn't load ontology " + file);
+	                }
                 }
-            } catch (OWLOntologyCreationException e) {
+            } catch (Exception e) {
             	throw new RuntimeException(e);
             }
         });
@@ -199,7 +224,9 @@ public class Owl2OmlApp {
 		OmlStandaloneSetup.doSetup();
 		OmlXMIResourceFactory.register();
 		OmlJsonResourceFactory.register();
+		
 		final ResourceSet outputResourceSet = new ResourceSetImpl();
+		outputResourceSet.getLoadOptions().put(OmlConstants.RESOLVE_IRI_USING_RESOURCE_SET, Boolean.TRUE);
 		outputResourceSet.eAdapters().add(new ECrossReferenceAdapterEx());
 		
 		// create Oml catalog
@@ -211,15 +238,15 @@ public class Owl2OmlApp {
 		// start the Oml Builder
 		builder.start();
 		
-		// create the equivalent OWL ontologies
-		List<URI> outputResourceURIs = new ArrayList<>(); 
+		// create the equivalent OML ontologies
+		final var allOntologies = new ArrayList<Ontology>();
 		manager.ontologies().forEach(owlOntology -> {
 			LOGGER.info(("Converting: " + owlOntology.getOntologyID().getOntologyIRI().get()));
 			try {
-				var omlOntologies = new Owl2Oml(manager, builder, outputCatalog, outputFileExtension).run(owlOntology);
-				omlOntologies.forEach(i -> outputResourceURIs.add(i.eResource().getURI()));
-			} catch (IOException e) {
-				e.printStackTrace();
+				var ontologies = new Owl2Oml(manager, builder, outputCatalog, outputFileExtension).run(owlOntology);
+				allOntologies.addAll(ontologies);
+			} catch (Exception e) {
+				LOGGER.error(e);
 			}
 		});
 		
@@ -227,13 +254,20 @@ public class Owl2OmlApp {
 		builder.finish();
 		
 		// save the output resources here instead of calling builder.save in order to log
-		for (URI outputResourceURI : outputResourceURIs) {
+		int count = 0;
+		for (var ontology : allOntologies) {
+			OmlSorter.sort(ontology); // canonically sort the ontology
+			URI outputResourceURI = ontology.eResource().getURI();
 			if (outputResourceURI.fileExtension().equals(outputFileExtension)) {
-				LOGGER.info("Saving: "+outputResourceURI);
-				final Resource outputResource = outputResourceSet.getResource(outputResourceURI, false);
-				outputResource.save(Collections.EMPTY_MAP);
+				if (canUpdateUri(outputResourceURI.toFileString(), doNotUpdatePaths)) {
+					LOGGER.info("Saving: "+outputResourceURI.toFileString());
+					final Resource outputResource = outputResourceSet.getResource(outputResourceURI, false);
+					outputResource.save(Collections.EMPTY_MAP);
+					count++;
+				}
 			}
 		}
+		System.out.println(count+" owl file(s) have been converted");
 		
 		LOGGER.info("=================================================================");
 		LOGGER.info("                          E N D");
@@ -241,7 +275,22 @@ public class Owl2OmlApp {
 	}
 
 	/**
-	 * Collects OML files referenced by the given Oml catalog
+	 * Determines if the given uri can be updated (not in the given given do not update paths)
+	 * @param uri The given uri
+	 * @param doNotUpdatePaths A list of do not update folder paths
+	 * @return Boolean
+	 */
+	public static boolean canUpdateUri(String uri, List<File> doNotUpdatePaths) {
+		for (File p : doNotUpdatePaths) {
+			if (uri.startsWith(p.getAbsolutePath())) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Collects Oml files referenced by the given Oml catalog
 	 * 
 	 * @param inputCatalog The input Oml catalog
 	 * @return Collection of Files
@@ -277,7 +326,7 @@ public class Owl2OmlApp {
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
 			if (!file.exists() || !file.getName().endsWith("catalog.xml")) {
-				throw new ParameterException((("Parameter " + name) + " should be a valid OML catalog path"));
+				throw new ParameterException((("Parameter " + name) + " should be a valid Oml catalog path"));
 			}
 		}
 	}
@@ -294,7 +343,7 @@ public class Owl2OmlApp {
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
 			final File file = new File(value);
-			if (!file.getName().endsWith("catalog.xml")) {
+			if (!file.exists() || !file.getName().endsWith("catalog.xml")) {
 				throw new ParameterException((("Parameter " + name) + " should be a valid OWL catalog path"));
 			}
 			final File folder = file.getParentFile();
@@ -323,13 +372,13 @@ public class Owl2OmlApp {
 	}
 
 	/**
-	 * The validator of the file extension 
+	 * The validator of the input file extension 
 	 */
-	public static class FileExtensionValidator implements IParameterValidator {
+	public static class InputFileExtensionValidator implements IParameterValidator {
 		/**
 		 * Creates a new FileExtensionValidator object
 		 */
-		public FileExtensionValidator() {
+		public InputFileExtensionValidator() {
 		}
 		@Override
 		public void validate(final String name, final String value) throws ParameterException {
@@ -342,7 +391,6 @@ public class Owl2OmlApp {
 		private static Map<String, Class<? extends OWLDocumentFormat>> extensions = new HashMap<>();
 
 		static {
-			extensions.put("fss", FunctionalSyntaxDocumentFormat.class);
 			// triple formats
 			extensions.put("owl", RDFXMLDocumentFormat.class);
 			extensions.put("rdf", RDFXMLDocumentFormat.class);
@@ -379,6 +427,25 @@ public class Owl2OmlApp {
 			storers.put("trix", owlOntology -> createQuadOntologyStorer(new TrixDocumentFormatFactory(), owlOntology));
 			storers.put("nq", owlOntology -> createQuadOntologyStorer(new NQuadsDocumentFormatFactory(), owlOntology));
 		}
+	}
+
+	/**
+	 * The validator of the output file extension 
+	 */
+	public static class OutputFileExtensionValidator implements IParameterValidator {
+		/**
+		 * Creates a new FileExtensionValidator object
+		 */
+		public OutputFileExtensionValidator() {
+		}
+		@Override
+		public void validate(final String name, final String value) throws ParameterException {
+			if (!OmlConstants.OML_EXTENSION_LIST.contains(value)) {
+				throw new ParameterException("Parameter " + name + " should be a valid OML file extension: " +
+						OmlConstants.OML_EXTENSION_LIST);
+			}
+		}
+
 	}
 
 	private class ECrossReferenceAdapterEx extends ECrossReferenceAdapter {

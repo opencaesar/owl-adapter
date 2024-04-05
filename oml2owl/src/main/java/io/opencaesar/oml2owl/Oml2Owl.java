@@ -27,7 +27,6 @@ import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
@@ -42,6 +41,7 @@ import org.semanticweb.owlapi.model.SWRLDArgument;
 import org.semanticweb.owlapi.model.SWRLIArgument;
 import org.semanticweb.owlapi.model.SWRLObjectPropertyAtom;
 import org.semanticweb.owlapi.vocab.OWLFacet;
+import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import io.opencaesar.oml.Annotation;
 import io.opencaesar.oml.AnnotationProperty;
@@ -58,7 +58,6 @@ import io.opencaesar.oml.Description;
 import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.DifferentFromPredicate;
 import io.opencaesar.oml.DoubleLiteral;
-import io.opencaesar.oml.Element;
 import io.opencaesar.oml.Import;
 import io.opencaesar.oml.InstanceEnumerationAxiom;
 import io.opencaesar.oml.IntegerLiteral;
@@ -100,16 +99,18 @@ import io.opencaesar.oml.TypePredicate;
 import io.opencaesar.oml.UnreifiedRelation;
 import io.opencaesar.oml.Vocabulary;
 import io.opencaesar.oml.VocabularyBundle;
+import io.opencaesar.oml.util.OmlConstants;
 import io.opencaesar.oml.util.OmlSwitch;
 
 class Oml2Owl extends OmlSwitch<Void> {
 
-	public static final List<String> BUILT_IN_ONTOLOGIES = Arrays.asList(new String[] {
+	private static final List<String> BUILT_IN_ONTOLOGIES = Arrays.asList(new String[] {
 		"http://www.w3.org/2001/XMLSchema",
 		"http://www.w3.org/1999/02/22-rdf-syntax-ns",
 		"http://www.w3.org/2000/01/rdf-schema",
 		"http://www.w3.org/2002/07/owl",
-		"http://www.w3.org/2003/11/swrlb"});
+		"http://www.w3.org/2003/11/swrlb"
+	});
 
 	private final Resource inputResource;
 	private final OwlApi owl;
@@ -128,36 +129,50 @@ class Oml2Owl extends OmlSwitch<Void> {
 
 	@Override
 	public Void caseAnnotation(final Annotation annotation) {
-		addAnnotation(annotation.getAnnotatedElement(), annotation);
+		var element = annotation.getAnnotatedElement();
+		if (element instanceof Ontology) {
+			owl.addOntologyAnnotation(ontology, createAnnotation(annotation));
+		} else if (element instanceof Rule) {
+			var rule = (Rule) annotation.getOwningElement();
+			if (rule.isRef()) { // annotations on rule definitions are handled with the definitions
+				owl.addAnnotationAssertion(ontology, rule.getIri(), createAnnotation(annotation));
+			}
+		} else {
+			owl.addAnnotationAssertion(ontology, ((Member)element).getIri(), createAnnotation(annotation));
+		}
 		return null;
 	}
 
 	@Override
 	public Void caseVocabulary(final Vocabulary vocabulary) {
-		ontology = owl.createOntology(vocabulary.getPrefix(), vocabulary.getNamespace());
-		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Vocabulary)));
+		ontology = createOntology(vocabulary, OmlConstants.Vocabulary);
 		return null;
 	}
 
 	@Override
 	public Void caseVocabularyBundle(final VocabularyBundle bundle) {
-		ontology = owl.createOntology(bundle.getPrefix(), bundle.getNamespace());
-		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.VocabularyBundle)));
+		ontology = createOntology(bundle, OmlConstants.VocabularyBundle);
 		return null;
 	}
 
 	@Override
 	public Void caseDescription(final Description description) {
-		ontology = owl.createOntology(description.getPrefix(), description.getNamespace());
-		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Description)));
+		ontology = createOntology(description, OmlConstants.Description);
 		return null;
 	}
 
 	@Override
 	public Void caseDescriptionBundle(final DescriptionBundle bundle) {
-		ontology = owl.createOntology(bundle.getPrefix(), bundle.getNamespace());
-		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.DescriptionBundle)));
+		ontology = createOntology(bundle, OmlConstants.DescriptionBundle);
 		return null;
+	}
+
+	private OWLOntology createOntology(final Ontology omlOntology, String typeIri) {
+		OWLOntology ontology = owl.createOntology(omlOntology.getPrefix(), omlOntology.getNamespace());
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.type, owl.createIri(typeIri)));
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.namespace, owl.createIri(omlOntology.getNamespace())));
+		owl.addOntologyAnnotation(ontology, owl.getAnnotation(OmlConstants.prefix, owl.getLiteral(omlOntology.getPrefix())));
+		return ontology;
 	}
 
 	@Override
@@ -231,7 +246,6 @@ class Oml2Owl extends OmlSwitch<Void> {
 		final String propertyIri = property.getIri();
 		if (!property.isRef()) {
 			owl.addDataProperty(ontology, propertyIri);
-			owl.addAnnotationAssertion(ontology, propertyIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.scalarProperty)));
 		}
 		property.getDomains().forEach(t -> owl.addDataPropertyDomain(ontology, propertyIri, t.getIri()));
 		property.getRanges().forEach(t -> owl.addDataPropertyRange(ontology, propertyIri, t.getIri()));
@@ -246,7 +260,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 		final String propertyIri = property.getIri();
 		if (!property.isRef()) {
 			owl.addObjectProperty(ontology, propertyIri);
-			owl.addAnnotationAssertion(ontology, propertyIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.structuredProperty)));
+			owl.addAnnotationAssertion(ontology, propertyIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructuredProperty)));
 		}
 		property.getDomains().forEach(t -> owl.addObjectPropertyDomain(ontology, propertyIri, t.getIri()));
 		property.getRanges().forEach(t -> owl.addObjectPropertyRange(ontology, propertyIri, t.getIri()));
@@ -265,7 +279,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	protected void handleForwardRelation(final RelationBase base) {
 		final String forwardIri = getForwardIri(base);
 		final String forwardName = forwardIri.replace(base.getOntology().getNamespace(), "");
-		final String relationKindIri = (base instanceof RelationEntity) ? OmlConstants.forwardRelation : OmlConstants.UnreifiedRelation;
+		final String relationKindIri = (base instanceof RelationEntity) ? OmlConstants.ForwardRelation : OmlConstants.UnreifiedRelation;
 
 		if (!base.isRef()) {
 			owl.addObjectProperty(ontology, forwardIri);
@@ -278,8 +292,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, owl.getSWRLVariable("r"), owl.getSWRLVariable("s")));
 				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, owl.getSWRLVariable("r"), owl.getSWRLVariable("t")));
 				final SWRLObjectPropertyAtom consequent = owl.getObjectPropertyAtom(forwardIri, owl.getSWRLVariable("s"), owl.getSWRLVariable("t"));
-				final OWLAnnotation annotation = owl.getAnnotation(RDFS.LABEL.toString(), owl.getLiteral(forwardName+" derivation"));
-				owl.addRule(ontology, Collections.singletonList(consequent), antedecents, annotation);
+				final OWLAnnotation annotation = owl.getAnnotation(OWLRDFVocabulary.RDFS_LABEL.toString(), owl.getLiteral(forwardName+" derivation"));
+				owl.addRule(ontology, antedecents, Collections.singletonList(consequent), annotation);
 			}
 		}
 		
@@ -313,7 +327,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 		RelationBase base = relation.getRelationBase();
 		final String reverseIri = relation.getIri();
 		owl.addObjectProperty(ontology, reverseIri);
-		owl.addAnnotationAssertion(ontology, reverseIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.reverseRelation)));
+		owl.addAnnotationAssertion(ontology, reverseIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.ReverseRelation)));
+		owl.addAnnotationAssertion(ontology, reverseIri, owl.getAnnotation(OmlConstants.relationBase, owl.createIri(base.getIri())));
 		owl.addInverseProperties(ontology, reverseIri, getForwardIri(base));
 
 		base.getSources().forEach(t -> owl.addObjectPropertyRange(ontology, reverseIri, t.getIri()));
@@ -346,12 +361,19 @@ class Oml2Owl extends OmlSwitch<Void> {
 	public Void caseRule(final Rule rule) {
 		if (!rule.isRef()) {
 			List<OWLAnnotation> annotations = rule.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
-			if (annotations.stream().filter(a -> a.getProperty().getIRI().toString().equals(RDFS.LABEL.toString())).count() == 0) {
-				annotations = Collections.singletonList(owl.getAnnotation(RDFS.LABEL.toString(), owl.getLiteral(rule.getName())));
-			}
+
+			// HACK: ideally, the following annotation should have IRI values. However, due to some odd
+			// reason, when the OWL API reads them back, their subject is not the rule, but rather another
+			// anonmymous individual that has no obvious relation to the rule. As a workaround, define those
+			// annotations with literal values for now.
+			//annotations.add(owl.getAnnotation(OmlConstants.name, owl.createIri(rule.getIri())));
+			//annotations.add(owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Rule)));
+			annotations.add(owl.getAnnotation(OmlConstants.name, owl.getLiteral(rule.getIri())));
+			annotations.add(owl.getAnnotation(OmlConstants.type, owl.getLiteral(OmlConstants.Rule)));
+			
 			owl.addRule(ontology, 
-				rule.getConsequent().stream().flatMap(p -> getAtom(p).stream()).collect(Collectors.toList()),
 				rule.getAntecedent().stream().flatMap(p -> getAtom(p).stream()).collect(Collectors.toList()), 
+				rule.getConsequent().stream().flatMap(p -> getAtom(p).stream()).collect(Collectors.toList()),
 				toArray(annotations));
 		}
 		return null;
@@ -363,6 +385,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 		final OWLNamedIndividual individual = instance.isRef() ?
 				owl.getNamedIndividual(instanceIri) :
 				owl.addNamedIndividual(ontology, instanceIri);
+		owl.addAnnotationAssertion(ontology, instance.getIri(), owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.ConceptInstance)));
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
 		return null;
 	}
@@ -373,6 +396,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 		final OWLNamedIndividual individual = instance.isRef() ?
 				owl.getNamedIndividual(instanceIri) :
 				owl.addNamedIndividual(ontology, instanceIri);
+		owl.addAnnotationAssertion(ontology, instance.getIri(), owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.RelationInstance)));
 		instance.getSources().forEach(s ->
 			owl.addObjectPropertyAssertion(ontology, 
 				instanceIri, 
@@ -417,13 +441,13 @@ class Oml2Owl extends OmlSwitch<Void> {
 	public Void caseScalarEquivalenceAxiom(final ScalarEquivalenceAxiom axiom) {
 		final ArrayList<OWLFacetRestriction> restrictions = new ArrayList<>();
 		if (axiom.getLength() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.LENGTH, owl.getLiteral((axiom.getLength()).longValue())));
+			restrictions.add(owl.getFacetRestriction(OWLFacet.LENGTH, owl.getLiteral((axiom.getLength()).intValue())));
 		}
 		if (axiom.getMaxLength() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_LENGTH, owl.getLiteral((axiom.getMaxLength()).longValue())));
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MAX_LENGTH, owl.getLiteral((axiom.getMaxLength()).intValue())));
 		}
 		if (axiom.getMinLength() != null) {
-			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_LENGTH, owl.getLiteral((axiom.getMinLength()).longValue())));
+			restrictions.add(owl.getFacetRestriction(OWLFacet.MIN_LENGTH, owl.getLiteral((axiom.getMinLength()).intValue())));
 		}
 		if (axiom.getPattern() != null) {
 			restrictions.add(owl.getFacetRestriction(OWLFacet.PATTERN, owl.getLiteral(axiom.getPattern())));
@@ -511,29 +535,29 @@ class Oml2Owl extends OmlSwitch<Void> {
 		if (axiom.getProperty() instanceof ScalarProperty) {
 			if (axiom.getKind() == CardinalityRestrictionKind.MIN) {
 				return owl.getDataMinCardinality( 
-						axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
+						axiom.getProperty().getIri(), axiom.getCardinality(), 
 						(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 			} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 				return owl.getDataMaxCardinality( 
-						axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
+						axiom.getProperty().getIri(), axiom.getCardinality(), 
 						(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 			} else {
 				return owl.getDataExactCardinality( 
-						axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
+						axiom.getProperty().getIri(), axiom.getCardinality(), 
 						(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 			}
 		} else {
 			if (axiom.getKind() == CardinalityRestrictionKind.MIN) {
 				return owl.getObjectMinCardinality( 
-						axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
+						axiom.getProperty().getIri(), axiom.getCardinality(), 
 						(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 			} else if (axiom.getKind() == CardinalityRestrictionKind.MAX) {
 				return owl.getObjectMaxCardinality( 
-						axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
+						axiom.getProperty().getIri(), axiom.getCardinality(), 
 						(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 			} else {
 				return owl.getObjectExactCardinality( 
-						axiom.getProperty().getIri(), (int) axiom.getCardinality(), 
+						axiom.getProperty().getIri(), axiom.getCardinality(), 
 						(axiom.getRange() != null) ? axiom.getRange().getIri() : null);
 			}
 		}
@@ -615,14 +639,6 @@ class Oml2Owl extends OmlSwitch<Void> {
 		} else {
 			final OWLLiteral literal = owl.getLiteral(true); // boolean literal true
 			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
-		}
-	}
-
-	protected void addAnnotation(final Element element, final Annotation annotation) {
-		if (element instanceof Ontology) {
-			owl.addOntologyAnnotation(ontology, createAnnotation(annotation));
-		} else if (element instanceof Member) {
-			owl.addAnnotationAssertion(ontology, ((Member)element).getIri(), createAnnotation(annotation));
 		}
 	}
 
@@ -843,6 +859,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 
 	protected OWLAnonymousIndividual createIndividual(final StructureInstance instance) {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
+		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructureInstance)));
+		owl.addClassAssertion(ontology, individual, instance.getType().getIri());
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
 		return individual;
 	}
@@ -861,7 +879,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	static boolean isBuiltInOntology(final String iri) {
-		return Oml2Owl.BUILT_IN_ONTOLOGIES.contains(iri);
+		return BUILT_IN_ONTOLOGIES.contains(iri);
 	}
 
 	private static String toFirstUpper(String s) {
