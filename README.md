@@ -20,3 +20,7 @@ Requirements: JDK 8
 ## [OML to OWL](oml2owl/README.md)
 
 A tool to translate ontologies from OML to OWL representation
+
+## [OWL to OML](owl2oml/README.md)
+
+A tool to translate ontologies from OWL to OML representation
