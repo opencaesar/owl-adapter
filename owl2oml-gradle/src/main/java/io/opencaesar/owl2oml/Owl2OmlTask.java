@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 import org.eclipse.emf.common.util.URI;
 import org.gradle.api.DefaultTask;
@@ -167,7 +168,8 @@ public abstract class Owl2OmlTask extends DefaultTask {
 			    		for (File inputFile : inputFiles) {
 							var iri = inputCatalog.deresolveUri(URI.createFileURI(inputFile.toString()).toString());
 							var outputUri = outputCatalog.resolveUri(URI.createURI(iri));
-							if (Owl2OmlApp.canUpdateUri(outputUri.toFileString(), getDoNotUpdatePaths().get())) {
+							var doNotUpdatePaths = getDoNotUpdatePaths().get().stream().map(i -> i.getAbsolutePath()).collect(Collectors.toList());
+							if (Owl2OmlApp.canUpdateUri(outputUri.toFileString(), doNotUpdatePaths)) {
 								outputFiles.add(new File(outputUri.toFileString()));
 							}
 			    		}

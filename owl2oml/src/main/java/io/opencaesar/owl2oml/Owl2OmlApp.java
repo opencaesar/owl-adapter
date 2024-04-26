@@ -105,7 +105,7 @@ public class Owl2OmlApp {
 			description = "Paths of output folders that should not be updated", 
 			required = false, 
 			order = 3)
-	private List<File> doNotUpdatePaths;
+	private List<String> doNotUpdatePaths;
 	
 	@Parameter(
 			names = { "--input-file-extension", "-if" },
@@ -165,6 +165,11 @@ public class Owl2OmlApp {
 		if (app.debug) {
 			final Appender appender = LogManager.getRootLogger().getAppender("stdout");
 			((AppenderSkeleton) appender).setThreshold(Level.DEBUG);
+		}
+		for (int i=0; i< app.doNotUpdatePaths.size(); i++) {
+			if (!app.doNotUpdatePaths.get(i).endsWith("/")) {
+				app.doNotUpdatePaths.set(i, app.doNotUpdatePaths.get(i)+"/");
+			}
 		}
 		app.run(deltas);
 	}
@@ -280,9 +285,9 @@ public class Owl2OmlApp {
 	 * @param doNotUpdatePaths A list of do not update folder paths
 	 * @return Boolean
 	 */
-	public static boolean canUpdateUri(String uri, List<File> doNotUpdatePaths) {
-		for (File p : doNotUpdatePaths) {
-			if (uri.startsWith(p.getAbsolutePath())) {
+	public static boolean canUpdateUri(String uri, List<String> doNotUpdatePaths) {
+		for (String p : doNotUpdatePaths) {
+			if (uri.startsWith(p)) {
 				return false;
 			}
 		}
