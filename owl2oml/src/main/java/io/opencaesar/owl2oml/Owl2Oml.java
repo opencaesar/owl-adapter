@@ -251,13 +251,13 @@ class Owl2Oml {
 			if (value.isLiteral()) {
 				var literal = visitLiteral(value.asLiteral().get(), ontology);
 				if (literal != null) {
-					oml.addAnnotation(ontology, propertyIri, literal, null);
+					oml.addAnnotation(ontology, propertyIri, literal);
 					return true;
 				}
 			} else {
 				var valueIri = getImportedIri(value.asIRI().get(), ontology);
 				if (valueIri != null) {
-					oml.addAnnotation(ontology, propertyIri, null, valueIri);
+					oml.addAnnotation(ontology, propertyIri, valueIri);
 					return true;
 				}
 			}
@@ -471,13 +471,13 @@ class Owl2Oml {
 			if (value.isLiteral()) {
 				var literal = visitLiteral(value.asLiteral().get(), ontology);
 				if (literal != null) {
-					oml.addAnnotation(ontology, subjectIri, propertyIri, literal, null);
+					oml.addAnnotation(ontology, subjectIri, propertyIri, literal);
 					return true;
 				}
 			} else {
 				var importedValueIri = getImportedIri(value.asIRI().get(), ontology);
 				if (importedValueIri != null) {
-					oml.addAnnotation(ontology, subjectIri, propertyIri, null, importedValueIri);
+					oml.addAnnotation(ontology, subjectIri, propertyIri, importedValueIri);
 					return true;
 				}
 			}
@@ -631,13 +631,13 @@ class Owl2Oml {
 			if (value.isLiteral()) {
 				var literal = visitLiteral(value.asLiteral().get(), ontology);
 				if (literal != null) {
-					oml.addAnnotation(ontology, getName(rule), propertyIri, literal, null);
+					oml.addAnnotation(ontology, getName(rule), propertyIri, literal);
 					return true;
 				}
 			} else {
 				var valueIri = getImportedIri(value.asIRI().get(), ontology);
 				if (valueIri != null) {
-					oml.addAnnotation(ontology, getName(rule), propertyIri, null, valueIri);
+					oml.addAnnotation(ontology, getName(rule), propertyIri, valueIri);
 					return true;
 				}
 			}

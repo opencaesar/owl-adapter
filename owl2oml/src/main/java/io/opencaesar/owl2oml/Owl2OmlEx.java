@@ -284,8 +284,7 @@ class Owl2OmlEx extends Owl2Oml {
 							ontology,
 							subjectIri,
 							propertyIri, 
-							oml.createQuotedLiteral(ontology, value.asIRI().get().toString(), null, null),
-							null);
+							oml.createQuotedLiteral(ontology, value.asIRI().get().toString(), null, null));
 				}
 				return true;
 			}

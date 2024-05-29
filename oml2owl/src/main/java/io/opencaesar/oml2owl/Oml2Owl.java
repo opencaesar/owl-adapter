@@ -45,6 +45,7 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import io.opencaesar.oml.Annotation;
 import io.opencaesar.oml.AnnotationProperty;
+import io.opencaesar.oml.AnonymousInstance;
 import io.opencaesar.oml.Argument;
 import io.opencaesar.oml.Aspect;
 import io.opencaesar.oml.BooleanLiteral;
@@ -571,7 +572,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 		} else if (axiom.getProperty() instanceof StructuredProperty) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
-					createIndividual(axiom.getContainedValue()));
+					createAnonymousIndividual(axiom.getContainedValue()));
 		} else { //if (axiom.getProperty() instanceof Relation) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
@@ -717,7 +718,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 			owl.addObjectPropertyAssertion(ontology, 
 					individual, 
 					assertion.getProperty().getIri(),
-					createIndividual(assertion.getContainedValue()));
+					createAnonymousIndividual(assertion.getContainedValue()));
 		} else if (assertion.getProperty() instanceof Relation && individual instanceof OWLNamedIndividual) {
 			owl.addObjectPropertyAssertion(ontology, 
 					((OWLNamedIndividual)individual).getIRI().getIRIString(),
@@ -857,7 +858,14 @@ class Oml2Owl extends OmlSwitch<Void> {
 		return owl.getLiteral(literal.getValue());
 	}
 
-	protected OWLAnonymousIndividual createIndividual(final StructureInstance instance) {
+	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousInstance instance) {
+		if (instance instanceof StructureInstance) {
+			return createAnonymousIndividual((StructureInstance)instance);
+		}
+		return null;
+	}
+	
+	protected OWLAnonymousIndividual createAnonymousIndividual(final StructureInstance instance) {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
 		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructureInstance)));
 		owl.addClassAssertion(ontology, individual, instance.getType().getIri());
