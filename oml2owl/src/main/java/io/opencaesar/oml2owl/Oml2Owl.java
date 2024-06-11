@@ -27,7 +27,6 @@ import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLClassExpression;
@@ -132,14 +131,14 @@ class Oml2Owl extends OmlSwitch<Void> {
 	public Void caseAnnotation(final Annotation annotation) {
 		var element = annotation.getAnnotatedElement();
 		if (element instanceof Ontology) {
-			owl.addOntologyAnnotation(ontology, createAnnotation(annotation));
+			createAnnotation(annotation).forEach(it -> owl.addOntologyAnnotation(ontology, it));
 		} else if (element instanceof Rule) {
 			var rule = (Rule) annotation.getOwningElement();
 			if (rule.isRef()) { // annotations on rule definitions are handled with the definitions
-				owl.addAnnotationAssertion(ontology, rule.getIri(), createAnnotation(annotation));
+				createAnnotation(annotation).forEach(it -> owl.addAnnotationAssertion(ontology, rule.getIri(), it));
 			}
 		} else {
-			owl.addAnnotationAssertion(ontology, ((Member)element).getIri(), createAnnotation(annotation));
+			createAnnotation(annotation).forEach(it -> owl.addAnnotationAssertion(ontology, ((Member)element).getIri(), it));
 		}
 		return null;
 	}
@@ -361,7 +360,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	@Override
 	public Void caseRule(final Rule rule) {
 		if (!rule.isRef()) {
-			List<OWLAnnotation> annotations = rule.getOwnedAnnotations().stream().map(it -> createAnnotation(it)).collect(Collectors.toList());
+			List<OWLAnnotation> annotations = rule.getOwnedAnnotations().stream().flatMap(it -> createAnnotation(it).stream()).collect(Collectors.toList());
 
 			// HACK: ideally, the following annotation should have IRI values. However, due to some odd
 			// reason, when the OWL API reads them back, their subject is not the rule, but rather another
@@ -630,16 +629,20 @@ class Oml2Owl extends OmlSwitch<Void> {
 		return null;
 	}
 
-	protected OWLAnnotation createAnnotation(final Annotation annotation) {
-		if (annotation.getReferencedValue() != null) {
-			final IRI iri = owl.createIri(annotation.getReferencedValue().getIri());
-			return owl.getAnnotation(annotation.getProperty().getIri(), iri);
-		} if (annotation.getLiteralValue() != null) {
-			final OWLLiteral literal = getLiteral(annotation.getLiteralValue());
-			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
+	protected List<OWLAnnotation> createAnnotation(final Annotation annotation) {
+		if (!annotation.getReferencedValue().isEmpty()) {
+			return annotation.getReferencedValue().stream()
+					.map(it -> owl.createIri(it.getIri()))
+					.map(it -> owl.getAnnotation(annotation.getProperty().getIri(), it))
+					.collect(Collectors.toList());
+		} if (!annotation.getLiteralValue().isEmpty()) {
+			return annotation.getLiteralValue().stream()
+					.map(it -> getLiteral(it))
+					.map(it -> owl.getAnnotation(annotation.getProperty().getIri(), it))
+					.collect(Collectors.toList());
 		} else {
 			final OWLLiteral literal = owl.getLiteral(true); // boolean literal true
-			return owl.getAnnotation(annotation.getProperty().getIri(), literal);
+			return Collections.singletonList(owl.getAnnotation(annotation.getProperty().getIri(), literal));
 		}
 	}
 
@@ -709,21 +712,24 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected void appliesTo(final PropertyValueAssertion assertion, final OWLIndividual individual) {
-		if (assertion.getProperty() instanceof ScalarProperty && individual != null) {
-			owl.addDataPropertyAssertion(ontology, 
-					individual, 
-					assertion.getProperty().getIri(),
-					getLiteral(assertion.getLiteralValue()));
-		} else if (assertion.getProperty() instanceof StructuredProperty && individual != null) {
-			owl.addObjectPropertyAssertion(ontology, 
-					individual, 
-					assertion.getProperty().getIri(),
-					createAnonymousIndividual(assertion.getContainedValue()));
-		} else if (assertion.getProperty() instanceof Relation && individual instanceof OWLNamedIndividual) {
-			owl.addObjectPropertyAssertion(ontology, 
-					((OWLNamedIndividual)individual).getIRI().getIRIString(),
-					assertion.getProperty().getIri(), 
-					assertion.getReferencedValue().getIri());
+		if (!assertion.getLiteralValue().isEmpty()) {
+			assertion.getLiteralValue().forEach(it ->
+				owl.addDataPropertyAssertion(ontology, 
+						individual, 
+						assertion.getProperty().getIri(),
+						getLiteral(it)));
+		} else if (!assertion.getContainedValue().isEmpty()) {
+			assertion.getContainedValue().forEach(it ->
+				owl.addObjectPropertyAssertion(ontology, 
+						individual, 
+						assertion.getProperty().getIri(),
+						createAnonymousIndividual(it)));
+		} else if (!assertion.getReferencedValue().isEmpty()) {
+			assertion.getReferencedValue().forEach(it ->
+				owl.addObjectPropertyAssertion(ontology, 
+						((OWLNamedIndividual)individual).getIRI().getIRIString(),
+						assertion.getProperty().getIri(), 
+						it.getIri()));
 		}
 	}
 
