@@ -297,7 +297,7 @@ class Owl2OmlEx extends Owl2Oml {
 			var property = axiom.getProperty();
 			if (property instanceof OWLObjectProperty) {
 				var propertyIri = ((OWLObjectProperty)property).getIRI().getIRIString();
-				if (!OmlConstants.sourceRelation.equals(propertyIri) && !OmlConstants.targetRelation.equals(propertyIri)) {
+				if (!OmlConstants.hasSource.equals(propertyIri) && !OmlConstants.hasTarget.equals(propertyIri)) {
 					var object = axiom.getObject();
 					if (object.isNamed()) {
 						if (!isNamedIndividualOnly(owlOntology, object.asOWLNamedIndividual().getIRI())) {

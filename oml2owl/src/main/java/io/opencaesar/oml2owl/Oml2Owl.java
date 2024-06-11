@@ -44,7 +44,7 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import io.opencaesar.oml.Annotation;
 import io.opencaesar.oml.AnnotationProperty;
-import io.opencaesar.oml.AnonymousInstance;
+import io.opencaesar.oml.AnonymousRelationInstance;
 import io.opencaesar.oml.Argument;
 import io.opencaesar.oml.Aspect;
 import io.opencaesar.oml.BooleanLiteral;
@@ -58,6 +58,7 @@ import io.opencaesar.oml.Description;
 import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.DifferentFromPredicate;
 import io.opencaesar.oml.DoubleLiteral;
+import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.Import;
 import io.opencaesar.oml.InstanceEnumerationAxiom;
 import io.opencaesar.oml.IntegerLiteral;
@@ -89,6 +90,7 @@ import io.opencaesar.oml.SameAsPredicate;
 import io.opencaesar.oml.Scalar;
 import io.opencaesar.oml.ScalarEquivalenceAxiom;
 import io.opencaesar.oml.ScalarProperty;
+import io.opencaesar.oml.SemanticProperty;
 import io.opencaesar.oml.SpecializationAxiom;
 import io.opencaesar.oml.Structure;
 import io.opencaesar.oml.StructureInstance;
@@ -289,8 +291,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 				owl.addAnnotationAssertion(ontology, forwardIri, owl.getAnnotation(OmlConstants.relationEntity, owl.createIri(base.getIri())));
 				final ArrayList<SWRLAtom> antedecents = new ArrayList<SWRLAtom>();
 				antedecents.add(owl.getClassAtom(base.getIri(), owl.getSWRLVariable("r")));
-				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, owl.getSWRLVariable("r"), owl.getSWRLVariable("s")));
-				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, owl.getSWRLVariable("r"), owl.getSWRLVariable("t")));
+				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.hasSource, owl.getSWRLVariable("r"), owl.getSWRLVariable("s")));
+				antedecents.add(owl.getObjectPropertyAtom(OmlConstants.hasTarget, owl.getSWRLVariable("r"), owl.getSWRLVariable("t")));
 				final SWRLObjectPropertyAtom consequent = owl.getObjectPropertyAtom(forwardIri, owl.getSWRLVariable("s"), owl.getSWRLVariable("t"));
 				final OWLAnnotation annotation = owl.getAnnotation(OWLRDFVocabulary.RDFS_LABEL.toString(), owl.getLiteral(forwardName+" derivation"));
 				owl.addRule(ontology, antedecents, Collections.singletonList(consequent), annotation);
@@ -386,7 +388,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 				owl.getNamedIndividual(instanceIri) :
 				owl.addNamedIndividual(ontology, instanceIri);
 		owl.addAnnotationAssertion(ontology, instance.getIri(), owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.ConceptInstance)));
-		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
+		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
 		return null;
 	}
 
@@ -400,14 +402,14 @@ class Oml2Owl extends OmlSwitch<Void> {
 		instance.getSources().forEach(s ->
 			owl.addObjectPropertyAssertion(ontology, 
 				instanceIri, 
-				OmlConstants.sourceRelation,
+				OmlConstants.hasSource,
 				s.getIri()));
 		instance.getTargets().forEach(t ->
 			owl.addObjectPropertyAssertion(ontology, 
 				instanceIri, 
-				OmlConstants.targetRelation,
+				OmlConstants.hasTarget,
 				t.getIri()));
-		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
+		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
 		return null;
 	}
 
@@ -564,19 +566,32 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	public OWLClassExpression handlePropertyValueRestrictionAxiom(final PropertyValueRestrictionAxiom axiom) {
-		if (axiom.getProperty() instanceof ScalarProperty) {
+		if (axiom.getLiteralValue() != null) {
 			return owl.getDataHasValue( 
 					axiom.getProperty().getIri(), 
 					getLiteral(axiom.getLiteralValue()));
-		} else if (axiom.getProperty() instanceof StructuredProperty) {
+		} else if (axiom.getContainedValue() instanceof StructureInstance) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
-					createAnonymousIndividual(axiom.getContainedValue()));
-		} else { //if (axiom.getProperty() instanceof Relation) {
+					createAnonymousIndividual((StructureInstance)axiom.getContainedValue()));
+		} else if (axiom.getContainedValue() instanceof AnonymousRelationInstance) {
+			if (axiom.getProperty() instanceof ForwardRelation) {
+				owl.addInverseProperties(ontology, OmlConstants.isSourceOf, OmlConstants.hasSource);
+				return owl.getObjectHasValue( 
+						owl.getObjectProperty(OmlConstants.isSourceOf), 
+						createAnonymousIndividual((AnonymousRelationInstance)axiom.getContainedValue()));
+			} else if (axiom.getProperty() instanceof ReverseRelation) {
+				owl.addInverseProperties(ontology, OmlConstants.isTargetOf, OmlConstants.hasTarget);
+				return owl.getObjectHasValue( 
+						owl.getObjectProperty(OmlConstants.isTargetOf), 
+						createAnonymousIndividual((AnonymousRelationInstance)axiom.getContainedValue()));
+			}
+		} else if (axiom.getReferencedValue() != null) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
 					axiom.getReferencedValue().getIri());
 		}
+		return null;
 	}
 
 	public OWLClassExpression handlePropertySelfRestrictionAxiom(final PropertySelfRestrictionAxiom axiom) {
@@ -711,7 +726,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 		owl.addSubObjectPropertyOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void appliesTo(final PropertyValueAssertion assertion, final OWLIndividual individual) {
+	protected void appliesTo(final OWLIndividual individual, final PropertyValueAssertion assertion) {
 		if (!assertion.getLiteralValue().isEmpty()) {
 			assertion.getLiteralValue().forEach(it ->
 				owl.addDataPropertyAssertion(ontology, 
@@ -719,11 +734,26 @@ class Oml2Owl extends OmlSwitch<Void> {
 						assertion.getProperty().getIri(),
 						getLiteral(it)));
 		} else if (!assertion.getContainedValue().isEmpty()) {
-			assertion.getContainedValue().forEach(it ->
-				owl.addObjectPropertyAssertion(ontology, 
-						individual, 
-						assertion.getProperty().getIri(),
-						createAnonymousIndividual(it)));
+			for (var v : assertion.getContainedValue()) {
+				if (v instanceof StructureInstance) {
+					owl.addObjectPropertyAssertion(ontology, 
+							individual, 
+							assertion.getProperty().getIri(),
+							createAnonymousIndividual((StructureInstance)v));
+				} else if (assertion.getProperty() instanceof ForwardRelation) {
+					owl.addInverseProperties(ontology, OmlConstants.isSourceOf, OmlConstants.hasSource);
+					owl.addObjectPropertyAssertion(ontology, 
+							individual, 
+							OmlConstants.isSourceOf,
+							createAnonymousIndividual((AnonymousRelationInstance)v));
+				} else if (assertion.getProperty() instanceof ReverseRelation) {
+					owl.addInverseProperties(ontology, OmlConstants.isTargetOf, OmlConstants.hasTarget);
+					owl.addObjectPropertyAssertion(ontology, 
+							individual, 
+							OmlConstants.isTargetOf,
+							createAnonymousIndividual((AnonymousRelationInstance)v));
+				}
+			};
 		} else if (!assertion.getReferencedValue().isEmpty()) {
 			assertion.getReferencedValue().forEach(it ->
 				owl.addObjectPropertyAssertion(ontology, 
@@ -763,8 +793,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 	protected List<SWRLAtom> getAtom(final RelationEntityPredicate predicate) {
 		final List<SWRLAtom> atoms = new ArrayList<>();
 		atoms.add(owl.getClassAtom(predicate.getType().getIri(), getSWRLIArgument(predicate.getArgument())));
-		atoms.add(owl.getObjectPropertyAtom(OmlConstants.sourceRelation, getSWRLIArgument(predicate.getArgument()), getSWRLIArgument(predicate.getArgument1())));
-		atoms.add(owl.getObjectPropertyAtom(OmlConstants.targetRelation, getSWRLIArgument(predicate.getArgument()), getSWRLIArgument(predicate.getArgument2())));
+		atoms.add(owl.getObjectPropertyAtom(OmlConstants.hasSource, getSWRLIArgument(predicate.getArgument()), getSWRLIArgument(predicate.getArgument1())));
+		atoms.add(owl.getObjectPropertyAtom(OmlConstants.hasTarget, getSWRLIArgument(predicate.getArgument()), getSWRLIArgument(predicate.getArgument2())));
 		return atoms;
 	}
 
@@ -864,18 +894,27 @@ class Oml2Owl extends OmlSwitch<Void> {
 		return owl.getLiteral(literal.getValue());
 	}
 
-	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousInstance instance) {
-		if (instance instanceof StructureInstance) {
-			return createAnonymousIndividual((StructureInstance)instance);
-		}
-		return null;
-	}
-	
 	protected OWLAnonymousIndividual createAnonymousIndividual(final StructureInstance instance) {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
 		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructureInstance)));
+		if (instance.getType() != null) {
+			owl.addClassAssertion(ontology, individual, instance.getType().getIri());
+		}
+		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
+		return individual;
+	}
+
+	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousRelationInstance instance) {
+		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
+		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousRelationInstance)));
 		owl.addClassAssertion(ontology, individual, instance.getType().getIri());
-		instance.getOwnedPropertyValues().forEach(it -> appliesTo(it, individual));
+		final SemanticProperty property = instance.getIsValueOfProperty();
+		if (property instanceof ForwardRelation) {
+			owl.addObjectPropertyAssertion(ontology, individual, OmlConstants.hasTarget, instance.getTarget().getIri());
+		} else if (property instanceof ReverseRelation) {
+			owl.addObjectPropertyAssertion(ontology, individual, OmlConstants.hasSource, instance.getTarget().getIri());
+		}
+		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
 		return individual;
 	}
 

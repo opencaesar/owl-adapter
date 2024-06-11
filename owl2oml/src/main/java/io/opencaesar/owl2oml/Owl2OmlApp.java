@@ -105,7 +105,7 @@ public class Owl2OmlApp {
 			description = "Paths of output folders that should not be updated", 
 			required = false, 
 			order = 3)
-	private List<String> doNotUpdatePaths;
+	private List<String> doNotUpdatePaths = new ArrayList<>();
 	
 	@Parameter(
 			names = { "--input-file-extension", "-if" },

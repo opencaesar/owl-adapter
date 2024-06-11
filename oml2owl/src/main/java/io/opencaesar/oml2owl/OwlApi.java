@@ -402,20 +402,24 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return factory.getOWLObjectAllValuesFrom(property, type);
 	}
 
-	public OWLObjectHasValue getObjectHasValue(final String propertyIri, final OWLIndividual individual) {
-		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
+	public OWLObjectHasValue getObjectHasValue(final OWLObjectPropertyExpression property, final OWLIndividual individual) {
 		return factory.getOWLObjectHasValue(property, individual);
 	}
 
-	public OWLObjectHasSelf getObjectHasSelf(final String propertyIri) {
+	public OWLObjectHasValue getObjectHasValue(final String propertyIri, final OWLIndividual individual) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		return factory.getOWLObjectHasSelf(property);
+		return factory.getOWLObjectHasValue(property, individual);
 	}
 
 	public OWLObjectHasValue getObjectHasValue(final String propertyIri, final String individualIri) {
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLNamedIndividual individual = factory.getOWLNamedIndividual(individualIri);
 		return factory.getOWLObjectHasValue(property, individual);
+	}
+
+	public OWLObjectHasSelf getObjectHasSelf(final String propertyIri) {
+		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
+		return factory.getOWLObjectHasSelf(property);
 	}
 
 	public OWLObjectExactCardinality getObjectExactCardinality(final String propertyIri, final int cardinality, final String rangeIri) {
@@ -568,6 +572,15 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 
 	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final OWLIndividual object, final OWLAnnotation... annotations) {
 		addObjectProperty(ontology, propertyIri);
+		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
+		final OWLObjectPropertyAssertionAxiom axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, checkIfNeeded(annotations));
+		manager.addAxiom(ontology, axiom);
+		return axiom;
+	}
+
+	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final String objectIri, final OWLAnnotation... annotations) {
+		addObjectProperty(ontology, propertyIri);
+		final OWLNamedIndividual object = factory.getOWLNamedIndividual(objectIri);
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLObjectPropertyAssertionAxiom axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);
