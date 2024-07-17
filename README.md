@@ -12,7 +12,7 @@ An [OML](https://github.com/opencaesar/oml) adapter for [OWL2-DL](https://www.w3
 ```
       
 ## Build
-Requirements: JDK 8
+Requirements: JDK 17+
 ```
     ./gradlew build
 ```
