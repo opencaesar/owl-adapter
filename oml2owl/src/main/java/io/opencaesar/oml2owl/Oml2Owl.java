@@ -897,9 +897,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	protected OWLAnonymousIndividual createAnonymousIndividual(final StructureInstance instance) {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
 		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructureInstance)));
-		if (instance.getType() != null) {
-			owl.addClassAssertion(ontology, individual, instance.getType().getIri());
-		}
+		owl.addClassAssertion(ontology, individual, instance.getStructure().getIri());
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
 		return individual;
 	}
@@ -907,7 +905,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousRelationInstance instance) {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
 		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousRelationInstance)));
-		owl.addClassAssertion(ontology, individual, instance.getType().getIri());
+		owl.addClassAssertion(ontology, individual, instance.getRelationEntity().getIri());
 		final SemanticProperty property = instance.getIsValueOfProperty();
 		if (property instanceof ForwardRelation) {
 			owl.addObjectPropertyAssertion(ontology, individual, OmlConstants.hasTarget, instance.getTarget().getIri());
