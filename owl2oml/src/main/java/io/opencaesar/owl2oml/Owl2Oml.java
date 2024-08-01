@@ -403,9 +403,6 @@ class Owl2Oml {
 				if (OmlConstants.Concept.equals(type)) {
 					oml.addConcept((Vocabulary)ontology, getFragment(iri));
 					return true;
-				} else if (OmlConstants.Structure.equals(type)) {
-					oml.addStructure((Vocabulary)ontology, getFragment(iri));
-					return true;
 				} else if (OmlConstants.RelationEntity.equals(type)) {
 					var relationEntity = oml.addRelationEntity((Vocabulary)ontology, getFragment(iri), Collections.emptyList(), Collections.emptyList(), false, false, false, false, false, false, false);
 					var forwardIri = getForwardRelationIri(owlOntology, iri);
@@ -429,9 +426,6 @@ class Owl2Oml {
 					if (!(iri.getIRIString().startsWith(OmlConstants.OML_NS))) {
 						oml.addAnnotationProperty((Vocabulary)ontology, getFragment(iri));
 					}
-					return true;
-				} else if (OmlConstants.StructuredProperty.equals(type)) {
-					oml.addStructuredProperty((Vocabulary)ontology, getFragment(iri), Collections.emptyList(), Collections.emptyList(), false);
 					return true;
 				} else if (OmlConstants.ForwardRelation.equals(type)) {
 					return true; // handled with Relation Entity
@@ -671,10 +665,7 @@ class Owl2Oml {
 			var propertyIri = getImportedIri(((OWLObjectProperty)property).getIRI(), vocabulary);
 			if (propertyIri != null) {
 				var type = getOmlType(((OWLObjectProperty)property).getIRI(), owlOntology);
-				if (OmlConstants.StructuredProperty.equals(type)) {
-					oml.setStructuredProperty(vocabulary, propertyIri, null, null, Boolean.TRUE);
-					return true;
-				} else if (OmlConstants.ForwardRelation.equals(type)) {
+				if (OmlConstants.ForwardRelation.equals(type)) {
 					propertyIri = getAnnotationValue(((OWLObjectProperty)property).getIRI(), owlOntology, OmlConstants.relationEntity);
 					oml.setRelationBase(vocabulary, propertyIri, null, null, Boolean.TRUE, null, null, null, null, null, null);
 					return true;
@@ -856,10 +847,7 @@ class Owl2Oml {
 				var propertyIri = getImportedIri(((OWLObjectProperty)property).getIRI(), vocabulary);
 				if (sourceIri != null && propertyIri != null) {
 					var type = getOmlType(((OWLObjectProperty)property).getIRI(), owlOntology);
-					if (OmlConstants.StructuredProperty.equals(type)) {
-						oml.setStructuredProperty(vocabulary, propertyIri, sourceIri, null, null);
-						return true;
-					} else if (OmlConstants.ForwardRelation.equals(type)) {
+					if (OmlConstants.ForwardRelation.equals(type)) {
 						propertyIri = getAnnotationValue(((OWLObjectProperty)property).getIRI(), owlOntology, OmlConstants.relationEntity);
 						oml.setRelationBase(vocabulary, propertyIri, sourceIri, null, null, null, null, null, null, null, null);
 						return true;
@@ -884,10 +872,7 @@ class Owl2Oml {
 				var propertyIri = getImportedIri(((OWLObjectProperty)property).getIRI(), vocabulary);
 				if (targetIri != null && propertyIri != null) {
 					var type = getOmlType(((OWLObjectProperty)property).getIRI(), owlOntology);
-					if (OmlConstants.StructuredProperty.equals(type)) {
-						oml.setStructuredProperty(vocabulary, propertyIri, null, targetIri, null);
-						return true;
-					} else if (OmlConstants.ForwardRelation.equals(type)) {
+					if (OmlConstants.ForwardRelation.equals(type)) {
 						propertyIri = getAnnotationValue(((OWLObjectProperty)property).getIRI(), owlOntology, OmlConstants.relationEntity);
 						oml.setRelationBase(vocabulary, propertyIri, null, targetIri, null, null, null, null, null, null, null);
 						return true;
@@ -1032,14 +1017,14 @@ class Owl2Oml {
 	
 	protected AnonymousInstance visitAnonymousIndividual(OWLAnonymousIndividual individual, OWLOntology owlOntology, Ontology ontology) {
 		String type = getOmlType(individual, owlOntology);
-		if (OmlConstants.StructureInstance.equals(type)) {
-			var structureIri = owlOntology.classAssertionAxioms(individual)
+		if (OmlConstants.AnonymousConceptInstance.equals(type)) {
+			var entityIri = owlOntology.classAssertionAxioms(individual)
 					.map(a -> a.getClassExpression())
 					.filter(c -> c instanceof OWLClass)
 					.map(c -> ((OWLClass)c).getIRI())
 					.map(iri ->  getImportedIri(iri, ontology))
 					.findFirst().orElse(null);
-			var instance = oml.createStructureInstance(ontology, structureIri);
+			var instance = oml.createAnonymousConceptInstance(ontology, entityIri);
 			owlOntology.axioms(individual).forEach(axiom -> {
 				if (axiom.getAxiomType().equals(AxiomType.DATA_PROPERTY_ASSERTION)) {
 					visitDataPropertyAssertionAxiom(instance, (OWLDataPropertyAssertionAxiom) axiom, owlOntology, ontology);
@@ -1131,24 +1116,24 @@ class Owl2Oml {
 	protected boolean visitEquivalentClassesAxiom(OWLEquivalentClassesAxiom axiom, OWLOntology owlOntology, Vocabulary vocabulary) {
 		var expressions = axiom.getOperandsAsList();
 		if (expressions.size() == 2) {
-			var classifier = expressions.get(0);
-			if (classifier instanceof OWLClass) {
-				var classifierIri = getImportedIri(((OWLClass)classifier).getIRI(), vocabulary);
-				if (classifierIri != null) {
+			var entity = expressions.get(0);
+			if (entity instanceof OWLClass) {
+				var entityIri = getImportedIri(((OWLClass)entity).getIRI(), vocabulary);
+				if (entityIri != null) {
 					var equivalent = expressions.get(1);
 					if (equivalent instanceof OWLClass) {
 						var equivalentIri = getImportedIri(((OWLClass)equivalent).getIRI(), vocabulary);
 						if (equivalentIri != null) {
-							oml.addClassifierEquivalenceAxiom(vocabulary, classifierIri, Collections.singletonList(equivalentIri));
+							oml.addEntityEquivalenceAxiom(vocabulary, entityIri, Collections.singletonList(equivalentIri));
 							return true;
 						}
 					} else if (equivalent instanceof OWLRestriction) {
-						var omlAxiom = oml.addClassifierEquivalenceAxiom(vocabulary, classifierIri, Collections.emptyList());
+						var omlAxiom = oml.addEntityEquivalenceAxiom(vocabulary, entityIri, Collections.emptyList());
 						return visitRestriction((OWLRestriction)equivalent, omlAxiom, owlOntology, vocabulary);
 					} else if (equivalent instanceof OWLObjectIntersectionOf) {
 						var operands = ((OWLObjectIntersectionOf)equivalent).getOperands();
 						var equivalents = operands.stream().filter(i -> i instanceof OWLClass).map(i -> getImportedIri(((OWLClass)i).getIRI(), vocabulary)).collect(Collectors.toList());
-						var omlAxiom = oml.addClassifierEquivalenceAxiom(vocabulary, classifierIri, equivalents);
+						var omlAxiom = oml.addEntityEquivalenceAxiom(vocabulary, entityIri, equivalents);
 						var restrictions = operands.stream().filter(i -> i instanceof OWLRestriction).map(i -> (OWLRestriction)i).collect(Collectors.toList());
 						boolean result = true;
 						for (var restriction : restrictions) {
@@ -1172,7 +1157,7 @@ class Owl2Oml {
 							}
 						}
 						if (allInstancesOk) {
-							oml.addInstanceEnumerationAxiom(vocabulary, classifierIri, instanceIris);
+							oml.addInstanceEnumerationAxiom(vocabulary, entityIri, instanceIris);
 							return true;
 						}
 					}

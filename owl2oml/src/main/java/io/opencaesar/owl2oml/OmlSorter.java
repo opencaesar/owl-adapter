@@ -28,9 +28,10 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
 import io.opencaesar.oml.Annotation;
+import io.opencaesar.oml.AnonymousConceptInstance;
 import io.opencaesar.oml.Argument;
-import io.opencaesar.oml.ClassifierEquivalenceAxiom;
 import io.opencaesar.oml.Element;
+import io.opencaesar.oml.EntityEquivalenceAxiom;
 import io.opencaesar.oml.Import;
 import io.opencaesar.oml.InstanceEnumerationAxiom;
 import io.opencaesar.oml.KeyAxiom;
@@ -47,7 +48,6 @@ import io.opencaesar.oml.PropertyValueAssertion;
 import io.opencaesar.oml.PropertyValueRestrictionAxiom;
 import io.opencaesar.oml.ScalarEquivalenceAxiom;
 import io.opencaesar.oml.SpecializationAxiom;
-import io.opencaesar.oml.StructureInstance;
 import io.opencaesar.oml.TypeAssertion;
 
 /**
@@ -105,8 +105,8 @@ class OmlSorter {
 			return toString(((Argument)o).getValue());
 		} else if (o instanceof Annotation) {
 			return toString(((Annotation)o).getProperty()) + toString(((Annotation)o).getValue());
-		} else if (o instanceof StructureInstance) {
-			return toString(((StructureInstance)o).getType());
+		} else if (o instanceof AnonymousConceptInstance) {
+			return toString(((AnonymousConceptInstance)o).getType());
 		} else if (o instanceof TypeAssertion) {
 			return toString(((TypeAssertion)o).getType());
 		} else if (o instanceof PropertyValueAssertion) {
@@ -127,8 +127,8 @@ class OmlSorter {
 			return ((InstanceEnumerationAxiom)o).getInstances().stream().map(l -> toString(l)).collect(Collectors.joining());
 		} else if (o instanceof LiteralEnumerationAxiom) {
 			return ((LiteralEnumerationAxiom)o).getLiterals().stream().map(l -> toString(l)).collect(Collectors.joining());
-		} else if (o instanceof ClassifierEquivalenceAxiom) {
-			return ((ClassifierEquivalenceAxiom)o).getSuperClassifiers().stream().map(l -> toString(l)).collect(Collectors.joining());
+		} else if (o instanceof EntityEquivalenceAxiom) {
+			return ((EntityEquivalenceAxiom)o).getSuperEntities().stream().map(l -> toString(l)).collect(Collectors.joining());
 		} else if (o instanceof PropertyEquivalenceAxiom) {
 			return toString(((PropertyEquivalenceAxiom)o).getSuperProperty());
 		} else if (o instanceof ScalarEquivalenceAxiom) {

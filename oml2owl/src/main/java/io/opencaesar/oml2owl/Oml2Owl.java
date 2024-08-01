@@ -44,13 +44,13 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import io.opencaesar.oml.Annotation;
 import io.opencaesar.oml.AnnotationProperty;
+import io.opencaesar.oml.AnonymousConceptInstance;
 import io.opencaesar.oml.AnonymousRelationInstance;
 import io.opencaesar.oml.Argument;
 import io.opencaesar.oml.Aspect;
 import io.opencaesar.oml.BooleanLiteral;
 import io.opencaesar.oml.BuiltInPredicate;
 import io.opencaesar.oml.CardinalityRestrictionKind;
-import io.opencaesar.oml.ClassifierEquivalenceAxiom;
 import io.opencaesar.oml.Concept;
 import io.opencaesar.oml.ConceptInstance;
 import io.opencaesar.oml.DecimalLiteral;
@@ -58,6 +58,7 @@ import io.opencaesar.oml.Description;
 import io.opencaesar.oml.DescriptionBundle;
 import io.opencaesar.oml.DifferentFromPredicate;
 import io.opencaesar.oml.DoubleLiteral;
+import io.opencaesar.oml.EntityEquivalenceAxiom;
 import io.opencaesar.oml.ForwardRelation;
 import io.opencaesar.oml.Import;
 import io.opencaesar.oml.InstanceEnumerationAxiom;
@@ -92,9 +93,6 @@ import io.opencaesar.oml.ScalarEquivalenceAxiom;
 import io.opencaesar.oml.ScalarProperty;
 import io.opencaesar.oml.SemanticProperty;
 import io.opencaesar.oml.SpecializationAxiom;
-import io.opencaesar.oml.Structure;
-import io.opencaesar.oml.StructureInstance;
-import io.opencaesar.oml.StructuredProperty;
 import io.opencaesar.oml.Term;
 import io.opencaesar.oml.TypeAssertion;
 import io.opencaesar.oml.TypePredicate;
@@ -218,16 +216,6 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 	
 	@Override
-	public Void caseStructure(final Structure structure) {
-		if (!structure.isRef()) {
-			owl.addClass(ontology, structure.getIri());
-			owl.addAnnotationAssertion(ontology, structure.getIri(), owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.Structure)));
-		}
-		structure.getOwnedPropertyRestrictions().stream().forEach(i -> owl.addSubClassOf(ontology, structure.getIri(), handlePropertyRestrictionAxiom(i)));
-		return null;
-	}
-
-	@Override
 	public Void caseScalar(final Scalar scalar) {
 		if (!scalar.isRef()) {
 			owl.addDatatype(ontology, scalar.getIri());
@@ -253,21 +241,6 @@ class Oml2Owl extends OmlSwitch<Void> {
 		property.getRanges().forEach(t -> owl.addDataPropertyRange(ontology, propertyIri, t.getIri()));
 		if (property.isFunctional()) {
 			owl.addFunctionalDataProperty(ontology, propertyIri);
-		}
-		return null;
-	}
-
-	@Override
-	public Void caseStructuredProperty(final StructuredProperty property) {
-		final String propertyIri = property.getIri();
-		if (!property.isRef()) {
-			owl.addObjectProperty(ontology, propertyIri);
-			owl.addAnnotationAssertion(ontology, propertyIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructuredProperty)));
-		}
-		property.getDomains().forEach(t -> owl.addObjectPropertyDomain(ontology, propertyIri, t.getIri()));
-		property.getRanges().forEach(t -> owl.addObjectPropertyRange(ontology, propertyIri, t.getIri()));
-		if (property.isFunctional()) {
-			owl.addFunctionalObjectProperty(ontology, propertyIri);
 		}
 		return null;
 	}
@@ -420,20 +393,20 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	@Override
-	public Void caseClassifierEquivalenceAxiom(final ClassifierEquivalenceAxiom axiom) {
-		if (axiom.getSuperClassifiers().size() == 1 && axiom.getOwnedPropertyRestrictions().size() == 0) {
+	public Void caseEntityEquivalenceAxiom(final EntityEquivalenceAxiom axiom) {
+		if (axiom.getSuperEntities().size() == 1 && axiom.getOwnedPropertyRestrictions().size() == 0) {
 			owl.addEquivalentClasses(ontology, 
-					axiom.getSubClassifier().getIri(), 
-					axiom.getSuperClassifiers().get(0).getIri());
-		} else if (axiom.getOwnedPropertyRestrictions().size() == 1 && axiom.getSuperClassifiers().size() == 0) {
+					axiom.getSubEntity().getIri(), 
+					axiom.getSuperEntities().get(0).getIri());
+		} else if (axiom.getOwnedPropertyRestrictions().size() == 1 && axiom.getSuperEntities().size() == 0) {
 			owl.addEquivalentClasses(ontology, 
-					axiom.getSubClassifier().getIri(), 
+					axiom.getSubEntity().getIri(), 
 					handlePropertyRestrictionAxiom(axiom.getOwnedPropertyRestrictions().get(0)));
 		} else {
 			owl.addEquivalentClasses(ontology,
-					axiom.getSubClassifier().getIri(), 
+					axiom.getSubEntity().getIri(), 
 					owl.getObjectIntersectionOf(
-							axiom.getSuperClassifiers().stream().map(c -> c.getIri()).collect(Collectors.toList()),
+							axiom.getSuperEntities().stream().map(c -> c.getIri()).collect(Collectors.toList()),
 							axiom.getOwnedPropertyRestrictions().stream().map(r -> handlePropertyRestrictionAxiom(r)).collect(Collectors.toList())));
 		}
 		return null;
@@ -570,10 +543,10 @@ class Oml2Owl extends OmlSwitch<Void> {
 			return owl.getDataHasValue( 
 					axiom.getProperty().getIri(), 
 					getLiteral(axiom.getLiteralValue()));
-		} else if (axiom.getContainedValue() instanceof StructureInstance) {
+		} else if (axiom.getContainedValue() instanceof AnonymousConceptInstance) {
 			return owl.getObjectHasValue( 
 					axiom.getProperty().getIri(), 
-					createAnonymousIndividual((StructureInstance)axiom.getContainedValue()));
+					createAnonymousIndividual((AnonymousConceptInstance)axiom.getContainedValue()));
 		} else if (axiom.getContainedValue() instanceof AnonymousRelationInstance) {
 			if (axiom.getProperty() instanceof ForwardRelation) {
 				owl.addInverseProperties(ontology, OmlConstants.isSourceOf, OmlConstants.hasSource);
@@ -676,10 +649,6 @@ class Oml2Owl extends OmlSwitch<Void> {
 			specializes((Scalar) specific, (Scalar) general);
 		} else if (specific instanceof ScalarProperty && general instanceof ScalarProperty) {
 			specializes((ScalarProperty) specific, (ScalarProperty) general);
-		} else if (specific instanceof Structure && general instanceof Structure) {
-			specializes((Structure) specific, (Structure) general);
-		} else if (specific instanceof StructuredProperty && general instanceof StructuredProperty) {
-			specializes((StructuredProperty) specific, (StructuredProperty) general);
 		} else if (specific instanceof Relation && general instanceof Relation) {
 			specializes((Relation) specific, (Relation) general);
 		}
@@ -706,20 +675,12 @@ class Oml2Owl extends OmlSwitch<Void> {
 		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
 	}
 
-	protected void specializes(final Structure specific, final Structure general) {
-		owl.addSubClassOf(ontology, specific.getIri(), general.getIri());
-	}
-
 	protected void specializes(final Scalar specific, final Scalar general) {
 		/* no impl since specialization is only permitted between standard scalars which we do not translate to owl */
 	}
 
 	protected void specializes(final ScalarProperty specific, final ScalarProperty general) {
 		owl.addSubDataPropertyOf(ontology, specific.getIri(), general.getIri());
-	}
-
-	protected void specializes(final StructuredProperty specific, final StructuredProperty general) {
-		owl.addSubObjectPropertyOf(ontology, specific.getIri(), general.getIri());
 	}
 
 	protected void specializes(final Relation specific, final Relation general) {
@@ -735,11 +696,11 @@ class Oml2Owl extends OmlSwitch<Void> {
 						getLiteral(it)));
 		} else if (!assertion.getContainedValue().isEmpty()) {
 			for (var v : assertion.getContainedValue()) {
-				if (v instanceof StructureInstance) {
+				if (v instanceof AnonymousConceptInstance) {
 					owl.addObjectPropertyAssertion(ontology, 
 							individual, 
 							assertion.getProperty().getIri(),
-							createAnonymousIndividual((StructureInstance)v));
+							createAnonymousIndividual((AnonymousConceptInstance)v));
 				} else if (assertion.getProperty() instanceof ForwardRelation) {
 					owl.addInverseProperties(ontology, OmlConstants.isSourceOf, OmlConstants.hasSource);
 					owl.addObjectPropertyAssertion(ontology, 
@@ -894,10 +855,10 @@ class Oml2Owl extends OmlSwitch<Void> {
 		return owl.getLiteral(literal.getValue());
 	}
 
-	protected OWLAnonymousIndividual createAnonymousIndividual(final StructureInstance instance) {
+	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousConceptInstance instance) {
 		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
-		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.StructureInstance)));
-		owl.addClassAssertion(ontology, individual, instance.getStructure().getIri());
+		owl.addAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousConceptInstance)));
+		owl.addClassAssertion(ontology, individual, instance.getEntity().getIri());
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
 		return individual;
 	}
