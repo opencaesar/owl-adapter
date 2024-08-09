@@ -275,7 +275,7 @@ public class CloseDescriptionBundle {
 				OmlSearch.findPropertyValueAssertionsWithSubject(subj, scope).forEach(pva -> {
 					final var prop = pva.getProperty();
 					if (all_properties.contains(prop)) {
-						subj_vals_map.get(prop).addAll(pva.getValue());
+						subj_vals_map.get(prop).addAll(pva.getValues());
 					}
 				});
 

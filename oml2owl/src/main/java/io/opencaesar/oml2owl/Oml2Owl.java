@@ -618,13 +618,13 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected List<OWLAnnotation> createAnnotation(final Annotation annotation) {
-		if (!annotation.getReferencedValue().isEmpty()) {
-			return annotation.getReferencedValue().stream()
+		if (!annotation.getReferencedValues().isEmpty()) {
+			return annotation.getReferencedValues().stream()
 					.map(it -> owl.createIri(it.getIri()))
 					.map(it -> owl.getAnnotation(annotation.getProperty().getIri(), it))
 					.collect(Collectors.toList());
-		} if (!annotation.getLiteralValue().isEmpty()) {
-			return annotation.getLiteralValue().stream()
+		} if (!annotation.getLiteralValues().isEmpty()) {
+			return annotation.getLiteralValues().stream()
 					.map(it -> getLiteral(it))
 					.map(it -> owl.getAnnotation(annotation.getProperty().getIri(), it))
 					.collect(Collectors.toList());
@@ -688,14 +688,14 @@ class Oml2Owl extends OmlSwitch<Void> {
 	}
 
 	protected void appliesTo(final OWLIndividual individual, final PropertyValueAssertion assertion) {
-		if (!assertion.getLiteralValue().isEmpty()) {
-			assertion.getLiteralValue().forEach(it ->
+		if (!assertion.getLiteralValues().isEmpty()) {
+			assertion.getLiteralValues().forEach(it ->
 				owl.addDataPropertyAssertion(ontology, 
 						individual, 
 						assertion.getProperty().getIri(),
 						getLiteral(it)));
-		} else if (!assertion.getContainedValue().isEmpty()) {
-			for (var v : assertion.getContainedValue()) {
+		} else if (!assertion.getContainedValues().isEmpty()) {
+			for (var v : assertion.getContainedValues()) {
 				if (v instanceof AnonymousConceptInstance) {
 					owl.addObjectPropertyAssertion(ontology, 
 							individual, 
@@ -715,8 +715,8 @@ class Oml2Owl extends OmlSwitch<Void> {
 							createAnonymousIndividual((AnonymousRelationInstance)v));
 				}
 			};
-		} else if (!assertion.getReferencedValue().isEmpty()) {
-			assertion.getReferencedValue().forEach(it ->
+		} else if (!assertion.getReferencedValues().isEmpty()) {
+			assertion.getReferencedValues().forEach(it ->
 				owl.addObjectPropertyAssertion(ontology, 
 						((OWLNamedIndividual)individual).getIRI().getIRIString(),
 						assertion.getProperty().getIri(), 
