@@ -6,7 +6,7 @@ subprojects {
 	    oml: '0.9.+',
 		oml_tools: '0.9.+',
 		owl: '5.1.17',
-		owl_tools: '+',
+		owl_tools: '0.9.+',
 		jcommander: '1.72',
 		log4j: '1.2.17',
 		slf4j: '1.7.30',
@@ -25,6 +25,7 @@ subprojects {
 	apply from: "${rootDir}/gradle/maven-deployment.gradle"
 	
 	sourceCompatibility = '11'
+	targetCompatibility = '11'
 	
 	java {
 	    withJavadocJar()
