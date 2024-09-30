@@ -1,6 +1,6 @@
 subprojects {
 	group = 'io.opencaesar.adapters'
-	version = '2.10.1'
+	version = '2.10.2'
 	
 	ext.versions = [
 	    oml: '2.+',

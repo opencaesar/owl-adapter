@@ -570,17 +570,13 @@ class OwlApi extends io.opencaesar.closeworld.OwlApi {
 		return addObjectPropertyAssertion(ontology, individual, propertyIri, object, annotations);
 	}
 
-	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final OWLIndividual object, final OWLAnnotation... annotations) {
-		addObjectProperty(ontology, propertyIri);
-		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
-		final OWLObjectPropertyAssertionAxiom axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, checkIfNeeded(annotations));
-		manager.addAxiom(ontology, axiom);
-		return axiom;
+	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final String objectIri, final OWLAnnotation... annotations) {
+		final OWLNamedIndividual object = factory.getOWLNamedIndividual(objectIri);
+		return addObjectPropertyAssertion(ontology, individual, propertyIri, object, annotations);
 	}
 
-	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final String objectIri, final OWLAnnotation... annotations) {
+	public OWLObjectPropertyAssertionAxiom addObjectPropertyAssertion(final OWLOntology ontology, final OWLIndividual individual, final String propertyIri, final OWLIndividual object, final OWLAnnotation... annotations) {
 		addObjectProperty(ontology, propertyIri);
-		final OWLNamedIndividual object = factory.getOWLNamedIndividual(objectIri);
 		final OWLObjectProperty property = factory.getOWLObjectProperty(propertyIri);
 		final OWLObjectPropertyAssertionAxiom axiom = factory.getOWLObjectPropertyAssertionAxiom(property, individual, object, checkIfNeeded(annotations));
 		manager.addAxiom(ontology, axiom);

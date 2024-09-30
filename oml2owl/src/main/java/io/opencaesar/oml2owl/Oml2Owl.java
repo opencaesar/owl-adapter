@@ -718,7 +718,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 		} else if (!assertion.getReferencedValues().isEmpty()) {
 			assertion.getReferencedValues().forEach(it ->
 				owl.addObjectPropertyAssertion(ontology, 
-						((OWLNamedIndividual)individual).getIRI().getIRIString(),
+						individual,
 						assertion.getProperty().getIri(), 
 						it.getIri()));
 		}
