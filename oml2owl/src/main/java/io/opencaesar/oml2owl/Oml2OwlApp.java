@@ -81,11 +81,10 @@ import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.dsl.OmlStandaloneSetup;
 import io.opencaesar.oml.resource.OmlJsonResourceFactory;
 import io.opencaesar.oml.resource.OmlXMIResourceFactory;
-import io.opencaesar.oml.util.OmlCatalog;
 import io.opencaesar.oml.util.OmlConstants;
 import io.opencaesar.oml.util.OmlRead;
+import io.opencaesar.oml.util.OmlResolve;
 import io.opencaesar.oml.validate.OmlValidator;
-import io.opencaesar.oml2owl.CloseDescriptionBundle.CloseDescriptionBundleToOwl;
 import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl;
 
 /**
@@ -93,67 +92,69 @@ import io.opencaesar.oml2owl.CloseVocabularyBundle.CloseVocabularyBundleToOwl;
  */
 public class Oml2OwlApp {
 
+	enum OmlAnnotations {
+		generate,
+		suppress
+	}
+	
 	@Parameter(
 			names = { "--input-catalog-path", "-i" }, 
 			description = "Path of the input Oml catalog (Required)", 
 			validateWith = InputCatalogPath.class, 
-			required = true, 
-			order = 1)
+			required = true)
 	private String inputCatalogPath;
 
 	@Parameter(
 			names= { "--root-ontology-iri", "-r" }, 
 			description="Root ontology IRI (Optional)",
-			required=false, 
-			order=2)
+			required=false)
 	private String rootOntologyIri = null;
 
 	@Parameter(
 			names = { "--output-catalog-path", "-o" }, 
 			description = "Path of the output OWL catalog (Required)", 
 			validateWith = OutputCatalogPath.class, 
-			required = true, 
-			order = 3)
+			required = true)
 	private String outputCatalogPath;
 
 	@Parameter(
 			names = { "--output-file-extension", "-f" },
 			description = "Extension for the output OWL files (default=owl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld, fss)",
 			validateWith = FileExtensionValidator.class,
-			required = false,
-			order = 4)
+			required = false)
 	private String outputFileExtension = "owl";
 
 	@Parameter(
 			names = { "--disjoint-unions", "-u" },
-			description = "Whether to create disjoint union axioms",
-			order = 5)
+			description = "Whether to create disjoint union axioms")
 	private boolean disjointUnions = false;
 
 	@Parameter(
 			names = { "--annotations-on-axioms", "-a" },
-			description = "Whether to Emit annotations on axioms",
-			order = 6)
+			description = "Whether to Emit annotations on axioms")
 	private boolean annotationsOnAxioms = false;
 
 	@Parameter(
 			names = { "--generate-rules", "-rl" }, 
 			description = "Whether to generate Jena rules files (Optional)", 
-			required = false, 
-			order = 7)
+			required = false)
 	private boolean generateRules;
 	
 	@Parameter(
+			names = { "--oml-annotations", "-an" }, 
+			description = "How to process OML annotations (Optional, options: generate (default), suppress", 
+			required = false)
+	private OmlAnnotations omlAnnotations = OmlAnnotations.generate;
+
+	@Parameter(
 			names = { "--debug", "-d" },
-			description = "Shows debug logging statements",
-			order = 8)
+			description = "Shows debug logging statements")
 	private boolean debug;
 
 	@Parameter(
 			names = { "--help", "-h" },
 			description = "Displays summary of options",
-			help = true,
-			order = 9)
+			help = true)
 	private boolean help;
 
 	private final Logger LOGGER = LogManager.getLogger(Oml2OwlApp.class);
@@ -208,18 +209,17 @@ public class Oml2OwlApp {
 		final ResourceSet inputResourceSet = new ResourceSetImpl();
 		inputResourceSet.eAdapters().add(new ECrossReferenceAdapter());
 		
-		final File inputCatalogFile = new File(inputCatalogPath);
-		final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(inputCatalogFile.toString()));
+		final URI inputCatalogUri = URI.createFileURI(inputCatalogPath);
 
 		// load the Oml ontologies
 		Set<String> inputIris = new LinkedHashSet<>(); 
 		if (rootOntologyIri != null) {
-			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalog);
+			URI rootUri = resolveRootOntologyIri(rootOntologyIri, inputCatalogUri);
 			LOGGER.info(("Reading: " + rootUri));
 			Ontology rootOntology = OmlRead.getOntology(inputResourceSet.getResource(rootUri, true));
 			inputIris.addAll(OmlRead.getImportedOntologyClosure(rootOntology, true).stream().map(i -> i.getIri()).collect(Collectors.toList()));
 		} else {
-			final Collection<File> inputFiles = collectOMLFiles(inputCatalog);
+			final Collection<File> inputFiles = collectOMLFiles(inputCatalogUri);
 			for (File inputFile : inputFiles) {
 				final URI ontologyUri = URI.createFileURI(inputFile.getAbsolutePath());
 				LOGGER.info(("Reading: " + ontologyUri));
@@ -284,7 +284,7 @@ public class Oml2OwlApp {
 			
 			LOGGER.info(("Creating: " + outputFile));
 			final Ontology ontology = OmlRead.getOntologyByIri(inputResourceSet, inputIri);
-			final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api).run();
+			final OWLOntology owlOntology = new Oml2Owl(ontology.eResource(), owl2api, omlAnnotations).run();
 
 			// Only save resources when needed
 			boolean needToSave = changed_iris == null || changed_iris.contains(ontology.getIri());
@@ -313,12 +313,6 @@ public class Oml2OwlApp {
 		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof VocabularyBundle).forEach(entry -> {
 			LOGGER.info("Closing vocabulary bundle: "+entry.getKey().getURI());
 			new CloseVocabularyBundleToOwl((VocabularyBundle) OmlRead.getOntology(entry.getKey()), entry.getValue(), disjointUnions, owl2api).run();
-		});
-		
-		// run the description bundle closure algorithm
-		oml2owl.entrySet().stream().filter(e -> OmlRead.getOntology(e.getKey()) instanceof DescriptionBundle).forEach(entry -> {
-			LOGGER.info("Closing description bundle: "+entry.getKey().getURI());
-			new CloseDescriptionBundleToOwl((DescriptionBundle)OmlRead.getOntology(entry.getKey()), entry.getValue(), owl2api).run();
 		});
 		
 		// save the output OWL ontologies
@@ -366,8 +360,8 @@ public class Oml2OwlApp {
 		LOGGER.info("=================================================================");
 	}
 
-	private URI resolveRootOntologyIri(String rootOntologyIri, OmlCatalog catalog) throws IOException {
-		final URI resolved = catalog.resolveUri(URI.createURI(rootOntologyIri));
+	private URI resolveRootOntologyIri(String rootOntologyIri, URI catalogUri) throws IOException {
+		final URI resolved = OmlResolve.resolveOmlFileUri(catalogUri, rootOntologyIri);
 		
 		if (resolved.isFile()) {
 			final String filename = resolved.toFileString();
@@ -388,13 +382,13 @@ public class Oml2OwlApp {
 	/**
 	 * Collects Oml files referenced by the given Oml catalog
 	 * 
-	 * @param inputCatalog The input Oml catalog
+	 * @param inputCatalogUri The URI of the input Oml catalog
 	 * @return Collection of Files
 	 * @throws MalformedURLException error
 	 * @throws IOException error
 	 */
-	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws IOException {
-		return inputCatalog.getResolvedUris().stream()
+	public static Collection<File> collectOMLFiles(URI inputCatalogUri) throws IOException {
+		return OmlResolve.resolveOmlFileUris(inputCatalogUri).stream()
 				.map(i -> new File(i.toFileString()))
 				.collect(Collectors.toList());
 	}

@@ -131,8 +131,8 @@ import io.opencaesar.oml.RangeRestrictionKind;
 import io.opencaesar.oml.Vocabulary;
 import io.opencaesar.oml.VocabularyBundle;
 import io.opencaesar.oml.util.OmlBuilder;
-import io.opencaesar.oml.util.OmlCatalog;
 import io.opencaesar.oml.util.OmlConstants;
+import io.opencaesar.oml.util.OmlResolve;
 
 /**
  * Converts an OWL ontology that was generated from OML back to OML ontology  
@@ -141,7 +141,7 @@ class Owl2Oml {
 	
 	protected final OWLOntologyManager manager;
 	protected final OmlBuilder oml;
-	protected final OmlCatalog catalog;
+	protected final URI catalogUri;
 	protected final String outputFileExtension;
 	
 	/**
@@ -149,13 +149,13 @@ class Owl2Oml {
 	 * 
 	 * @param manager
 	 * @param oml
-	 * @param catalog
+	 * @param catalogUri
 	 * @param outputFileExtension
 	 */
-	public Owl2Oml(OWLOntologyManager manager, OmlBuilder oml, OmlCatalog catalog, String outputFileExtension) {
+	public Owl2Oml(OWLOntologyManager manager, OmlBuilder oml, URI catalogUri, String outputFileExtension) {
 		this.manager = manager;
 		this.oml = oml;
-		this.catalog = catalog;
+		this.catalogUri = catalogUri;
 		this.outputFileExtension = outputFileExtension;
 	}
 
@@ -1471,12 +1471,7 @@ class Owl2Oml {
 	}
 
 	protected URI getUri(String ontologyIri) {
-		try {
-			return catalog.resolveUri(URI.createURI(ontologyIri+"."+outputFileExtension));
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
+		return OmlResolve.resolveUri(catalogUri, ontologyIri).appendFileExtension(outputFileExtension);
 	}
 
     protected IRI getForwardRelationIri(OWLOntology owlOntology, IRI relationEntityIri) {

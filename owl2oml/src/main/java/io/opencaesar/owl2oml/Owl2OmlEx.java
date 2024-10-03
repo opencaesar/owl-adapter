@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.eclipse.emf.common.util.URI;
 import org.semanticweb.owlapi.model.AddImport;
 import org.semanticweb.owlapi.model.AddOntologyAnnotation;
 import org.semanticweb.owlapi.model.AxiomType;
@@ -49,7 +50,6 @@ import org.semanticweb.owlapi.util.OWLEntityRenamer;
 import io.opencaesar.oml.Description;
 import io.opencaesar.oml.Ontology;
 import io.opencaesar.oml.util.OmlBuilder;
-import io.opencaesar.oml.util.OmlCatalog;
 import io.opencaesar.oml.util.OmlConstants;
 
 /**
@@ -57,8 +57,8 @@ import io.opencaesar.oml.util.OmlConstants;
  */
 class Owl2OmlEx extends Owl2Oml {
 
-	public Owl2OmlEx(OWLOntologyManager manager, OmlBuilder oml, OmlCatalog catalog, String outputFileExtension) {
-		super(manager, oml, catalog, outputFileExtension);
+	public Owl2OmlEx(OWLOntologyManager manager, OmlBuilder oml, URI catalogUri, String outputFileExtension) {
+		super(manager, oml, catalogUri, outputFileExtension);
 	}
 
 	protected String correct(String iri) {

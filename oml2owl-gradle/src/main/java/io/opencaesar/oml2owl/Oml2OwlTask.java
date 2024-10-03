@@ -42,7 +42,7 @@ import org.gradle.work.Incremental;
 import org.gradle.work.InputChanges;
 
 import groovy.lang.Closure;
-import io.opencaesar.oml.util.OmlCatalog;
+import io.opencaesar.oml.util.OmlResolve;
 
 /**
  * A gradle task to invoke the Oml2Owl tool 
@@ -60,9 +60,9 @@ public abstract class Oml2OwlTask extends DefaultTask {
     public Task configure(Closure closure) {
         Task task = super.configure(closure);
 		try {
-			final OmlCatalog inputCatalog = OmlCatalog.create(URI.createFileURI(getInputCatalogPath().get().getAbsolutePath()));
-			Collection<File> inputFiles = inputCatalog.getRewriteUris().stream()
-					.map(i -> new File(java.net.URI.create(i)))
+			final URI inputCatalogUri = URI.createFileURI(getInputCatalogPath().get().getAbsolutePath());
+			Collection<File> inputFiles = OmlResolve.resolveOmlFileUris(inputCatalogUri).stream()
+					.map(i -> new File(i.toFileString()))
 					.collect(Collectors.toList());
 			getInputFiles().setFrom(inputFiles);
 		} catch (Exception e) {
@@ -131,6 +131,15 @@ public abstract class Oml2OwlTask extends DefaultTask {
     @Optional
     @Input
     public abstract Property<Boolean> getGenerateRules();
+
+	/**
+	 * How to process oml annotations (options: 'generate' (default), 'suppress').
+	 * 
+	 * @return Boolean Property
+	 */
+    @Optional
+    @Input
+    public abstract Property<String> getOmlAnnotations();
 
     /**
 	 * The debug flag
@@ -205,6 +214,10 @@ public abstract class Oml2OwlTask extends DefaultTask {
 	    	if (getAnnotationsOnAxioms().get()) {
 	    		args.add("-a");
 	    	}
+	    }
+	    if (getOmlAnnotations().isPresent()) {
+    		args.add("-an");
+        	args.add(getOmlAnnotations().get());
 	    }
 		if (getDebug().isPresent() && getDebug().get()) {
 		    args.add("-d");

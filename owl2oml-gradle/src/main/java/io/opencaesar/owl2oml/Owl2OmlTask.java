@@ -47,7 +47,7 @@ import org.gradle.work.Incremental;
 import org.gradle.work.InputChanges;
 
 import groovy.lang.Closure;
-import io.opencaesar.oml.util.OmlCatalog;
+import io.opencaesar.oml.util.OmlResolve;
 
 /**
  * A gradle task to invoke the Owl2Oml tool 
@@ -162,12 +162,11 @@ public abstract class Owl2OmlTask extends DefaultTask {
 		
 						final var outputExtension = getOutputFileExtension().isPresent()? getOutputFileExtension().get() : "oml"; 
 			    		final var outputCatalogUri = URI.createFileURI(outputCatalogPath.getAbsolutePath());
-			    		final var outputCatalog = OmlCatalog.create(outputCatalogUri, Arrays.asList(outputExtension));
 			    		
 			    		Collection<File> outputFiles = new ArrayList<>();
 			    		for (File inputFile : inputFiles) {
 							var iri = inputCatalog.deresolveUri(URI.createFileURI(inputFile.toString()).toString());
-							var outputUri = outputCatalog.resolveUri(URI.createURI(iri));
+							var outputUri = OmlResolve.resolveUri(outputCatalogUri, iri).appendFileExtension(outputExtension);
 							var doNotUpdatePaths = getDoNotUpdatePaths().get().stream().map(i -> i.getAbsolutePath()).collect(Collectors.toList());
 							if (Owl2OmlApp.canUpdateUri(outputUri.toFileString(), doNotUpdatePaths)) {
 								outputFiles.add(new File(outputUri.toFileString()));

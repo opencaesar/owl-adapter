@@ -76,8 +76,8 @@ import io.opencaesar.oml.dsl.OmlStandaloneSetup;
 import io.opencaesar.oml.resource.OmlJsonResourceFactory;
 import io.opencaesar.oml.resource.OmlXMIResourceFactory;
 import io.opencaesar.oml.util.OmlBuilder;
-import io.opencaesar.oml.util.OmlCatalog;
 import io.opencaesar.oml.util.OmlConstants;
+import io.opencaesar.oml.util.OmlResolve;
 
 /**
  * An application to transform Owl resources into Oml resources
@@ -235,7 +235,7 @@ public class Owl2OmlApp {
 		outputResourceSet.eAdapters().add(new ECrossReferenceAdapterEx());
 		
 		// create Oml catalog
-		final OmlCatalog outputCatalog = OmlCatalog.create(URI.createFileURI(outputCatalogPath));		
+		final URI outputCatalogUri = URI.createFileURI(outputCatalogPath);		
 
 		// create the Oml builder
 		final OmlBuilder builder = new OmlBuilder(outputResourceSet);
@@ -248,7 +248,7 @@ public class Owl2OmlApp {
 		manager.ontologies().forEach(owlOntology -> {
 			LOGGER.info(("Converting: " + owlOntology.getOntologyID().getOntologyIRI().get()));
 			try {
-				var ontologies = new Owl2Oml(manager, builder, outputCatalog, outputFileExtension).run(owlOntology);
+				var ontologies = new Owl2Oml(manager, builder, outputCatalogUri, outputFileExtension).run(owlOntology);
 				allOntologies.addAll(ontologies);
 			} catch (Exception e) {
 				LOGGER.error(e);
@@ -297,13 +297,13 @@ public class Owl2OmlApp {
 	/**
 	 * Collects Oml files referenced by the given Oml catalog
 	 * 
-	 * @param inputCatalog The input Oml catalog
+	 * @param inputCatalogUri The URI of the input Oml catalog
 	 * @return Collection of Files
 	 * @throws MalformedURLException error
 	 * @throws IOException error
 	 */
-	public static Collection<File> collectOMLFiles(OmlCatalog inputCatalog) throws IOException {
-		return inputCatalog.getResolvedUris().stream()
+	public static Collection<File> collectOMLFiles(URI inputCatalogUri) throws IOException {
+		return OmlResolve.resolveOmlFileUris(inputCatalogUri).stream()
 				.map(i -> new File(i.toFileString()))
 				.collect(Collectors.toList());
 	}
