@@ -18,7 +18,7 @@ Args:
 ```
 --input-catalog-path | -i path/to/input/oml/catalog.xml [Required]
 --output-catalog-path | -o path/to/output/owl/catalog.xml [Required]
---do-not-update-path | -u path/to/oml/folder [Optional]
+--source-path | -s path/to/oml/folder [Required]
 --input-file-extension | -if [optional, default=ttl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld]
 --output-file-extension | -of [optional, default=oml, options: oml, omlxmi, omljson]
 ```
@@ -36,7 +36,7 @@ buildscript {
 task owl2oml(type:io.opencaesar.owl2oml.Owl2OmlTask) {
     inputCatalogPath = file('path/to/input/oml/catalog.xml') [Required]
     outputCatalogPath = file('path/to/output/owl/catalog.xml') [Required]
-    doNotUpdatePaths = [ file('build/oml') ] [Optional]
+    sourcePaths = [ file('src/oml') ] [Required]
     inputFileExtensions = ['ttl'] [Optional, default=ttl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld]
     outputFileExtension = 'oml' [Optional, default=oml, options: oml, omlxmi, omljson]
 }

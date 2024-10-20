@@ -98,13 +98,12 @@ public abstract class Owl2OmlTask extends DefaultTask {
     public abstract Property<File> getOutputCatalogPath();
 
 	/**
-	 * Paths of OML folders that should not be updated in the conversion
+	 * Paths of OML folders that can be updated in the conversion
 	 * 
 	 * @return String List Property
 	 */
-    @Optional
     @Input
-    public abstract ListProperty<File> getDoNotUpdatePaths();
+    public abstract ListProperty<File> getSourcePaths();
 
 	/**
 	 * Extension for the input OWL files (default=ttl, options: owl, rdf, xml, rj, ttl, n3, nt, trig, nq, trix, jsonld).
@@ -158,17 +157,15 @@ public abstract class Owl2OmlTask extends DefaultTask {
 					if (inputCatalogPath.exists() && outputCatalogPath.exists()) {
 						final var inputExtensions = getInputFileExtensions().isPresent()? getInputFileExtensions().get() : Arrays.asList("ttl"); 
 						final var inputCatalog = new OwlCatalog(inputCatalogPath, inputExtensions);
-						final var inputFiles = inputCatalog.getFiles();
-		
 						final var outputExtension = getOutputFileExtension().isPresent()? getOutputFileExtension().get() : "oml"; 
 			    		final var outputCatalogUri = URI.createFileURI(outputCatalogPath.getAbsolutePath());
-			    		
 			    		Collection<File> outputFiles = new ArrayList<>();
+						final var inputFiles = inputCatalog.getFiles();
 			    		for (File inputFile : inputFiles) {
 							var iri = inputCatalog.deresolveUri(URI.createFileURI(inputFile.toString()).toString());
 							var outputUri = OmlResolve.resolveUri(outputCatalogUri, iri).appendFileExtension(outputExtension);
-							var doNotUpdatePaths = getDoNotUpdatePaths().get().stream().map(i -> i.getAbsolutePath()).collect(Collectors.toList());
-							if (Owl2OmlApp.canUpdateUri(outputUri.toFileString(), doNotUpdatePaths)) {
+							var sourcePaths = getSourcePaths().get().stream().map(i -> i.getAbsolutePath()).collect(Collectors.toList());
+							if (Owl2OmlApp.canUpdateUri(outputUri.toFileString(), sourcePaths)) {
 								outputFiles.add(new File(outputUri.toFileString()));
 							}
 			    		}
@@ -196,9 +193,9 @@ public abstract class Owl2OmlTask extends DefaultTask {
 		    args.add("-o");
 		    args.add(getOutputCatalogPath().get().getAbsolutePath());
         }
-        if (getDoNotUpdatePaths().isPresent()) {
-        	getDoNotUpdatePaths().get().forEach(path -> {
-                args.add("-u");
+        if (getSourcePaths().isPresent()) {
+        	getSourcePaths().get().forEach(path -> {
+                args.add("-s");
                 args.add(path.getAbsolutePath());
             });
 		}

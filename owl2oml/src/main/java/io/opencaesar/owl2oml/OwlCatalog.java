@@ -204,7 +204,7 @@ public class OwlCatalog {
 				String rewriteUri = normalize(e.getEntryArg(1));
 				int i =  uri.toString().indexOf(rewriteUri);
 				if (i != -1) {
-					var pathWithNoExt = uri.substring(0, uri.lastIndexOf(".")-1);
+					var pathWithNoExt = uri.substring(0, uri.lastIndexOf("."));
 					return pathWithNoExt.replace(rewriteUri, uriStartString);
 				}
 			}

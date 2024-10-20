@@ -101,11 +101,11 @@ public class Owl2OmlApp {
 	private String outputCatalogPath;
 
 	@Parameter(
-			names = { "--do-not-update-path", "-u" }, 
-			description = "Paths of output folders that should not be updated", 
-			required = false, 
+			names = { "--source-path", "-s" }, 
+			description = "Paths of source OML folders that can be updated", 
+			required = true, 
 			order = 3)
-	private List<String> doNotUpdatePaths = new ArrayList<>();
+	private List<String> sourcePaths = new ArrayList<>();
 	
 	@Parameter(
 			names = { "--input-file-extension", "-if" },
@@ -166,9 +166,9 @@ public class Owl2OmlApp {
 			final Appender appender = LogManager.getRootLogger().getAppender("stdout");
 			((AppenderSkeleton) appender).setThreshold(Level.DEBUG);
 		}
-		for (int i=0; i< app.doNotUpdatePaths.size(); i++) {
-			if (!app.doNotUpdatePaths.get(i).endsWith("/")) {
-				app.doNotUpdatePaths.set(i, app.doNotUpdatePaths.get(i)+"/");
+		for (int i=0; i< app.sourcePaths.size(); i++) {
+			if (!app.sourcePaths.get(i).endsWith("/")) {
+				app.sourcePaths.set(i, app.sourcePaths.get(i)+"/");
 			}
 		}
 		app.run(deltas);
@@ -192,7 +192,7 @@ public class Owl2OmlApp {
 		LOGGER.info("=================================================================");
 		LOGGER.info("Input catalog path= " + inputCatalogPath);
 		LOGGER.info("Output catalog path= " + outputCatalogPath);
-		LOGGER.info("Do not update paths= " + doNotUpdatePaths);
+		LOGGER.info("Source paths= " + sourcePaths);
 		LOGGER.info("Input file extensions= " + inputFileExtensions);
 		LOGGER.info("Output file extension= " + outputFileExtension);
 
@@ -264,7 +264,7 @@ public class Owl2OmlApp {
 			OmlSorter.sort(ontology); // canonically sort the ontology
 			URI outputResourceURI = ontology.eResource().getURI();
 			if (outputResourceURI.fileExtension().equals(outputFileExtension)) {
-				if (canUpdateUri(outputResourceURI.toFileString(), doNotUpdatePaths)) {
+				if (canUpdateUri(outputResourceURI.toFileString(), sourcePaths)) {
 					LOGGER.info("Saving: "+outputResourceURI.toFileString());
 					final Resource outputResource = outputResourceSet.getResource(outputResourceURI, false);
 					outputResource.save(Collections.EMPTY_MAP);
@@ -280,18 +280,18 @@ public class Owl2OmlApp {
 	}
 
 	/**
-	 * Determines if the given uri can be updated (not in the given given do not update paths)
+	 * Determines if the given uri can be updated (in the given source folder paths)
 	 * @param uri The given uri
-	 * @param doNotUpdatePaths A list of do not update folder paths
+	 * @param sourcePaths A list of source folder paths
 	 * @return Boolean
 	 */
-	public static boolean canUpdateUri(String uri, List<String> doNotUpdatePaths) {
-		for (String p : doNotUpdatePaths) {
+	public static boolean canUpdateUri(String uri, List<String> sourcePaths) {
+		for (String p : sourcePaths) {
 			if (uri.startsWith(p)) {
-				return false;
+				return true;
 			}
 		}
-		return true;
+		return false;
 	}
 	
 	/**
