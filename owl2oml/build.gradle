@@ -1,11 +1,13 @@
-apply plugin: 'application'
+ext.title = 'Owl to Oml'
+description = 'Owl to Oml Interface'
 
 apply from: "${rootDir}/gradle/maven-deployment.gradle"
 
-ext.title = 'Owl to Oml'
-description = 'Owl to Oml Interface'
-mainClassName = 'io.opencaesar.owl2oml.Owl2OmlApp'
-applicationName = 'owl2oml'
+apply plugin: 'application'
+application {
+	applicationName = 'owl2oml'
+	mainClass = 'io.opencaesar.owl2oml.Owl2OmlApp'
+}
 
 dependencies {
 	implementation "com.beust:jcommander:${versions.jcommander}"

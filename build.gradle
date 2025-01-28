@@ -23,10 +23,9 @@ subprojects {
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
 	
-	sourceCompatibility = '17'
-	targetCompatibility = '17'
-	
 	java {
+		sourceCompatibility = '17'
+		targetCompatibility = '17'
 	    withJavadocJar()
 	    withSourcesJar()
 	}
