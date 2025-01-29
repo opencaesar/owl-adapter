@@ -110,7 +110,7 @@ class OmlSorter {
 		} else if (o instanceof TypeAssertion) {
 			return toString(((TypeAssertion)o).getType());
 		} else if (o instanceof PropertyValueAssertion) {
-			return toString(((PropertyValueAssertion)o).getProperty()) + toString(((PropertyValueAssertion)o).getObject());
+			return toString(((PropertyValueAssertion)o).getProperty()) + toString(((PropertyValueAssertion)o).getValue());
 		} else if (o instanceof SpecializationAxiom) {
 			return toString(((SpecializationAxiom)o).getSuperTerm());
 		} else if (o instanceof PropertyRangeRestrictionAxiom) {
