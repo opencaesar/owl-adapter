@@ -67,7 +67,6 @@ import org.semanticweb.owlapi.formats.TrigDocumentFormatFactory;
 import org.semanticweb.owlapi.formats.TrixDocumentFormat;
 import org.semanticweb.owlapi.formats.TrixDocumentFormatFactory;
 import org.semanticweb.owlapi.io.WriterDocumentTarget;
-import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDocumentFormat;
 import org.semanticweb.owlapi.model.OWLDocumentFormatFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -230,7 +229,7 @@ public class Oml2OwlApp {
 				LOGGER.info(("Reading: " + ontologyUri));
 				Ontology ontology = OmlRead.getOntology(inputResourceSet.getResource(ontologyUri, true));
 				inputIris.add(ontology.getIri());  
-				LOGGER.info("Detected encoding: "+((XtextResource)ontology.eResource()).getEncoding());
+				LOGGER.debug("Detected encoding: "+((XtextResource)ontology.eResource()).getEncoding());
 			}
 		}
 		
