@@ -20,9 +20,12 @@ package io.opencaesar.oml2owl;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -46,6 +49,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.ECrossReferenceAdapter;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.xtext.resource.XtextResource;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.formats.FunctionalSyntaxDocumentFormat;
 import org.semanticweb.owlapi.formats.N3DocumentFormat;
@@ -62,6 +66,7 @@ import org.semanticweb.owlapi.formats.TrigDocumentFormat;
 import org.semanticweb.owlapi.formats.TrigDocumentFormatFactory;
 import org.semanticweb.owlapi.formats.TrixDocumentFormat;
 import org.semanticweb.owlapi.formats.TrixDocumentFormatFactory;
+import org.semanticweb.owlapi.io.WriterDocumentTarget;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDocumentFormat;
 import org.semanticweb.owlapi.model.OWLDocumentFormatFactory;
@@ -225,6 +230,7 @@ public class Oml2OwlApp {
 				LOGGER.info(("Reading: " + ontologyUri));
 				Ontology ontology = OmlRead.getOntology(inputResourceSet.getResource(ontologyUri, true));
 				inputIris.add(ontology.getIri());  
+				LOGGER.info("Detected encoding: "+((XtextResource)ontology.eResource()).getEncoding());
 			}
 		}
 		
@@ -325,15 +331,14 @@ public class Oml2OwlApp {
 				if (format instanceof PrefixDocumentFormat) {
 					format.asPrefixOWLDocumentFormat().copyPrefixesFrom(owlOntology.getFormat().asPrefixOWLDocumentFormat());
 				}
-				IRI documentIRI = IRI.create(file);
-				// Workaround
-				// See https://github.com/owlcs/owlapi/issues/1002
-				// See https://github.com/owlcs/owlapi/pull/1003
-				if (FileExtensionValidator.storers.get(outputFileExtension) != null) {
-					OWLStorer storer = FileExtensionValidator.storers.get(outputFileExtension).apply(owlOntology);
-					storer.storeOntology(owlOntology, documentIRI, format);
-				} else {
-					ontologyManager.saveOntology(owlOntology, format, documentIRI);
+	            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+	            	WriterDocumentTarget documentTarget = new WriterDocumentTarget(writer);
+	            	if (FileExtensionValidator.storers.get(outputFileExtension) != null) {
+						OWLStorer storer = FileExtensionValidator.storers.get(outputFileExtension).apply(owlOntology);
+						storer.storeOntology(owlOntology, documentTarget, format);
+					} else {
+		            	ontologyManager.saveOntology(owlOntology, format, documentTarget);
+					}
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
