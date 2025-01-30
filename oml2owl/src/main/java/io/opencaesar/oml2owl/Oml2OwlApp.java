@@ -331,6 +331,7 @@ public class Oml2OwlApp {
 				if (format instanceof PrefixDocumentFormat) {
 					format.asPrefixOWLDocumentFormat().copyPrefixesFrom(owlOntology.getFormat().asPrefixOWLDocumentFormat());
 				}
+	            file.getParentFile().mkdirs();
 	            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
 	            	WriterDocumentTarget documentTarget = new WriterDocumentTarget(writer);
 	            	if (FileExtensionValidator.storers.get(outputFileExtension) != null) {
