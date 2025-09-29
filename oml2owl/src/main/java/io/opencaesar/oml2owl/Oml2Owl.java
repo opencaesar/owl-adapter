@@ -28,7 +28,6 @@ import java.util.stream.StreamSupport;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.semanticweb.owlapi.model.OWLAnnotation;
-import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLClassExpression;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
 import org.semanticweb.owlapi.model.OWLIndividual;
@@ -117,6 +116,7 @@ class Oml2Owl extends OmlSwitch<Void> {
 	private final OwlApi owl;
 	private final OmlAnnotations omlAnnotations;
 	private OWLOntology ontology;
+	private int anonymousIndex;
 
 	public Oml2Owl(final Resource inputResource, final OwlApi owl, OmlAnnotations omlAnnotations) {
 		this.inputResource = inputResource;
@@ -858,18 +858,20 @@ class Oml2Owl extends OmlSwitch<Void> {
 		return owl.getLiteral(literal.getValue());
 	}
 
-	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousConceptInstance instance) {
-		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
-		addOmlAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousConceptInstance)));
-		owl.addClassAssertion(ontology, individual, instance.getEntity().getIri());
+	protected OWLNamedIndividual createAnonymousIndividual(final AnonymousConceptInstance instance) {
+		final String instanceIri = instance.getOntology().getNamespace() + "_b" + anonymousIndex++;
+		final var individual = owl.addNamedIndividual(ontology, instanceIri);
+		addOmlAnnotationAssertion(ontology, instanceIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousConceptInstance)));
+		owl.addClassAssertion(ontology, instanceIri, instance.getEntity().getIri());
 		instance.getOwnedPropertyValues().forEach(it -> appliesTo(individual, it));
 		return individual;
 	}
 
-	protected OWLAnonymousIndividual createAnonymousIndividual(final AnonymousRelationInstance instance) {
-		final OWLAnonymousIndividual individual = owl.getAnonymousIndividual();
-		addOmlAnnotationAssertion(ontology, individual, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousRelationInstance)));
-		owl.addClassAssertion(ontology, individual, instance.getRelationEntity().getIri());
+	protected OWLNamedIndividual createAnonymousIndividual(final AnonymousRelationInstance instance) {
+		final String instanceIri = instance.getOntology().getNamespace() + "_b" + anonymousIndex++;
+		final var individual = owl.addNamedIndividual(ontology, instanceIri);
+		addOmlAnnotationAssertion(ontology, instanceIri, owl.getAnnotation(OmlConstants.type, owl.createIri(OmlConstants.AnonymousRelationInstance)));
+		owl.addClassAssertion(ontology, instanceIri, instance.getRelationEntity().getIri());
 		final SemanticProperty property = instance.getIsValueOfProperty();
 		if (property instanceof ForwardRelation) {
 			owl.addObjectPropertyAssertion(ontology, individual, OmlConstants.hasTarget, instance.getTarget().getIri());
@@ -920,12 +922,6 @@ class Oml2Owl extends OmlSwitch<Void> {
 	private void addOmlAnnotationAssertion(OWLOntology ontology, String subjectIri, OWLAnnotation annotation) {
 		if (omlAnnotations == OmlAnnotations.generate) {
 			owl.addAnnotationAssertion(ontology, subjectIri, annotation);
-		}
-	}
-
-	private void addOmlAnnotationAssertion(OWLOntology ontology, OWLAnonymousIndividual subject, OWLAnnotation annotation) {
-		if (omlAnnotations == OmlAnnotations.generate) {
-			owl.addAnnotationAssertion(ontology, subject, annotation);
 		}
 	}
 
